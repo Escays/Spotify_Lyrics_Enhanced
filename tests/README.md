@@ -5,6 +5,7 @@ Run these commands from the repository root:
 ```sh
 ./gradlew :shared:testDebugUnitTest :shared:lintDebug :app:lintDebug :spotify-module:lintDebug :app:assembleDebug :app:assembleQa :spotify-module:assembleDebug
 python3 tests/run_lyrics_center_regression.py
+python3 tests/run_platform_translation_regression.py
 python3 tests/run_appearance_regression.py
 python3 tests/run_first_use_regression.py
 python3 tests/run_vinyl_regression.py
@@ -55,6 +56,14 @@ It also rejects direct standard WebKit or Spotify module references in shared
 Java. When the private WebKit JAR exists, it checks that AndroidX class definitions
 are isolated while public Chromium boundary interface names remain intact.
 These checks complement physical playback/UI validation.
+
+The platform translation regression runs the NetEase/QQ recording matcher, the two-layer line
+alignment and the Genius annotation mapper against synthetic payloads. It covers an English song, a
+Japanese character song credited with a decorated artist name, a same-title live take, platforms that
+split or join lines differently, a repeated chorus, partial coverage filled by the second platform,
+unusable rows (romanisation, `//`, notices, credits, an untranslated Japanese line), switching the
+original lyric source, a late answer for the previous track, and a song with no Genius data. It never
+contacts a service; the live endpoint probes below are separate manual checks.
 
 The provider-network regression uses production mirror orchestration and the lyrics repository with
 synthetic HTTP, bitmap decoding and Android dispatch. It covers staggered mirror fallback, healthy

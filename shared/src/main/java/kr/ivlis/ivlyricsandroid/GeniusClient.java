@@ -49,10 +49,10 @@ final class GeniusClient {
         }
     }
 
-    List<Hit> search(String title, String artist) throws Exception {
-        String query = encode((title + " " + artist).trim());
+    List<Hit> search(String query) throws Exception {
+        String encoded = encode(query == null ? "" : query.trim());
         PlatformHttpTransport.Response response =
-                transport.get(SEARCH_ENDPOINT + "?q=" + query, HEADERS);
+                transport.get(SEARCH_ENDPOINT + "?q=" + encoded, HEADERS);
         if (!response.ok()) {
             throw new IOException(LABEL + " search failed (" + response.status + ")");
         }

@@ -112,8 +112,21 @@ final class SongMeaningService {
             }
         }
 
-        List<GeniusClient.Hit> hits = client.search(title, artist);
-        GeniusClient.Hit best = chooseRecording(hits, title, artist);
+        // A query carrying the version tail (" - 2017 Remaster") returns unrelated songs from
+        // Genius' fuzzy search, so the same cleaned variants the platforms use are tried in order.
+        GeniusClient.Hit best = null;
+        String lastQuery = "";
+        for (String query : PlatformRecordingMatcher.searchQueries(title, artist)) {
+            lastQuery = query;
+            List<GeniusClient.Hit> hits = client.search(query);
+            best = chooseRecording(hits, title, artist);
+            if (best != null) {
+                break;
+            }
+        }
+        if (best == null) {
+            PlatformTranslationSettings.log("genius: no acceptable hit for \"" + lastQuery + "\"");
+        }
         if (best == null) {
             SongMeaning empty = SongMeaning.EMPTY;
             writeCache(cacheKey, empty);

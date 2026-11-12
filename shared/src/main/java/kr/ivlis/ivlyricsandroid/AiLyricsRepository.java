@@ -83,6 +83,9 @@ final class AiLyricsRepository {
     private final SharedPreferences tmiPrefs;
     private final SharedPreferences culturalAnnotationPrefs;
     private final Context localAiContext;
+    private final PlatformTranslationService platformTranslations;
+    /** The track the newest supplement request belongs to; a late platform answer is dropped. */
+    private volatile String activeTrackKey = "";
 
     AiLyricsRepository() {
         diskCache = null;
@@ -90,6 +93,7 @@ final class AiLyricsRepository {
         tmiPrefs = null;
         culturalAnnotationPrefs = null;
         localAiContext = null;
+        platformTranslations = new PlatformTranslationService(java.util.Collections.emptyList());
     }
 
     AiLyricsRepository(Context context) {
@@ -106,6 +110,12 @@ final class AiLyricsRepository {
                 ? null
                 : context.getApplicationContext().getSharedPreferences("ai_cultural_annotations", Context.MODE_PRIVATE);
         localAiContext = context == null ? null : context.getApplicationContext();
+        platformTranslations = new PlatformTranslationService(
+                localAiContext,
+                new PlatformTranslationSettings(localAiContext),
+                PlatformHttpTransport.http(),
+                () -> activeTrackKey
+        );
     }
 
     void testConnection(AiLyricsSettings.Snapshot settings, java.util.function.Consumer<String> callback) {
@@ -893,6 +903,7 @@ final class AiLyricsRepository {
         }
 
         String trackKey = track.stableKey();
+        activeTrackKey = trackKey;
         String textPayload = buildPayloadText(baseResult.lines);
         String detectedSourceLang = detectLanguage(textPayload);
         String normalizedOverride = AiLyricsSettings.normalizeLanguageCode(sourceLangOverride);
@@ -975,7 +986,7 @@ final class AiLyricsRepository {
                 pronunciationLang
         );
         String translationCacheKey = supplementTaskCacheKey(
-                trackKey,
+                trackKey + "|platform=" + platformSignature(targetLang),
                 detectedSourceLang,
                 sourceLang,
                 settings,
@@ -1062,6 +1073,7 @@ final class AiLyricsRepository {
         );
         if (session.pronunciationLoading()) {
             executor.execute(() -> loadSupplementTask(
+                    track,
                     trackKey,
                     settings,
                     session,
@@ -1080,6 +1092,7 @@ final class AiLyricsRepository {
         }
         if (session.translationLoading()) {
             executor.execute(() -> loadSupplementTask(
+                    track,
                     trackKey,
                     settings,
                     session,
@@ -1742,6 +1755,7 @@ final class AiLyricsRepository {
     }
 
     private void loadSupplementTask(
+            TrackSnapshot track,
             String trackKey,
             AiLyricsSettings.Snapshot settings,
             SupplementSession session,
@@ -1819,87 +1833,118 @@ final class AiLyricsRepository {
                 for (SupplementRequest request : requests) {
                     sourceTexts.add(request.text);
                 }
-                prompt = buildTranslationPrompt(requests, targetLang);
-                for (String providerId : settings.enabledAiProviderOrder()) {
-                    AiLyricsSettings.Provider provider = AiLyricsSettings.aiProviderById(providerId);
-                    if (provider == null) {
-                        continue;
+                // NetEase / QQ come first: their Chinese translation is already written for these exact
+                // lines, so only the lines they cannot cover are sent to the AI stage.
+                PlatformSeed seed = seedPlatformTranslations(track, trackKey, session, requests, targetLang, log);
+                List<SupplementRequest> aiRequests = seed.pendingRequests;
+                List<String> aiSourceTexts = seed.pendingTexts;
+                prompt = buildTranslationPrompt(aiRequests, targetLang);
+                if (seed.complete()) {
+                    session.setProvider(false, seed.providerLabel);
+                    reportSupplementProvider(trackKey, callback, false, seed.providerLabel);
+                    log.write("platform translation covered every line: " + seed.providerLabel
+                            + " / lines=" + requests.size());
+                    values = seed.values;
+                } else {
+                    if (seed.hasPlatform()) {
+                        log.write("platform translation: " + seed.providerLabel
+                                + " / lines=" + seed.coveredLines + "/" + requests.size()
+                                + " / ai fills=" + aiRequests.size());
                     }
-                    session.resetTranslationValues();
-                    try {
-                        if ("deepl".equals(provider.id)) {
-                            AiLyricsSettings.Snapshot profile = settings.forProvider(provider.id);
-                            if (profile == null || !profile.hasApiKey()) continue;
-                            session.setProvider(false, provider.label);
-                            reportSupplementProvider(trackKey, callback, false, provider.label);
-                            values = translateDeepL(sourceTexts, targetLang, profile, true);
-                        } else if (provider.localModel) {
-                            session.setProvider(false, provider.label);
-                            reportSupplementProvider(trackKey, callback, false, provider.label);
-                            log.write("translation attempt: provider=" + provider.label);
-                            values = LocalAiProvider.translate(localAiContext, settings, sourceTexts, targetLang,
-                                    (row, value) -> {
-                                        session.setTranslationValue(row, value);
-                                        partialDispatcher.request();
-                                    });
-                            log.write("translation response: provider=" + provider.label + " / lines=" + values.size());
-                        } else if (provider.keyless) {
-                            session.setProvider(false, provider.label);
-                            reportSupplementProvider(trackKey, callback, false, provider.label);
-                            log.write("translation attempt: provider=" + provider.label);
-                            KeylessTranslationProviders.Result result = KeylessTranslationProviders.translateWithProvider(
-                                    provider.id,
-                                    sourceTexts,
-                                    targetLang
-                            );
-                            values = result.values;
-                            session.setProvider(false, result.providerLabel);
-                            reportSupplementProvider(trackKey, callback, false, result.providerLabel);
-                            log.write("translation response: provider=" + result.providerLabel + " / lines=" + values.size());
-                        } else {
-                            AiLyricsSettings.Snapshot providerSettings = settings.forProvider(provider.id);
-                            if (providerSettings == null || !providerSettings.hasApiKey() || !providerSettings.hasModel()) {
-                                log.write("ai translation skipped: provider=" + provider.label + " is not fully configured");
-                                continue;
+                    String aiProviderLabel = "";
+                    for (String providerId : settings.enabledAiProviderOrder()) {
+                        AiLyricsSettings.Provider provider = AiLyricsSettings.aiProviderById(providerId);
+                        if (provider == null) {
+                            continue;
+                        }
+                        session.resetTranslationValues();
+                        try {
+                            if ("deepl".equals(provider.id)) {
+                                AiLyricsSettings.Snapshot profile = settings.forProvider(provider.id);
+                                if (profile == null || !profile.hasApiKey()) continue;
+                                session.setProvider(false, provider.label);
+                                reportSupplementProvider(trackKey, callback, false, provider.label);
+                                values = translateDeepL(aiSourceTexts, targetLang, profile, true);
+                                aiProviderLabel = provider.label;
+                            } else if (provider.localModel) {
+                                session.setProvider(false, provider.label);
+                                reportSupplementProvider(trackKey, callback, false, provider.label);
+                                log.write("translation attempt: provider=" + provider.label);
+                                values = LocalAiProvider.translate(localAiContext, settings, aiSourceTexts, targetLang,
+                                        (row, value) -> {
+                                            session.setTranslationValue(row, value);
+                                            partialDispatcher.request();
+                                        });
+                                log.write("translation response: provider=" + provider.label + " / lines=" + values.size());
+                                aiProviderLabel = provider.label;
+                            } else if (provider.keyless) {
+                                session.setProvider(false, provider.label);
+                                reportSupplementProvider(trackKey, callback, false, provider.label);
+                                log.write("translation attempt: provider=" + provider.label);
+                                KeylessTranslationProviders.Result result = KeylessTranslationProviders.translateWithProvider(
+                                        provider.id,
+                                        aiSourceTexts,
+                                        targetLang
+                                );
+                                values = result.values;
+                                session.setProvider(false, result.providerLabel);
+                                reportSupplementProvider(trackKey, callback, false, result.providerLabel);
+                                log.write("translation response: provider=" + result.providerLabel + " / lines=" + values.size());
+                                aiProviderLabel = result.providerLabel;
+                            } else {
+                                AiLyricsSettings.Snapshot providerSettings = settings.forProvider(provider.id);
+                                if (providerSettings == null || !providerSettings.hasApiKey() || !providerSettings.hasModel()) {
+                                    log.write("ai translation skipped: provider=" + provider.label + " is not fully configured");
+                                    continue;
+                                }
+                                session.setProvider(false, provider.label);
+                                reportSupplementProvider(trackKey, callback, false, provider.label);
+                                log.write("ai translation stream request: provider=" + provider.label
+                                        + " / model=" + providerSettings.model + " / lines=" + aiRequests.size());
+                                values = loadSupplementValuesStreamFirst(
+                                        prompt,
+                                        providerSettings,
+                                        aiRequests,
+                                        SUPPLEMENT_TASK_TRANSLATION,
+                                        session,
+                                        false,
+                                        trackKey,
+                                        rule,
+                                        sourceLang,
+                                        targetLang,
+                                        pronunciationLang,
+                                        translationSkipped,
+                                        partialDispatcher,
+                                        log
+                                );
+                                aiProviderLabel = provider.label;
                             }
-                            session.setProvider(false, provider.label);
-                            reportSupplementProvider(trackKey, callback, false, provider.label);
-                            log.write("ai translation stream request: provider=" + provider.label
-                                    + " / model=" + providerSettings.model + " / lines=" + expectedLineCount);
-                            values = loadSupplementValuesStreamFirst(
-                                    prompt,
-                                    providerSettings,
-                                    requests,
-                                    SUPPLEMENT_TASK_TRANSLATION,
-                                    session,
-                                    false,
-                                    trackKey,
-                                    rule,
-                                    sourceLang,
-                                    targetLang,
-                                    pronunciationLang,
-                                    translationSkipped,
-                                    partialDispatcher,
-                                    log
-                            );
+                            if (values != null) {
+                                break;
+                            }
+                        } catch (Exception providerError) {
+                            if (LocalAiProvider.isSuperseded(providerError)) {
+                                // A newer request owns the engine and this track is gone: stop without other providers.
+                                throw providerError;
+                            }
+                            lastError = providerError;
+                            log.write("translation fallback: provider=" + provider.label
+                                    + " / error=" + errorMessage(providerError));
                         }
-                        if (values != null) {
-                            break;
-                        }
-                    } catch (Exception providerError) {
-                        if (LocalAiProvider.isSuperseded(providerError)) {
-                            // A newer request owns the engine and this track is gone: stop without other providers.
-                            throw providerError;
-                        }
-                        lastError = providerError;
-                        log.write("translation fallback: provider=" + provider.label
-                                + " / error=" + errorMessage(providerError));
                     }
-                }
-                if (values == null) {
-                    throw lastError == null
-                            ? new IOException(AppI18n.t(settings.uiLang, "error.translation_providers_failed"))
-                            : lastError;
+                    if (values == null) {
+                        throw lastError == null
+                                ? new IOException(AppI18n.t(settings.uiLang, "error.translation_providers_failed"))
+                                : lastError;
+                    }
+                    if (seed.hasPlatform()) {
+                        values = seed.merge(values);
+                        String combined = combineProviderLabels(seed.providerLabel, aiProviderLabel);
+                        session.setProvider(false, combined);
+                        reportSupplementProvider(trackKey, callback, false, combined);
+                        log.write("merged translation: platform=" + seed.providerLabel
+                                + " / ai=" + aiProviderLabel);
+                    }
                 }
                 log.write("ai translation response: lines=" + values.size());
                 session.setTranslation(values);
@@ -1926,6 +1971,237 @@ final class AiLyricsRepository {
             }
             partialDispatcher.taskFailed(userErrorMessage(error, settings.uiLang));
         }
+    }
+
+    /**
+     * The platform result for one translation task: the rows already translated, and the rows the AI
+     * stage still has to fill, kept in their original slots so the merge cannot shift a translation
+     * onto the wrong line.
+     */
+    private static final class PlatformSeed {
+        final List<String> values;
+        final List<SupplementRequest> pendingRequests;
+        final List<String> pendingTexts;
+        final List<Integer> pendingSlots;
+        final String providerLabel;
+        final int coveredLines;
+
+        PlatformSeed(List<String> values, List<SupplementRequest> pendingRequests, List<String> pendingTexts,
+                List<Integer> pendingSlots, String providerLabel, int coveredLines) {
+            this.values = values;
+            this.pendingRequests = pendingRequests;
+            this.pendingTexts = pendingTexts;
+            this.pendingSlots = pendingSlots;
+            this.providerLabel = providerLabel == null ? "" : providerLabel;
+            this.coveredLines = coveredLines;
+        }
+
+        boolean hasPlatform() {
+            return coveredLines > 0;
+        }
+
+        boolean complete() {
+            return coveredLines > 0 && pendingRequests.isEmpty();
+        }
+
+        List<String> merge(List<String> aiValues) {
+            List<String> merged = new ArrayList<>(values);
+            for (int index = 0; index < pendingSlots.size() && index < aiValues.size(); index++) {
+                String value = aiValues.get(index);
+                int slot = pendingSlots.get(index);
+                if (slot >= 0 && slot < merged.size() && (value != null && !value.trim().isEmpty())) {
+                    merged.set(slot, value);
+                }
+            }
+            return merged;
+        }
+    }
+
+    /**
+     * Asks the enabled platforms for a Chinese translation of the displayed lines. A line covered by a
+     * platform is never sent to the AI stage; a line left empty stays pending so the AI providers still
+     * run in their configured order.
+     */
+    private PlatformSeed seedPlatformTranslations(
+            TrackSnapshot track,
+            String trackKey,
+            SupplementSession session,
+            List<SupplementRequest> requests,
+            String targetLang,
+            LogSink log
+    ) {
+        List<String> values = new ArrayList<>(Collections.nCopies(requests.size(), ""));
+        List<SupplementRequest> pending = new ArrayList<>();
+        List<String> pendingTexts = new ArrayList<>();
+        List<Integer> pendingSlots = new ArrayList<>();
+        for (int index = 0; index < requests.size(); index++) {
+            pending.add(requests.get(index));
+            pendingTexts.add(requests.get(index).text);
+            pendingSlots.add(index);
+        }
+        if (track == null || requests.isEmpty() || !PlatformTranslationSettings.isChineseTarget(targetLang)) {
+            return new PlatformSeed(values, pending, pendingTexts, pendingSlots, "", 0);
+        }
+        List<String> baseLines = new ArrayList<>(session.baseResult.lines.size());
+        for (LyricsLine line : session.baseResult.lines) {
+            baseLines.add(displayLineText(line));
+        }
+        PlatformTranslationService.Snapshot snapshot = platformTranslations.lookup(
+                trackKey,
+                track.title,
+                track.artist,
+                track.album,
+                track.durationMs,
+                baseLines,
+                targetLang,
+                false
+        );
+        for (String diagnostic : snapshot.diagnostics) {
+            log.write(diagnostic);
+        }
+        if (!snapshot.hasAny()) {
+            return new PlatformSeed(values, pending, pendingTexts, pendingSlots, "", 0);
+        }
+
+        List<SupplementRequest> remainingRequests = new ArrayList<>();
+        List<String> remainingTexts = new ArrayList<>();
+        List<Integer> remainingSlots = new ArrayList<>();
+        java.util.Set<Integer> consumedLines = new java.util.HashSet<>();
+        int covered = 0;
+        for (int index = 0; index < requests.size(); index++) {
+            SupplementRequest request = requests.get(index);
+            String value = request.lineIndex >= 0 && request.lineIndex < snapshot.lineTranslations.size()
+                    ? snapshot.lineTranslations.get(request.lineIndex)
+                    : "";
+            // A vocal-part line holds several rows; the platform translation belongs to the line once.
+            if (!value.isEmpty() && consumedLines.add(request.lineIndex)) {
+                values.set(index, value);
+                covered++;
+            } else {
+                remainingRequests.add(request);
+                remainingTexts.add(request.text);
+                remainingSlots.add(index);
+            }
+        }
+        return new PlatformSeed(values, remainingRequests, remainingTexts, remainingSlots,
+                snapshot.providerLabel, covered);
+    }
+
+    private static String combineProviderLabels(String platformLabel, String aiLabel) {
+        String platform = platformLabel == null ? "" : platformLabel.trim();
+        String ai = aiLabel == null ? "" : aiLabel.trim();
+        if (platform.isEmpty()) {
+            return ai;
+        }
+        if (ai.isEmpty() || platform.equals(ai)) {
+            return platform;
+        }
+        return platform + " + " + ai;
+    }
+
+    /** The platform policy is part of the translation cache identity, so toggling it refetches. */
+    private String platformSignature(String targetLang) {
+        if (localAiContext == null || !PlatformTranslationSettings.isChineseTarget(targetLang)) {
+            return "off";
+        }
+        PlatformTranslationSettings settings = new PlatformTranslationSettings(localAiContext);
+        if (!settings.enabled()) {
+            return "off";
+        }
+        return String.join(",", settings.snapshot().order) + "|" + settings.manualSource(activeTrackKey);
+    }
+
+    PlatformTranslationService platformTranslations() {
+        return platformTranslations;
+    }
+
+    /**
+     * Translates arbitrary text (a Genius description, an annotation) through the same provider order
+     * the lyrics use: keyless web translation first, then the configured AI providers.
+     */
+    List<String> translateFreeText(List<String> texts, String targetLang, AiLyricsSettings.Snapshot settings)
+            throws Exception {
+        if (texts == null || texts.isEmpty() || settings == null) {
+            return Collections.emptyList();
+        }
+        Exception lastError = null;
+        if (settings.bingTranslateEnabled || settings.googleTranslateEnabled) {
+            try {
+                return KeylessTranslationProviders.translate(
+                        texts,
+                        targetLang,
+                        settings.bingTranslateEnabled,
+                        settings.googleTranslateEnabled
+                ).values;
+            } catch (Exception keylessError) {
+                lastError = keylessError;
+            }
+        }
+        String prompt = buildFreeTextPrompt(texts, targetLang);
+        for (AiLyricsSettings.Snapshot providerSettings : settings.readyAiProviderSnapshots()) {
+            try {
+                String raw = callProviderRaw(prompt, providerSettings);
+                List<String> parsed = parseTaggedFreeText(raw, texts.size());
+                if (parsed.size() == texts.size()) {
+                    return parsed;
+                }
+            } catch (Exception providerError) {
+                lastError = providerError;
+            }
+        }
+        if (lastError != null) {
+            throw lastError;
+        }
+        throw new IOException(AppI18n.t(settings.uiLang, "error.translation_providers_failed"));
+    }
+
+    private static String buildFreeTextPrompt(List<String> texts, String targetLang) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Translate every line below into ").append(targetLang).append(".\n")
+                .append("Keep exactly one output line per input line, in the same order.\n")
+                .append("Prefix each output line with its own marker, for example [L1], and output nothing else.\n")
+                .append("Do not merge, split, reorder, explain or add commentary.\n\n");
+        for (int index = 0; index < texts.size(); index++) {
+            prompt.append("[L").append(index + 1).append("] ")
+                    .append(texts.get(index) == null ? "" : texts.get(index).replaceAll("\\s+", " ").trim())
+                    .append('\n');
+        }
+        return prompt.toString();
+    }
+
+    private static final Pattern FREE_TEXT_MARKER_PATTERN =
+            Pattern.compile("^\\s*(?:[-*]\\s*)?\\[?L(\\d{1,4})\\]?\\s*(?:[:：|\\-]\\s*)?(.*)$",
+                    Pattern.CASE_INSENSITIVE);
+
+    private static List<String> parseTaggedFreeText(String raw, int expected) {
+        List<String> values = new ArrayList<>(Collections.nCopies(expected, ""));
+        boolean[] seen = new boolean[expected];
+        if (raw == null || raw.isEmpty()) {
+            return Collections.emptyList();
+        }
+        for (String line : raw.split("\\r?\\n")) {
+            Matcher matcher = FREE_TEXT_MARKER_PATTERN.matcher(line);
+            if (!matcher.matches()) {
+                continue;
+            }
+            int index;
+            try {
+                index = Integer.parseInt(matcher.group(1)) - 1;
+            } catch (NumberFormatException invalid) {
+                continue;
+            }
+            if (index < 0 || index >= expected) {
+                continue;
+            }
+            values.set(index, matcher.group(2).trim());
+            seen[index] = true;
+        }
+        for (boolean value : seen) {
+            if (!value) {
+                return Collections.emptyList();
+            }
+        }
+        return values;
     }
 
     private interface ConnectionRequest<T> {

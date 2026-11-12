@@ -151,6 +151,7 @@ final class AppI18n {
         addLyricsRegenerateStrings(languages);
         addSingAlongStrings(languages);
         addLyricsTranslationTabStrings(languages);
+        addTranslationSheetStrings(languages);
         addErrorMessageStrings(languages);
         addAccessibilityLabelStrings(languages);
         addSettingsRedesignStrings(languages);
@@ -160,7 +161,45 @@ final class AppI18n {
         return Collections.unmodifiableMap(languages);
     }
 
-    /** The merged per-song tab: language and lyric source live on one page. */
+        /** The translation sheet opened by a long press on the 译文 pill. */
+    private static void addTranslationSheetStrings(Map<String, Map<String, String>> languages) {
+        String[] keys = {
+                "translation.tab.track",
+                "translation.tab.global",
+                "translation.source",
+                "translation.mix",
+                "translation.reload",
+                "translation.follow_global",
+                "translation.auto"
+        };
+        String[][] rows = {
+                {"en", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"ko", "이 곡", "전체", "번역 출처", "출처 섞기", "가사 새로고침", "전체 설정 따르기", "자동"},
+                {"zh-CN", "当前歌曲", "全局", "译文来源", "混合模式", "重载歌词", "跟随全局", "自动"},
+                {"zh-TW", "當前歌曲", "全域", "譯文來源", "混合模式", "重載歌詞", "跟隨全域", "自動"},
+                {"ja", "この曲", "全体", "翻訳ソース", "ソースを混ぜる", "歌詞を再読み込み", "全体に従う", "自動"},
+                {"hi", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"es", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"fr", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"ar", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"fa", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"de", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"ru", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"sv", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"pt", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"bn", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"cs", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"it", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"th", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"vi", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"id", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"ms", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"tr", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+        };
+        addRows(languages, keys, rows);
+    }
+
+/** The merged per-song tab: language and lyric source live on one page. */
     private static void addLyricsTranslationTabStrings(Map<String, Map<String, String>> languages) {
         String[] keys = {
                 "lyrics.tab.lyrics_translation",

@@ -4065,7 +4065,7 @@ public class BaseLyricsActivity extends Activity implements
         lyricsTranslationButton.setTag("lyrics.translation");
         lyricsTranslationButton.setOnClickListener(view -> toggleLyricsTranslation());
         lyricsTranslationButton.setOnLongClickListener(view -> {
-            showLyricsMetaMenuPopup(lyricsTitleView);
+            showTranslationSettings();
             return true;
         });
         lyricsActionRow.addView(lyricsTranslationButton, actionButtonParams());
@@ -4342,6 +4342,7 @@ public class BaseLyricsActivity extends Activity implements
     private View meaningFocusCard;
     private int meaningSheetColor;
     private String meaningSheetColorKey = "";
+    private TextView meaningHeaderChip;
     private boolean meaningTranslating;
     private boolean meaningTranslationFailed;
 
@@ -4410,10 +4411,30 @@ public class BaseLyricsActivity extends Activity implements
         meaningHeader.addView(dragArea, dragParams);
         installMeaningSheetDrag(dragArea);
 
+        LinearLayout headerRow = new LinearLayout(this);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        meaningHeader.addView(headerRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
         meaningTabsRow = new LinearLayout(this);
         meaningTabsRow.setOrientation(LinearLayout.HORIZONTAL);
         meaningTabsRow.setGravity(Gravity.CENTER_VERTICAL);
-        meaningHeader.addView(meaningTabsRow, new LinearLayout.LayoutParams(
+        headerRow.addView(meaningTabsRow, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        // The translate control sits in the header, so it is reachable from either tab.
+        meaningHeaderChip = label("", 12f, Color.WHITE, AppFonts.bold(this));
+        meaningHeaderChip.setGravity(Gravity.CENTER);
+        meaningHeaderChip.setPadding(dp(12), dp(5), dp(12), dp(5));
+        android.graphics.drawable.GradientDrawable capsule = new android.graphics.drawable.GradientDrawable();
+        capsule.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+        capsule.setCornerRadius(dp(16));
+        capsule.setColor(Color.TRANSPARENT);
+        capsule.setStroke(dp(1), Color.argb(150, 255, 255, 255));
+        meaningHeaderChip.setBackground(capsule);
+        makeRemoteFocusable(meaningHeaderChip);
+        headerRow.addView(meaningHeaderChip, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         addMeaningTab(ui("lyrics_meaning.description"), MEANING_TAB_ABOUT, 0);
         addMeaningDivider();
@@ -4468,10 +4489,33 @@ public class BaseLyricsActivity extends Activity implements
         meaningTabsRow.addView(divider, params);
     }
 
+    private void updateMeaningHeaderChip() {
+        if (meaningHeaderChip == null) {
+            return;
+        }
+        if (meaningTranslating) {
+            meaningHeaderChip.setText(ui("lyrics_meaning.translating"));
+            meaningHeaderChip.setAlpha(0.7f);
+            meaningHeaderChip.setOnClickListener(null);
+            return;
+        }
+        meaningHeaderChip.setAlpha(1f);
+        if (meaningTranslationFailed) {
+            meaningHeaderChip.setText(ui("lyrics_meaning.retry"));
+            meaningHeaderChip.setOnClickListener(view -> toggleMeaningTranslation());
+            return;
+        }
+        meaningHeaderChip.setText(songMeaningShowTranslation
+                ? ui("lyrics_meaning.original")
+                : ui("lyrics_meaning.translated"));
+        meaningHeaderChip.setOnClickListener(view -> toggleMeaningTranslation());
+    }
+
     private void updateMeaningTabs() {
         if (meaningTabsRow == null) {
             return;
         }
+        updateMeaningHeaderChip();
         for (int index = 0; index < meaningTabsRow.getChildCount(); index++) {
             View child = meaningTabsRow.getChildAt(index);
             if (!(child instanceof TextView) || child.getTag() == null) {
@@ -4748,22 +4792,6 @@ public class BaseLyricsActivity extends Activity implements
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-
-        if (meaningTranslating) {
-            row.addView(label(ui("lyrics_meaning.translating"), 13f,
-                    Color.argb(178, 255, 255, 255), AppFonts.regular(this)));
-        } else if (meaningTranslationFailed) {
-            TextView retry = meaningChip(ui("lyrics_meaning.retry"));
-            retry.setOnClickListener(view -> toggleMeaningTranslation());
-            row.addView(retry);
-        } else {
-            String text = songMeaningShowTranslation
-                    ? ui("lyrics_meaning.original")
-                    : ui("lyrics_meaning.translated");
-            TextView chip = meaningChip(text);
-            chip.setOnClickListener(view -> toggleMeaningTranslation());
-            row.addView(chip);
-        }
 
         View spacer = new View(this);
         row.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
@@ -13104,6 +13132,194 @@ public class BaseLyricsActivity extends Activity implements
         lyricsMatchStatusText.setText(text.toString());
     }
 
+    private static final String TRANS_TAB_TRACK = "track";
+    private static final String TRANS_TAB_GLOBAL = "global";
+    private String translationSettingsTab = TRANS_TAB_TRACK;
+    private PopupWindow translationSettingsPopup;
+    private LinearLayout translationSettingsCard;
+    private LinearLayout translationSettingsContent;
+    private LinearLayout translationSettingsTabs;
+
+    /** Long press on the 译文 pill: the translation switches for this song or for every song. */
+    private void showTranslationSettings() {
+        if (platformTranslationSettings == null) {
+            return;
+        }
+        if (translationSettingsPopup == null) {
+            buildTranslationSettingsSheet();
+        }
+        renderTranslationSettings();
+        if (!translationSettingsPopup.isShowing()) {
+            View anchor = lyricsTranslationButton == null ? rootView : lyricsTranslationButton;
+            translationSettingsCard.setTranslationY(dp(40));
+            translationSettingsCard.setAlpha(0f);
+            translationSettingsPopup.showAtLocation(anchor, Gravity.BOTTOM, 0, 0);
+            translationSettingsCard.animate()
+                    .translationY(0f)
+                    .alpha(1f)
+                    .setDuration(200L)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+        }
+    }
+
+    private void buildTranslationSettingsSheet() {
+        translationSettingsCard = new LinearLayout(this);
+        translationSettingsCard.setOrientation(LinearLayout.VERTICAL);
+        translationSettingsCard.setPadding(dp(22), dp(8), dp(22), dp(26));
+        translationSettingsCard.setBackground(meaningSheetBackground());
+
+        View handle = new View(this);
+        handle.setBackground(roundDrawable(Color.argb(110, 255, 255, 255), dp(2)));
+        LinearLayout.LayoutParams handleParams = new LinearLayout.LayoutParams(dp(34), dp(4));
+        handleParams.gravity = Gravity.CENTER_HORIZONTAL;
+        handleParams.topMargin = dp(4);
+        handleParams.bottomMargin = dp(16);
+        translationSettingsCard.addView(handle, handleParams);
+
+        translationSettingsTabs = new LinearLayout(this);
+        translationSettingsTabs.setOrientation(LinearLayout.HORIZONTAL);
+        translationSettingsCard.addView(translationSettingsTabs);
+        addTranslationTab(ui("translation.tab.track"), TRANS_TAB_TRACK, 0);
+        addTranslationTab(ui("translation.tab.global"), TRANS_TAB_GLOBAL, 1);
+
+        translationSettingsContent = new LinearLayout(this);
+        translationSettingsContent.setOrientation(LinearLayout.VERTICAL);
+        translationSettingsCard.addView(translationSettingsContent, topMargin(matchWrap(), dp(10)));
+
+        translationSettingsPopup = new PopupWindow(translationSettingsCard,
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        translationSettingsPopup.setOutsideTouchable(true);
+        translationSettingsPopup.setFocusable(true);
+        translationSettingsPopup.setBackgroundDrawable(
+                new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+    }
+
+    private void addTranslationTab(String text, String tabId, int index) {
+        TextView tab = label(text, 17f, Color.WHITE, AppFonts.bold(this));
+        tab.setGravity(Gravity.CENTER);
+        tab.setTag(tabId);
+        tab.setPadding(dp(12), dp(6), dp(12), dp(6));
+        tab.setOnClickListener(view -> {
+            translationSettingsTab = tabId;
+            renderTranslationSettings();
+        });
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        if (index > 0) {
+            params.leftMargin = dp(6);
+        }
+        translationSettingsTabs.addView(tab, params);
+    }
+
+    private void renderTranslationSettings() {
+        if (translationSettingsContent == null) {
+            return;
+        }
+        translationSettingsContent.removeAllViews();
+        translationSettingsCard.setBackground(meaningSheetBackground());
+        for (int index = 0; index < translationSettingsTabs.getChildCount(); index++) {
+            TextView tab = (TextView) translationSettingsTabs.getChildAt(index);
+            boolean selected = tab.getTag().equals(translationSettingsTab);
+            tab.setTextColor(selected ? Color.WHITE : Color.argb(120, 255, 255, 255));
+            tab.setBackground(selected ? roundDrawable(Color.argb(38, 255, 255, 255), dp(14)) : null);
+        }
+        String trackKey = currentLyricsKey == null ? "" : currentLyricsKey;
+
+        if (TRANS_TAB_GLOBAL.equals(translationSettingsTab)) {
+            addTranslationSwitch(ui("lyrics_action.translation"), platformTranslationSettings.enabled(),
+                    checked -> {
+                        platformTranslationSettings.setEnabled(checked);
+                        reloadLyricsForTranslation();
+                    });
+            addTranslationSwitch(ui("translation.mix"), platformTranslationSettings.mixSources(),
+                    checked -> {
+                        platformTranslationSettings.setMixSources(checked);
+                        reloadLyricsForTranslation();
+                    });
+        } else {
+            addTranslationSwitch(ui("lyrics_action.translation"),
+                    platformTranslationSettings.enabledForTrack(trackKey),
+                    checked -> {
+                        platformTranslationSettings.setTrackEnabled(trackKey, checked);
+                        reloadLyricsForTranslation();
+                    });
+            if (platformTranslationSettings.trackEnabled(trackKey) != null) {
+                translationSettingsContent.addView(translationChoiceRow(
+                        ui("translation.follow_global"), false, () -> {
+                            platformTranslationSettings.setTrackEnabled(trackKey, null);
+                            reloadLyricsForTranslation();
+                            renderTranslationSettings();
+                        }), topMargin(matchWrap(), dp(2)));
+            }
+            translationSettingsContent.addView(translationSectionTitle(ui("translation.source")),
+                    topMargin(matchWrap(), dp(14)));
+            String manual = platformTranslationSettings.manualSource(trackKey);
+            addSourceChoice(ui("translation.auto"), PlatformTranslationSettings.MANUAL_AUTO, manual, trackKey);
+            addSourceChoice(NeteaseLyricSource.LABEL, NeteaseLyricSource.ID, manual, trackKey);
+            addSourceChoice(QqLyricSource.LABEL, QqLyricSource.ID, manual, trackKey);
+            addSourceChoice(KugouLyricSource.LABEL, KugouLyricSource.ID, manual, trackKey);
+            translationSettingsContent.addView(translationSectionTitle(ui("translation.mix")),
+                    topMargin(matchWrap(), dp(14)));
+            addTranslationSwitch(ui("translation.mix"), platformTranslationSettings.mixSources(),
+                    checked -> {
+                        platformTranslationSettings.setMixSources(checked);
+                        reloadLyricsForTranslation();
+                    });
+        }
+
+        Button reload = SettingsAppearance.button(this, ui("translation.reload"), 14f);
+        makeRemoteFocusable(reload);
+        reload.setOnClickListener(view -> reloadLyricsForTranslation());
+        translationSettingsContent.addView(reload, topMargin(matchWrap(), dp(18)));
+    }
+
+    private View translationSectionTitle(String text) {
+        TextView title = label(text, 13f, Color.argb(165, 255, 255, 255), AppFonts.bold(this));
+        return title;
+    }
+
+    private void addTranslationSwitch(String text, boolean checked,
+            java.util.function.Consumer<Boolean> action) {
+        android.widget.Switch toggle = new android.widget.Switch(this);
+        toggle.setText(text);
+        toggle.setTextSize(15f);
+        toggle.setTextColor(Color.WHITE);
+        toggle.setChecked(checked);
+        toggle.setPadding(0, dp(8), 0, dp(8));
+        toggle.setOnCheckedChangeListener((button, value) -> action.accept(value));
+        translationSettingsContent.addView(toggle, matchWrap());
+    }
+
+    private View translationChoiceRow(String text, boolean selected, Runnable action) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(12), 0, dp(12));
+        TextView name = label(text, 15f, Color.WHITE, AppFonts.regular(this));
+        row.addView(name, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        if (selected) {
+            TextView mark = label("\u2713", 15f, Color.argb(235, 30, 215, 96), AppFonts.bold(this));
+            row.addView(mark);
+        }
+        row.setOnClickListener(view -> action.run());
+        return row;
+    }
+
+    private void addSourceChoice(String text, String sourceId, String current, String trackKey) {
+        boolean selected = sourceId.equals(current);
+        translationSettingsContent.addView(translationChoiceRow(text, selected, () -> {
+            platformTranslationSettings.setManualSource(trackKey, sourceId);
+            reloadLyricsForTranslation();
+            renderTranslationSettings();
+        }), matchWrap());
+    }
+
+    /** Re-fetches the lyrics with the new policy; the cache key carries the policy, so this is real. */
+    private void reloadLyricsForTranslation() {
+        requestAiLyrics(true);
+    }
+
     protected void openLyricsMetaSettings() {
         if (lyricsTitleView == null) {
             return;
@@ -16007,7 +16223,8 @@ public class BaseLyricsActivity extends Activity implements
     private void requestPlatformTranslation() {
         if (currentTrack == null || currentBaseLyricsResult == null
                 || currentBaseLyricsResult.lines.isEmpty() || aiLyricsRepository == null
-                || platformTranslationSettings == null || !platformTranslationSettings.enabled()) {
+                || platformTranslationSettings == null
+                || !platformTranslationSettings.enabledForTrack(currentLyricsKey)) {
             return;
         }
         final long generation = ++platformTranslationGeneration;

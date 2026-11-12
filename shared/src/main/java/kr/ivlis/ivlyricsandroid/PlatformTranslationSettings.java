@@ -32,6 +32,10 @@ final class PlatformTranslationSettings {
             NeteaseLyricSource.ID, QqLyricSource.ID, KugouLyricSource.ID));
     private static final String KEY_ENABLED_PREFIX = "source_enabled:";
     static final String KEY_PLATFORM_ONLY = "platform_only";
+    /** When off, the first source that fills anything owns the whole translation. */
+    static final String KEY_MIX = "mix_sources";
+    /** Per-song switch: "true"/"false"; absent means follow the global setting. */
+    private static final String KEY_TRACK_ENABLED_PREFIX = "track_enabled:";
 
     private final SharedPreferences prefs;
     private volatile Snapshot cached;
@@ -100,6 +104,47 @@ final class PlatformTranslationSettings {
         if (prefs != null) {
             prefs.edit().putBoolean(KEY_ENABLED, enabled).apply();
         }
+    }
+
+    boolean mixSources() {
+        return prefs == null || prefs.getBoolean(KEY_MIX, true);
+    }
+
+    void setMixSources(boolean mix) {
+        if (prefs != null) {
+            prefs.edit().putBoolean(KEY_MIX, mix).apply();
+        }
+    }
+
+    /** null means "follow the global switch". */
+    Boolean trackEnabled(String trackKey) {
+        if (prefs == null || trackKey == null || trackKey.isEmpty()) {
+            return null;
+        }
+        String stored = prefs.getString(KEY_TRACK_ENABLED_PREFIX + trackKey, "");
+        if ("true".equals(stored)) {
+            return Boolean.TRUE;
+        }
+        if ("false".equals(stored)) {
+            return Boolean.FALSE;
+        }
+        return null;
+    }
+
+    void setTrackEnabled(String trackKey, Boolean enabled) {
+        if (prefs == null || trackKey == null || trackKey.isEmpty()) {
+            return;
+        }
+        if (enabled == null) {
+            prefs.edit().remove(KEY_TRACK_ENABLED_PREFIX + trackKey).apply();
+            return;
+        }
+        prefs.edit().putBoolean(KEY_TRACK_ENABLED_PREFIX + trackKey, enabled).apply();
+    }
+
+    boolean enabledForTrack(String trackKey) {
+        Boolean override = trackEnabled(trackKey);
+        return override != null ? override : enabled();
     }
 
     boolean enabled() {

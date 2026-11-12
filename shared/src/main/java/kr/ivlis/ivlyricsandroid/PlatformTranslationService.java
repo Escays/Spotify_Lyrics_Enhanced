@@ -192,7 +192,8 @@ final class PlatformTranslationService {
         if (order.isEmpty() || baseTexts == null || baseTexts.isEmpty()) {
             return Snapshot.empty();
         }
-        String key = cacheKey(trackKey, order, settings.manualSource(trackKey), baseTexts);
+        boolean mix = settings.mixSources();
+        String key = cacheKey(trackKey, order, settings.manualSource(trackKey) + "|mix=" + mix, baseTexts);
         if (!bypassCache) {
             Snapshot cached = memoryCache.get(key);
             if (cached == null) {
@@ -216,7 +217,7 @@ final class PlatformTranslationService {
                 if (!bypassCache && first != null) {
                     return isStale(trackKey) ? Snapshot.empty() : first;
                 }
-                Snapshot resolved = resolve(trackKey, title, artist, album, durationMs, baseTexts, order);
+                Snapshot resolved = resolve(trackKey, title, artist, album, durationMs, baseTexts, order, mix);
                 if (!resolved.stale) {
                     memoryCache.put(key, resolved);
                     writeCache(key, resolved);
@@ -237,7 +238,8 @@ final class PlatformTranslationService {
             String album,
             long durationMs,
             List<String> baseTexts,
-            List<String> order
+            List<String> order,
+            boolean mix
     ) {
         List<String> translations = new ArrayList<>(Collections.nCopies(baseTexts.size(), ""));
         List<String> lineSources = new ArrayList<>(Collections.nCopies(baseTexts.size(), ""));
@@ -260,6 +262,12 @@ final class PlatformTranslationService {
             statuses.add(status);
             if (status.contributedLines > 0) {
                 lineCountBySource.put(sourceId, status.contributedLines);
+                if (!mix) {
+                    // Single-source mode: the first source with anything usable owns the translation,
+                    // and its gaps stay empty instead of being filled by the next source.
+                    diagnostics.add("mix off: stopped after " + source.label());
+                    break;
+                }
             }
         }
 

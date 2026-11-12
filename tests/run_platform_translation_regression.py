@@ -7,6 +7,9 @@ work = REPORTS / "platform-translation"
 work.mkdir(parents=True, exist_ok=True)
 
 sources = [
+    SHARED / "LyricsLine.java",
+    SHARED / "LrcParser.java",
+    SHARED / "LyricAdBlockFilter.java",
     SHARED / "LyricsTextComparison.java",
     SHARED / "PlatformLyricRow.java",
     SHARED / "PlatformLyricSource.java",

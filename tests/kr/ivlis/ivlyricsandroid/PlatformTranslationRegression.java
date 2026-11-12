@@ -134,7 +134,35 @@ public final class PlatformTranslationRegression {
         check(second != null && second.contributedLines == 2, "contribution count is per source");
     }
 
+    /** QQ Music and Spotify both inject a "You might also like" block as ordinary timed lines. */
+    static void recommendationBlockIsDropped() {
+        String lrc = "[00:00.00]Walking across the sitting-room, I turn the television off\n"
+                + "[01:20.76]You might also like\n"
+                + "[01:21.18]Get 'Em Out by Friday\n"
+                + "[01:22.02]Genesis\n"
+                + "[01:22.29]Watcher of the Skies\n"
+                + "[01:22.71]Genesis\n"
+                + "[01:22.98]Time Table\n"
+                + "[01:23.28]Genesis\n"
+                + "[01:24.09]Hey babe your supper's waiting for you\n";
+        List<LyricsLine> lines = LrcParser.parseSynced(lrc, 1_386_000L);
+        check(lines.size() == 2, "recommendation block removed, kept " + lines.size());
+        for (LyricsLine line : lines) {
+            check(!line.text.contains("Watcher") && !line.text.equals("Genesis"),
+                    "no other song's title left: " + line.text);
+        }
+        check(lines.get(1).text.startsWith("Hey babe"), "the lyric after the block survives");
+
+        // Platform rows go through the same filter, so translations cannot come from the block either.
+        List<PlatformLyricRow> rows = PlatformLyricRow.parseLrc(
+                "[01:20.76]You might also like\n[01:21.18]Watcher of the Skies\n"
+                        + "[01:22.02]Genesis\n[01:24.09]Hey babe your supper's waiting for you");
+        check(rows.size() == 1 && rows.get(0).text.startsWith("Hey babe"),
+                "platform rows drop the block too, kept " + rows.size());
+    }
+
     public static void main(String[] args) {
+        recommendationBlockIsDropped();
         searchVariantsNormaliseVersionTails();
         sourceWithoutChineseDoesNotBlockTheNextOne();
         englishSongUsesPlatformTranslation();

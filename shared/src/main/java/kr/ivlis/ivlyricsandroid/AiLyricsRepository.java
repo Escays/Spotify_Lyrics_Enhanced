@@ -2228,10 +2228,11 @@ final class AiLyricsRepository {
             return "off";
         }
         PlatformTranslationSettings settings = new PlatformTranslationSettings(localAiContext);
-        if (!settings.enabled()) {
+        if (!settings.enabledForTrack(activeTrackKey)) {
             return "off";
         }
-        return String.join(",", settings.snapshot().order) + "|" + settings.manualSource(activeTrackKey);
+        return String.join(",", settings.snapshot().order) + "|" + settings.manualSource(activeTrackKey)
+                + "|mix=" + settings.mixSources();
     }
 
     PlatformTranslationService platformTranslations() {

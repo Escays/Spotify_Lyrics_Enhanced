@@ -54,7 +54,7 @@ final class LrcParser {
                     : previousStartMs + 4_000L;
             result.add(new LyricsLine(previousStartMs, fallbackEnd, previousText, Collections.emptyList()));
         }
-        return result;
+        return LyricAdBlockFilter.strip(result, line -> line.startTimeMs, line -> line.text);
     }
 
     private static List<LyricsLine> parseSingleSyncedLine(String rawLine, long durationMs) {
@@ -86,7 +86,7 @@ final class LrcParser {
                 result.add(new LyricsLine(0L, 0L, text, Collections.emptyList()));
             }
         }
-        return result;
+        return LyricAdBlockFilter.strip(result, line -> line.startTimeMs, line -> line.text);
     }
 
     private static long parseLong(String value) {

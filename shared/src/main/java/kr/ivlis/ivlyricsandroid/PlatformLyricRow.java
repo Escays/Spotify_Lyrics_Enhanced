@@ -57,7 +57,9 @@ final class PlatformLyricRow {
                 rows.add(new PlatformLyricRow(stamp, text));
             }
         }
-        return rows;
+        // A "You might also like" block is another song's titles, not lyrics: drop it before it can be
+        // aligned onto the displayed lines.
+        return LyricAdBlockFilter.strip(rows, row -> row.startTimeMs, row -> row.text);
     }
 
     /** Rows whose text repeats a credit or a platform notice are not lyric rows. */

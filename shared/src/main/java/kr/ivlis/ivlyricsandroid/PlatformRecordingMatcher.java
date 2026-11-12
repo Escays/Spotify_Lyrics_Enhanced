@@ -175,8 +175,23 @@ final class PlatformRecordingMatcher {
         if (!fullArtist.isEmpty() && !fullArtist.equalsIgnoreCase(primary)) {
             addQuery(queries, cleanTitle, fullArtist);
         }
+        // Proper nouns write the particle either way: "丸ノ内サディスティック" is "丸の内サディスティック"
+        // elsewhere on the same catalogue, and the two spellings do not share search results.
+        String particleTitle = foldParticleNo(cleanTitle);
+        if (!particleTitle.equals(cleanTitle)) {
+            addQuery(queries, particleTitle, primary);
+            addQuery(queries, particleTitle, "");
+        }
         addQuery(queries, cleanTitle, "");
         return queries;
+    }
+
+    /** The katakana particle ノ, folded to the hiragana の that most databases index. */
+    static String foldParticleNo(String title) {
+        if (title == null || title.indexOf('\u30CE') < 0) {
+            return title;
+        }
+        return title.replace('\u30CE', '\u306E');
     }
 
     private static void addQuery(List<String> queries, String title, String artist) {
@@ -486,11 +501,22 @@ final class PlatformRecordingMatcher {
         return (2d * matches) / ((a.length() - 1) + (b.length() - 1));
     }
 
+    /**
+     * Katakana and hiragana spell the same sound, so "ノ" must not sink a match against "の"; the
+     * long-vowel and iteration marks (ー ヽ ヾ) are shared by both scripts and stay as they are.
+     */
+    private static char foldKana(char value) {
+        if (value >= '\u30A1' && value <= '\u30F6') {
+            return (char) (value - 0x60);
+        }
+        return value;
+    }
+
     private static String squashed(String text) {
         String normalized = LyricsTextComparison.normalize(text);
         StringBuilder builder = new StringBuilder(normalized.length());
         for (int index = 0; index < normalized.length(); index++) {
-            char value = normalized.charAt(index);
+            char value = foldKana(normalized.charAt(index));
             if (!Character.isWhitespace(value)) {
                 builder.append(value);
             }

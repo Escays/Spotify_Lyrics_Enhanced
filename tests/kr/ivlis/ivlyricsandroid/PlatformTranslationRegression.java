@@ -100,6 +100,18 @@ public final class PlatformTranslationRegression {
                 .contains("残酷な天使のテーゼ"), "alias parenthetical kept");
         check(PlatformRecordingMatcher.searchTitle("Don\u2019t Stop Me Now").equals("Don't Stop Me Now"),
                 "curly apostrophe normalised");
+
+        // Japanese proper nouns write the particle as ノ on one catalogue and の on another; the two
+        // spellings share no search results, and only the folded one finds the page with annotations.
+        List<String> particleQueries = PlatformRecordingMatcher.searchQueries(
+                "丸ノ内サディスティック", "椎名林檎");
+        check(particleQueries.contains("丸の内サディスティック 椎名林檎"),
+                "particle ノ folded to の as its own query");
+        check(particleQueries.get(0).equals("丸ノ内サディスティック 椎名林檎"),
+                "the artist's own spelling is still tried first");
+        check(PlatformRecordingMatcher.titleSimilarity("丸ノ内サディスティック",
+                "丸の内サディスティック (Marunouchi Sadistic)") >= 0.9d,
+                "kana spelling does not sink the title match");
         List<String> queries = PlatformRecordingMatcher.searchQueries(
                 "Sound and Vision - 2017 Remaster", "David Bowie");
         check(queries.get(0).equals("Sound and Vision David Bowie"), "most specific query first");

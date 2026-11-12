@@ -116,25 +116,41 @@ final class SongMeaningService {
         // Genius' fuzzy search, so the same cleaned variants the platforms use are tried in order.
         GeniusClient.Hit best = null;
         String lastQuery = "";
+        SongMeaning found = SongMeaning.EMPTY;
         for (String query : PlatformRecordingMatcher.searchQueries(title, artist)) {
             lastQuery = query;
             List<GeniusClient.Hit> hits = client.search(query);
-            best = chooseRecording(hits, title, artist);
-            if (best != null) {
+            GeniusClient.Hit candidate = chooseRecording(hits, title, artist);
+            if (candidate == null) {
+                continue;
+            }
+            if (best == null) {
+                best = candidate;
+            }
+            // The first hit for one spelling can be an empty anniversary take or a remix while the
+            // studio page — the one carrying the annotations — sits under the other spelling. An
+            // empty page is not an answer, so the remaining queries still get their turn.
+            SongMeaning fetched = client.fetch(candidate.id, GeniusClient.LABEL);
+            if (!fetched.isEmpty()) {
+                best = candidate;
+                found = fetched;
                 break;
             }
         }
         if (best == null) {
             PlatformTranslationSettings.log("genius: no acceptable hit for \"" + lastQuery + "\"");
+            return SongMeaning.EMPTY;
         }
-        if (best == null) {
-            SongMeaning empty = SongMeaning.EMPTY;
-            writeCache(cacheKey, empty);
-            return empty;
+        if (found.isEmpty()) {
+            PlatformTranslationSettings.log("genius: every hit for \"" + lastQuery
+                    + "\" is empty; kept " + best.title);
         }
-        SongMeaning fetched = client.fetch(best.id, GeniusClient.LABEL);
-        writeCache(cacheKey, fetched);
-        return place(fetched, baseTexts);
+        // An empty answer is never cached: one miss today (a spelling the search engine has not
+        // indexed yet, a dropped request) must not pin the panel to "nothing found" for a week.
+        if (!found.isEmpty()) {
+            writeCache(cacheKey, found);
+        }
+        return place(found, baseTexts);
     }
 
     /**
@@ -399,7 +415,9 @@ final class SongMeaningService {
     }
 
     private static String cacheKey(String trackKey, List<String> baseTexts) {
-        StringBuilder payload = new StringBuilder(trackKey == null ? "" : trackKey).append('|');
+        // Bumped when the lookup itself changes: entries written by an older matcher must not answer
+        // for it, and that includes the empty ones it used to store.
+        StringBuilder payload = new StringBuilder("v2|").append(trackKey == null ? "" : trackKey).append('|');
         if (baseTexts != null) {
             for (String text : baseTexts) {
                 payload.append(AnnotationLineMapper.squash(text)).append('\n');

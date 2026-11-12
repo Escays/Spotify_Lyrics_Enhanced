@@ -37,7 +37,9 @@ public final class PlatformLiveCheck {
                 new Song("Lemon", "米津玄師", 256_000L),
                 new Song("夜に駆ける", "YOASOBI", 261_000L),
                 new Song("Hallelujah", "Jeff Buckley", 413_000L),
-                new Song("Lemon (Live)", "米津玄師", 248_000L));
+                new Song("Lemon (Live)", "米津玄師", 248_000L),
+                // 丸ノ内 on Spotify, 丸の内 on Genius: the particle spelling must not lose the page.
+                new Song("丸ノ内サディスティック", "椎名林檎", 0L));
 
         System.out.println("song | platform | picked recording | duration | translation rows | readable");
         for (Song song : songs) {
@@ -56,8 +58,13 @@ public final class PlatformLiveCheck {
     static void reportSong(PlatformHttpTransport.Transport transport, PlatformLyricSource source, Song song) {
         String prefix = song.title + " / " + song.artist + " | " + source.label() + " | ";
         try {
-            List<PlatformRecordingMatcher.Candidate> candidates =
-                    source.search(song.title, song.artist, 10);
+            List<PlatformRecordingMatcher.Candidate> candidates = new ArrayList<>();
+            for (String query : PlatformRecordingMatcher.searchQueries(song.title, song.artist)) {
+                candidates = source.search(query, 10);
+                if (!candidates.isEmpty()) {
+                    break;
+                }
+            }
             if (candidates.isEmpty()) {
                 System.out.println(prefix + "(no search result) | - | - | -");
                 return;
@@ -100,18 +107,34 @@ public final class PlatformLiveCheck {
         String prefix = song.title + " / " + song.artist + " | ";
         GeniusClient client = new GeniusClient(transport);
         try {
-            List<GeniusClient.Hit> hits = client.search(song.title, song.artist);
-            if (hits.isEmpty()) {
-                System.out.println(prefix + "(no genius hit) | - | - | -");
-                return;
+            GeniusClient.Hit chosen = null;
+            SongMeaning meaning = SongMeaning.EMPTY;
+            String winningQuery = "";
+            boolean anyHit = false;
+            // Mirrors SongMeaningService: every query gets a turn until one yields a page with content.
+            for (String query : PlatformRecordingMatcher.searchQueries(song.title, song.artist)) {
+                List<GeniusClient.Hit> hits = client.search(query);
+                anyHit |= !hits.isEmpty();
+                GeniusClient.Hit candidate = SongMeaningService.chooseRecording(hits, song.title, song.artist);
+                if (candidate == null) {
+                    continue;
+                }
+                if (chosen == null) {
+                    chosen = candidate;
+                }
+                SongMeaning fetched = client.fetch(candidate.id, GeniusClient.LABEL);
+                if (!fetched.isEmpty()) {
+                    chosen = candidate;
+                    meaning = fetched;
+                    winningQuery = query;
+                    break;
+                }
             }
-            GeniusClient.Hit chosen = SongMeaningService.chooseRecording(hits, song.title, song.artist);
             if (chosen == null) {
-                System.out.println(prefix + "(no acceptable genius hit; first="
-                        + hits.get(0).title + " / " + hits.get(0).artist + ") | - | - | -");
+                System.out.println(prefix + (anyHit ? "(no acceptable genius hit)" : "(no genius hit)")
+                        + " | - | - | -");
                 return;
             }
-            SongMeaning meaning = client.fetch(chosen.id, GeniusClient.LABEL);
             int quoted = 0;
             for (SongAnnotation annotation : meaning.allAnnotations()) {
                 if (!annotation.fragment.isEmpty() && !annotation.body.isEmpty()) {
@@ -122,7 +145,7 @@ public final class PlatformLiveCheck {
             // here is how many annotations came back with both a quote and an explanation.
             System.out.println(prefix + chosen.title + " / " + chosen.artist + " | "
                     + meaning.description.length() + " | " + meaning.allAnnotations().size()
-                    + " | quoted=" + quoted);
+                    + " | quoted=" + quoted + " | query=" + winningQuery);
         } catch (Exception error) {
             System.out.println(prefix + "FAILED: " + error.getClass().getSimpleName() + ": "
                     + (error.getMessage() == null ? "" : error.getMessage()));

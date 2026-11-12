@@ -16,6 +16,7 @@ sources = [
     SHARED / "PlatformHttpTransport.java",
     SHARED / "NeteaseLyricSource.java",
     SHARED / "QqLyricSource.java",
+    SHARED / "KugouLyricSource.java",
     SHARED / "PlatformTranslationSettings.java",
     SHARED / "PlatformTranslationService.java",
     SHARED / "SongAnnotation.java",

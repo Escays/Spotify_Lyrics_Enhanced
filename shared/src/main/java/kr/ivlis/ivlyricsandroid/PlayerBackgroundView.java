@@ -35,6 +35,12 @@ public final class PlayerBackgroundView extends View {
     private int dimmingGradientHeight = -1;
     private int dimmingGradientDim = Integer.MIN_VALUE;
     private String sourceArtworkKey = "";
+    /** Crossfade used when the per-song colour changes, matching the sheet's track animation. */
+    private static final long STABLE_COLOR_FADE_MS = 300L;
+    private int stableSolidColor;
+    private int stablePreviousColor;
+    private long stableColorSetAtMs;
+
     private AiLyricsSettings.BackgroundSettings backgroundSettings =
             new AiLyricsSettings.BackgroundSettings(AiLyricsSettings.BACKGROUND_MODE_GRADIENT, 30, 20, false, false, "#1e3a8a", 100);
     private int paletteBackground = Color.rgb(20, 23, 32);
@@ -128,6 +134,25 @@ public final class PlayerBackgroundView extends View {
         lastFrameMs = 0L;
     }
 
+    /**
+     * Draws one stable colour for the whole track. Zero hands drawing back to the configured
+     * background mode, which is how the user returns to their previous style.
+     */
+    void setStableSolidColor(int color) {
+        int next = color == 0 ? 0 : (color | 0xff000000);
+        if (next == stableSolidColor) {
+            return;
+        }
+        stablePreviousColor = stableSolidColor;
+        stableSolidColor = next;
+        stableColorSetAtMs = android.os.SystemClock.uptimeMillis();
+        invalidate();
+    }
+
+    int stableSolidColor() {
+        return stableSolidColor;
+    }
+
     @Override
     protected void onDetachedFromWindow() {
         artworkGeneration++;
@@ -153,7 +178,9 @@ public final class PlayerBackgroundView extends View {
         double seconds = (now - animationStartMs) / 1000.0;
 
         String mode = backgroundSettings.mode;
-        if (AiLyricsSettings.BACKGROUND_MODE_SOLID.equals(mode)) {
+        if (stableSolidColor != 0) {
+            drawStableSolid(canvas, width, height, now);
+        } else if (AiLyricsSettings.BACKGROUND_MODE_SOLID.equals(mode)) {
             drawSolid(canvas, width, height);
         } else if (AiLyricsSettings.BACKGROUND_MODE_BLUR_GRADIENT.equals(mode)) {
             drawBlurGradient(canvas, width, height, seconds);
@@ -246,6 +273,35 @@ public final class PlayerBackgroundView extends View {
         paint.setAlpha(255);
         canvas.drawRect(0f, 0f, width, height, paint);
         paint.setShader(null);
+    }
+
+    private void drawStableSolid(Canvas canvas, int width, int height, long now) {
+        float progress = 1f;
+        if (stableColorSetAtMs > 0L && stablePreviousColor != 0) {
+            progress = Math.min(1f, Math.max(0f,
+                    (now - stableColorSetAtMs) / (float) STABLE_COLOR_FADE_MS));
+        }
+        float eased = progress * progress * (3f - 2f * progress);
+        int color = blendColor(stablePreviousColor == 0 ? stableSolidColor : stablePreviousColor,
+                stableSolidColor, eased);
+        paint.setShader(null);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(color);
+        paint.setAlpha(255);
+        canvas.drawRect(0f, 0f, width, height, paint);
+        if (progress < 1f) {
+            removeCallbacks(animationTick);
+            postDelayed(animationTick, 16L);
+        }
+    }
+
+    private static int blendColor(int from, int to, float fraction) {
+        float clamped = Math.max(0f, Math.min(1f, fraction));
+        int alpha = Math.round(Color.alpha(from) + (Color.alpha(to) - Color.alpha(from)) * clamped);
+        int red = Math.round(Color.red(from) + (Color.red(to) - Color.red(from)) * clamped);
+        int green = Math.round(Color.green(from) + (Color.green(to) - Color.green(from)) * clamped);
+        int blue = Math.round(Color.blue(from) + (Color.blue(to) - Color.blue(from)) * clamped);
+        return Color.argb(alpha, red, green, blue);
     }
 
     private void drawSolid(Canvas canvas, int width, int height) {

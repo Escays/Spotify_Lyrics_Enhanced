@@ -107,6 +107,7 @@ final class AppI18n {
         languages.put("cs", csStrings());
         addManualLrclibSearchStrings(languages);
         addSpotifyShortcutStrings(languages);
+        addLyricsPageStrings(languages);
         addDisplayPowerStrings(languages);
         addPlayerCardBackgroundStrings(languages);
         addLandscapeNoLyricsStrings(languages);
@@ -4201,6 +4202,180 @@ final class AppI18n {
         };
     }
 
+    private static void addLyricsPageStrings(Map<String, Map<String, String>> languages) {
+        addLanguageStrings(languages, AppI18n::lyricsPageStrings);
+    }
+
+    /** Korean, English, both Chinese variants and Japanese; every other language reuses English. */
+    private static String[] lyricsPageStrings(String lang) {
+        switch (normalize(lang)) {
+            case "ko":
+                return lyricsPageStringsKo();
+            case "zh-CN":
+                return lyricsPageStringsZhCn();
+            case "zh-TW":
+                return lyricsPageStringsZhTw();
+            case "ja":
+                return lyricsPageStringsJa();
+            default:
+                return lyricsPageStringsEn();
+        }
+    }
+
+    private static String[] lyricsPageStringsEn() {
+        return new String[]{
+                "lyrics_enhance.title", "Lyrics page",
+                "lyrics_enhance.margin", "Lyrics side margin",
+                "lyrics_enhance.margin_desc", "Original, translation and pronunciation share one text boundary (24 dp by default).",
+                "lyrics_enhance.artwork_solid", "Fixed solid background per song",
+                "lyrics_enhance.artwork_solid_desc", "Picks a readable colour from the cover art and keeps it for the whole song.",
+                "lyrics_enhance.sources", "Chinese translation source",
+                "lyrics_enhance.source_order", "Priority: %s",
+                "lyrics_enhance.source_manual", "Source for this song",
+                "lyrics_enhance.source_auto", "Automatic (in order)",
+                "lyrics_enhance.source_off", "No platform translation for this song",
+                "lyrics_enhance.meanings", "Genius description and annotations",
+                "lyrics_enhance.meanings_desc", "Open it with the lightbulb button on the lyrics page.",
+                "lyrics_enhance.close", "Close",
+                "lyrics_meaning.button", "Song description and annotations",
+                "lyrics_meaning.title", "Lyrics annotations",
+                "lyrics_meaning.description", "Song description",
+                "lyrics_meaning.annotations", "Line annotations",
+                "lyrics_meaning.unplaced", "Annotations not matched to a line",
+                "lyrics_meaning.empty", "Genius has no description or annotations for this song",
+                "lyrics_meaning.loading", "Loading from Genius…",
+                "lyrics_meaning.error", "Could not load Genius content",
+                "lyrics_meaning.open_genius", "Open on Genius",
+                "lyrics_meaning.original", "Read the original",
+                "lyrics_meaning.translated", "Simplified Chinese",
+                "lyrics_meaning.translating", "Translating…",
+                "lyrics_meaning.attribution", "Source: Genius",
+        };
+    }
+
+    private static String[] lyricsPageStringsKo() {
+        return new String[]{
+                "lyrics_enhance.title", "가사 페이지 향상",
+                "lyrics_enhance.margin", "가사 좌우 여백",
+                "lyrics_enhance.margin_desc", "원문, 번역, 발음이 같은 여백을 씁니다 (기본 24dp).",
+                "lyrics_enhance.artwork_solid", "곡마다 고정 단색 배경",
+                "lyrics_enhance.artwork_solid_desc", "앨범 커버에서 읽기 좋은 색을 뽑아 곡이 끝날 때까지 유지합니다.",
+                "lyrics_enhance.sources", "중국어 번역 출처",
+                "lyrics_enhance.source_order", "우선순위: %s",
+                "lyrics_enhance.source_manual", "이 곡의 출처",
+                "lyrics_enhance.source_auto", "자동 (순서대로)",
+                "lyrics_enhance.source_off", "이 곡은 플랫폼 번역 사용 안 함",
+                "lyrics_enhance.meanings", "Genius 곡 소개와 주석",
+                "lyrics_enhance.meanings_desc", "가사 페이지의 전구 버튼으로 엽니다.",
+                "lyrics_enhance.close", "닫기",
+                "lyrics_meaning.button", "곡 소개와 주석",
+                "lyrics_meaning.title", "가사 주석",
+                "lyrics_meaning.description", "곡 소개",
+                "lyrics_meaning.annotations", "줄별 주석",
+                "lyrics_meaning.unplaced", "가사에서 찾지 못한 주석",
+                "lyrics_meaning.empty", "이 곡에는 아직 소개나 주석이 없습니다",
+                "lyrics_meaning.loading", "Genius에서 불러오는 중…",
+                "lyrics_meaning.error", "Genius 내용을 불러오지 못했습니다",
+                "lyrics_meaning.open_genius", "Genius에서 열기",
+                "lyrics_meaning.original", "원문 보기",
+                "lyrics_meaning.translated", "중국어 보기",
+                "lyrics_meaning.translating", "번역 중…",
+                "lyrics_meaning.attribution", "출처: Genius",
+        };
+    }
+
+    private static String[] lyricsPageStringsZhCn() {
+        return new String[]{
+                "lyrics_enhance.title", "歌词页增强",
+                "lyrics_enhance.margin", "歌词左右边距",
+                "lyrics_enhance.margin_desc", "原文、译文和注音共用同一条正文边界（默认 24 dp）。",
+                "lyrics_enhance.artwork_solid", "每首歌固定纯色背景",
+                "lyrics_enhance.artwork_solid_desc", "从封面提取适合阅读的颜色，同一首歌播放期间保持不变。",
+                "lyrics_enhance.sources", "中文译词来源",
+                "lyrics_enhance.source_order", "优先：%s",
+                "lyrics_enhance.source_manual", "本曲译词来源",
+                "lyrics_enhance.source_auto", "自动（按顺序）",
+                "lyrics_enhance.source_off", "本曲不取平台译词",
+                "lyrics_enhance.meanings", "Genius 歌曲简介与注释",
+                "lyrics_enhance.meanings_desc", "用歌词页的灯泡按钮打开。",
+                "lyrics_enhance.close", "关闭",
+                "lyrics_meaning.button", "歌曲简介与注释",
+                "lyrics_meaning.title", "歌词注释",
+                "lyrics_meaning.description", "歌曲简介",
+                "lyrics_meaning.annotations", "逐句注释",
+                "lyrics_meaning.unplaced", "未能定位到歌词的注释",
+                "lyrics_meaning.empty", "这首歌还没有简介或注释",
+                "lyrics_meaning.loading", "正在获取 Genius 内容…",
+                "lyrics_meaning.error", "无法获取 Genius 内容",
+                "lyrics_meaning.open_genius", "在 Genius 打开",
+                "lyrics_meaning.original", "阅读原文",
+                "lyrics_meaning.translated", "简体中文",
+                "lyrics_meaning.translating", "正在翻译…",
+                "lyrics_meaning.attribution", "来源：Genius",
+        };
+    }
+
+    private static String[] lyricsPageStringsZhTw() {
+        return new String[]{
+                "lyrics_enhance.title", "歌詞頁增強",
+                "lyrics_enhance.margin", "歌詞左右邊距",
+                "lyrics_enhance.margin_desc", "原文、譯文和注音共用同一條正文邊界（預設 24 dp）。",
+                "lyrics_enhance.artwork_solid", "每首歌固定純色背景",
+                "lyrics_enhance.artwork_solid_desc", "從封面擷取適合閱讀的顏色，同一首歌播放期間保持不變。",
+                "lyrics_enhance.sources", "中文譯詞來源",
+                "lyrics_enhance.source_order", "優先：%s",
+                "lyrics_enhance.source_manual", "本曲譯詞來源",
+                "lyrics_enhance.source_auto", "自動（依順序）",
+                "lyrics_enhance.source_off", "本曲不取平台譯詞",
+                "lyrics_enhance.meanings", "Genius 歌曲簡介與註釋",
+                "lyrics_enhance.meanings_desc", "用歌詞頁的燈泡按鈕開啟。",
+                "lyrics_enhance.close", "關閉",
+                "lyrics_meaning.button", "歌曲簡介與註釋",
+                "lyrics_meaning.title", "歌詞註釋",
+                "lyrics_meaning.description", "歌曲簡介",
+                "lyrics_meaning.annotations", "逐句註釋",
+                "lyrics_meaning.unplaced", "未能定位到歌詞的註釋",
+                "lyrics_meaning.empty", "這首歌還沒有簡介或註釋",
+                "lyrics_meaning.loading", "正在取得 Genius 內容…",
+                "lyrics_meaning.error", "無法取得 Genius 內容",
+                "lyrics_meaning.open_genius", "在 Genius 開啟",
+                "lyrics_meaning.original", "閱讀原文",
+                "lyrics_meaning.translated", "簡體中文",
+                "lyrics_meaning.translating", "正在翻譯…",
+                "lyrics_meaning.attribution", "來源：Genius",
+        };
+    }
+
+    private static String[] lyricsPageStringsJa() {
+        return new String[]{
+                "lyrics_enhance.title", "歌詞ページ強化",
+                "lyrics_enhance.margin", "歌詞の左右余白",
+                "lyrics_enhance.margin_desc", "原文・翻訳・発音が同じ本文境界を使います（既定 24dp）。",
+                "lyrics_enhance.artwork_solid", "曲ごとに固定の単色背景",
+                "lyrics_enhance.artwork_solid_desc", "ジャケットから読みやすい色を抽出し、曲の間ずっと保ちます。",
+                "lyrics_enhance.sources", "中国語訳の取得元",
+                "lyrics_enhance.source_order", "優先: %s",
+                "lyrics_enhance.source_manual", "この曲の取得元",
+                "lyrics_enhance.source_auto", "自動（順番どおり）",
+                "lyrics_enhance.source_off", "この曲ではプラットフォーム訳を使わない",
+                "lyrics_enhance.meanings", "Genius の曲紹介と注釈",
+                "lyrics_enhance.meanings_desc", "歌詞ページの電球ボタンで開きます。",
+                "lyrics_enhance.close", "閉じる",
+                "lyrics_meaning.button", "曲紹介と注釈",
+                "lyrics_meaning.title", "歌詞の注釈",
+                "lyrics_meaning.description", "曲紹介",
+                "lyrics_meaning.annotations", "行ごとの注釈",
+                "lyrics_meaning.unplaced", "歌詞に紐づかない注釈",
+                "lyrics_meaning.empty", "この曲にはまだ紹介も注釈もありません",
+                "lyrics_meaning.loading", "Genius から読み込み中…",
+                "lyrics_meaning.error", "Genius の内容を取得できません",
+                "lyrics_meaning.open_genius", "Genius で開く",
+                "lyrics_meaning.original", "原文を読む",
+                "lyrics_meaning.translated", "簡体字中国語",
+                "lyrics_meaning.translating", "翻訳中…",
+                "lyrics_meaning.attribution", "出典: Genius",
+        };
+    }
     private static void addSpotifyShortcutStrings(Map<String, Map<String, String>> languages) {
         addLanguageStrings(languages, AppI18n::spotifyShortcutStrings);
     }

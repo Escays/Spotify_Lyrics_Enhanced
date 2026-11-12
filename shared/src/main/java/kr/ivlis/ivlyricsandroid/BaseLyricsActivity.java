@@ -208,6 +208,29 @@ public class BaseLyricsActivity extends Activity implements
     private LyricsView landscapeLyricsView;
     private LyricsView pictureInPictureLyricsView;
     private PlayerProgressView playerProgressView;
+    private LyricsPageSettings lyricsPageSettings;
+    private PlatformTranslationSettings platformTranslationSettings;
+    private SongMeaningService songMeaningService;
+    private PlayerProgressView lyricsProgressView;
+    private TransportButtonView lyricsPlayPauseButton;
+    private TextView lyricsPositionLabel;
+    private TextView lyricsDurationLabel;
+    private ImageButton lyricsMeaningButton;
+    private View lyricsTransportBar;
+    private PopupWindow lyricsPagePanel;
+    private PopupWindow meaningPopup;
+    private LinearLayout meaningContainer;
+    private SongMeaning songMeaning = SongMeaning.EMPTY;
+    private SongMeaningService.MeaningTranslation songMeaningTranslation;
+    private boolean songMeaningShowTranslation;
+    private boolean songMeaningLoading;
+    private boolean songMeaningLoaded;
+    private String songMeaningError = "";
+    private String songMeaningRequestKey = "";
+    private int lastMeaningFocusLine = -1;
+    private String stableBackgroundTrackKey = "";
+    private boolean stableBackgroundHadArtwork;
+    private final Map<String, Integer> stableBackgroundColors = new HashMap<>();
     private PlayerBackgroundView backgroundView;
     private PlayerBackgroundView pictureInPictureBackgroundView;
     private YouTubeBackgroundView youtubeBackgroundView;
@@ -730,6 +753,9 @@ public class BaseLyricsActivity extends Activity implements
         super.onCreate(savedInstanceState);
         LyricsWordSegmenter.initialize(getApplicationContext());
         aiLyricsSettings = new AiLyricsSettings(this);
+        lyricsPageSettings = new LyricsPageSettings(this);
+        platformTranslationSettings = new PlatformTranslationSettings(this);
+        songMeaningService = new SongMeaningService(this, PlatformHttpTransport.http());
         if (savedInstanceState != null) {
             localLyricsImportKey = savedInstanceState.getString("local_lyrics.import_key");
             localLyricsImportDuration = savedInstanceState.getLong("local_lyrics.import_duration");
@@ -1245,6 +1271,9 @@ public class BaseLyricsActivity extends Activity implements
         }
         if (aiLyricsRepository != null) {
             aiLyricsRepository.shutdown();
+        }
+        if (songMeaningService != null) {
+            songMeaningService.shutdown();
         }
         if (furiganaRepository != null) {
             furiganaRepository.shutdown();
@@ -3806,7 +3835,7 @@ public class BaseLyricsActivity extends Activity implements
         content.setOrientation(LinearLayout.VERTICAL);
         lyricsPageContent = content;
         lyricsPageContentTopPaddingPx = dp(LYRICS_PAGE_TOP_PADDING_EXPANDED_DP);
-        content.setPadding(dp(24), lyricsPageContentTopPaddingPx, dp(24), dp(22));
+        content.setPadding(dp(lyricsSidePaddingDp()), lyricsPageContentTopPaddingPx, dp(lyricsSidePaddingDp()), dp(22));
         page.addView(content, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
@@ -3870,6 +3899,21 @@ public class BaseLyricsActivity extends Activity implements
         LinearLayout.LayoutParams lyricsContributorParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lyricsContributorParams.leftMargin = dp(8);
         lyricsSubtitleRow.addView(lyricsContributorView, lyricsContributorParams);
+        lyricsMeaningButton = lyricsToolbarButton(LyricsToolbarIcon.BULB, ui("lyrics_meaning.button"));
+        lyricsMeaningButton.setTag("lyrics.meaning");
+        lyricsMeaningButton.setVisibility(View.GONE);
+        lyricsMeaningButton.setOnClickListener(view -> openSongMeaning(-1));
+        LinearLayout.LayoutParams meaningParams = new LinearLayout.LayoutParams(dp(44), dp(44));
+        meaningParams.leftMargin = dp(6);
+        metaRow.addView(lyricsMeaningButton, meaningParams);
+
+        ImageButton enhance = lyricsToolbarButton(LyricsToolbarIcon.TUNE, ui("lyrics_enhance.title"));
+        enhance.setTag("lyrics.enhance");
+        enhance.setOnClickListener(this::showLyricsPagePanel);
+        LinearLayout.LayoutParams enhanceParams = new LinearLayout.LayoutParams(dp(44), dp(44));
+        enhanceParams.leftMargin = dp(2);
+        metaRow.addView(enhance, enhanceParams);
+
         ImageButton settings = lyricsToolbarButton(LyricsToolbarIcon.MORE, ui("settings.title"));
         settings.setTag("lyrics.settings");
         settings.setOnClickListener(view -> showSettingsPanel(true));
@@ -3924,6 +3968,9 @@ public class BaseLyricsActivity extends Activity implements
         lyricsView.setTypographySettings(aiLyricsSettings.snapshot().typography);
         lyricsView.setLyricTextAlignment(aiLyricsSettings.snapshot().lyricsTextAlignment);
         lyricsView.setOnSeekListener(this::seekToPosition);
+        // The page container owns the margin, so the renderer keeps no inset of its own.
+        lyricsView.setSidePaddingSp(0f);
+        lyricsView.setOnAnnotationLongPressListener(line -> openSongMeaning(lineIndexOf(line)));
         LinearLayout.LayoutParams lyricsParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 0,
@@ -3931,6 +3978,14 @@ public class BaseLyricsActivity extends Activity implements
         );
         lyricsParams.topMargin = dp(16);
         content.addView(lyricsView, lyricsParams);
+
+        lyricsTransportBar = buildLyricsTransportBar();
+        LinearLayout.LayoutParams transportParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        transportParams.topMargin = dp(6);
+        content.addView(lyricsTransportBar, transportParams);
 
         lyricsProviderAttributionView = createLyricsProviderAttributionView(false);
         LinearLayout.LayoutParams attributionParams = new LinearLayout.LayoutParams(
@@ -3960,6 +4015,668 @@ public class BaseLyricsActivity extends Activity implements
 
         attachPageSwipe(header, false, false);
         return page;
+    }
+
+    // ---- Full lyrics page: side margin, per-song colour, Genius meanings, bottom transport ----
+
+    private int lyricsSidePaddingDp() {
+        return lyricsPageSettings == null
+                ? LyricsPageSettings.DEFAULT_SIDE_PADDING_DP
+                : lyricsPageSettings.sidePaddingDp();
+    }
+
+    /**
+     * Applies the margin to the page container and keeps the renderer's own inset at zero. The renderer
+     * used to add 18 sp inside the container's 24 dp, so the visible margin was roughly double what the
+     * setting said; one boundary now drives the original, the translation and the pronunciation rows.
+     */
+    private void applyLyricsSidePadding(int dpValue) {
+        int value = LyricsPageSettings.clampPadding(dpValue);
+        if (lyricsPageSettings != null) {
+            lyricsPageSettings.setSidePaddingDp(value);
+        }
+        if (lyricsPageContent != null) {
+            lyricsPageContent.setPadding(dp(value), lyricsPageContent.getPaddingTop(), dp(value),
+                    lyricsPageContent.getPaddingBottom());
+        }
+        if (lyricsView != null) {
+            lyricsView.setSidePaddingSp(0f);
+            lyricsView.requestLayout();
+            lyricsView.invalidate();
+        }
+        if (landscapeLyricsView != null) {
+            landscapeLyricsView.setSidePaddingSp(0f);
+        }
+    }
+
+    /**
+     * Persistent bottom bar for the lyrics page: a draggable progress bar, the two time labels and a
+     * play/pause button that drives Spotify's own media session through the existing transport path.
+     */
+    private View buildLyricsTransportBar() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setTag("lyrics.transport");
+
+        lyricsPositionLabel = label(formatTime(0L), 11f, Color.argb(190, 255, 255, 255), AppFonts.regular(this));
+        lyricsPositionLabel.setMinWidth(dp(38));
+        row.addView(lyricsPositionLabel, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        lyricsProgressView = new PlayerProgressView(this);
+        lyricsProgressView.setContentDescription(ui("debug.play_pause"));
+        lyricsProgressView.setOnSeekListener(this::seekPlayerToPosition);
+        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(0, dp(30), 1f);
+        progressParams.leftMargin = dp(8);
+        progressParams.rightMargin = dp(8);
+        row.addView(lyricsProgressView, progressParams);
+
+        lyricsDurationLabel = label(formatTime(0L), 11f, Color.argb(190, 255, 255, 255), AppFonts.regular(this));
+        lyricsDurationLabel.setMinWidth(dp(38));
+        lyricsDurationLabel.setGravity(Gravity.END);
+        row.addView(lyricsDurationLabel, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        lyricsPlayPauseButton = new TransportButtonView(this, TransportButtonView.TYPE_PLAY_PAUSE, true);
+        lyricsPlayPauseButton.setContentDescription(ui("debug.play_pause"));
+        lyricsPlayPauseButton.setOnClickListener(view -> runTransportCommand(NowPlayingService::togglePlayback));
+        LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(dp(40), dp(40));
+        buttonParams.leftMargin = dp(6);
+        row.addView(lyricsPlayPauseButton, buttonParams);
+        return row;
+    }
+
+    private void updateLyricsTransport(long positionMs, long durationMs) {
+        if (lyricsProgressView != null) {
+            lyricsProgressView.setProgress(positionMs, durationMs);
+        }
+        if (lyricsPositionLabel != null) {
+            lyricsPositionLabel.setText(formatTime(positionMs));
+        }
+        if (lyricsDurationLabel != null) {
+            lyricsDurationLabel.setText(formatTime(durationMs));
+        }
+    }
+
+    private void syncLyricsTransportPlaybackState(boolean playing) {
+        if (lyricsPlayPauseButton != null) {
+            lyricsPlayPauseButton.setPlaying(playing);
+        }
+    }
+
+    /**
+     * One stable colour per song. The colour is computed once from the cover, cached per track and only
+     * recomputed when the track changes or when artwork arrives after a placeholder was used, so
+     * scrolling, pausing, switching translation source or opening an annotation never repaints it.
+     */
+    private void applyStableBackgroundColor(Bitmap artwork) {
+        if (backgroundView == null) {
+            return;
+        }
+        boolean enabled = lyricsPageSettings != null && lyricsPageSettings.artworkSolidBackground();
+        if (!enabled || currentTrack == null) {
+            backgroundView.setStableSolidColor(0);
+            stableBackgroundTrackKey = "";
+            stableBackgroundHadArtwork = false;
+            return;
+        }
+        String trackKey = currentTrack.stableKey();
+        boolean sameTrack = trackKey.equals(stableBackgroundTrackKey);
+        Integer cached = stableBackgroundColors.get(trackKey);
+        int color;
+        if (sameTrack && cached != null && (stableBackgroundHadArtwork || artwork == null)) {
+            // Already resolved for this song: keep the exact colour it started with.
+            color = cached;
+        } else if (cached != null && !stableBackgroundHadArtwork && artwork != null) {
+            // The cover arrived after a placeholder colour; upgrade once, with the crossfade.
+            color = ArtworkColorPicker.pick(artwork, trackKey);
+            stableBackgroundColors.put(trackKey, color);
+        } else {
+            color = ArtworkColorPicker.pick(artwork, trackKey);
+            stableBackgroundColors.put(trackKey, color);
+        }
+        stableBackgroundTrackKey = trackKey;
+        stableBackgroundHadArtwork = artwork != null;
+        backgroundView.setStableSolidColor(color);
+    }
+
+    /** Panel with the lyric page's own choices: margin, per-song colour, translation source, Genius. */
+    private void showLyricsPagePanel(View anchor) {
+        if (lyricsPagePanel != null && lyricsPagePanel.isShowing()) {
+            lyricsPagePanel.dismiss();
+            return;
+        }
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setPadding(dp(20), dp(16), dp(20), dp(18));
+        TextView title = panelText(ui("lyrics_enhance.title"), 16f, Color.WHITE);
+        title.setTypeface(AppFonts.bold(this));
+        column.addView(title);
+
+        LinearLayout marginSection = panelSection(
+                ui("lyrics_enhance.margin"), ui("lyrics_enhance.margin_desc"));
+        final TextView marginValue = panelText(lyricsSidePaddingDp() + " dp", 12f,
+                Color.argb(205, 255, 255, 255));
+        SeekBar marginBar = new SeekBar(this);
+        marginBar.setMax(LyricsPageSettings.MAX_SIDE_PADDING_DP - LyricsPageSettings.MIN_SIDE_PADDING_DP);
+        marginBar.setProgress(lyricsSidePaddingDp() - LyricsPageSettings.MIN_SIDE_PADDING_DP);
+        marginBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int value = progress + LyricsPageSettings.MIN_SIDE_PADDING_DP;
+                marginValue.setText(value + " dp");
+                if (fromUser) {
+                    applyLyricsSidePadding(value);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
+        });
+        marginSection.addView(marginBar, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        marginSection.addView(marginValue);
+        column.addView(marginSection);
+
+        LinearLayout backgroundSection = panelSection(
+                ui("lyrics_enhance.artwork_solid"), ui("lyrics_enhance.artwork_solid_desc"));
+        Switch backgroundSwitch = new Switch(this);
+        backgroundSwitch.setChecked(lyricsPageSettings != null
+                && lyricsPageSettings.artworkSolidBackground());
+        backgroundSwitch.setOnCheckedChangeListener((button, checked) -> {
+            if (lyricsPageSettings != null) {
+                lyricsPageSettings.setArtworkSolidBackground(checked);
+            }
+            stableBackgroundTrackKey = "";
+            stableBackgroundHadArtwork = false;
+            applyStableBackgroundColor(currentTrack == null ? null : currentTrack.artwork);
+        });
+        backgroundSection.addView(backgroundSwitch);
+        column.addView(backgroundSection);
+
+        if (platformTranslationSettings != null) {
+            LinearLayout sourceSection = panelSection(ui("lyrics_enhance.sources"), "");
+            final TextView orderLabel = panelText("", 12f, Color.argb(215, 255, 255, 255));
+            final TextView manualLabel = panelText("", 12f, Color.argb(215, 255, 255, 255));
+            final String trackKey = currentTrack == null ? "" : currentTrack.stableKey();
+            updatePlatformSourceLabels(orderLabel, manualLabel, trackKey);
+
+            TextView orderButton = panelButton("");
+            orderButton.setText(ui("lyrics_enhance.source_order")
+                    .replace("%s", platformOrderLabel()));
+            orderButton.setOnClickListener(view -> {
+                platformTranslationSettings.preferSource(platformTranslationSettings.snapshot().order
+                        .get(platformTranslationSettings.snapshot().order.size() - 1));
+                orderButton.setText(ui("lyrics_enhance.source_order").replace("%s", platformOrderLabel()));
+                updatePlatformSourceLabels(orderLabel, manualLabel, trackKey);
+                refreshPlatformTranslationForCurrentTrack();
+            });
+
+            TextView manualButton = panelButton(ui("lyrics_enhance.source_manual"));
+            manualButton.setOnClickListener(view -> {
+                String next = nextManualSource(platformTranslationSettings.manualSource(trackKey));
+                platformTranslationSettings.setManualSource(trackKey, next);
+                updatePlatformSourceLabels(orderLabel, manualLabel, trackKey);
+                refreshPlatformTranslationForCurrentTrack();
+            });
+
+            sourceSection.addView(orderButton);
+            sourceSection.addView(orderLabel);
+            sourceSection.addView(manualButton);
+            sourceSection.addView(manualLabel);
+            column.addView(sourceSection);
+        }
+
+        LinearLayout meaningSection = panelSection(
+                ui("lyrics_enhance.meanings"), ui("lyrics_enhance.meanings_desc"));
+        Switch meaningSwitch = new Switch(this);
+        meaningSwitch.setChecked(lyricsPageSettings != null && lyricsPageSettings.meaningsEnabled());
+        meaningSwitch.setOnCheckedChangeListener((button, checked) -> {
+            if (lyricsPageSettings != null) {
+                lyricsPageSettings.setMeaningsEnabled(checked);
+            }
+            if (checked) {
+                requestSongMeaning(true);
+            } else {
+                if (meaningPopup != null && meaningPopup.isShowing()) {
+                    meaningPopup.dismiss();
+                }
+                if (lyricsView != null) {
+                    lyricsView.setAnnotatedLines(Collections.emptySet());
+                }
+                updateMeaningButtonVisibility();
+            }
+        });
+        meaningSection.addView(meaningSwitch);
+        column.addView(meaningSection);
+
+        TextView close = panelButton(ui("lyrics_enhance.close"));
+        close.setOnClickListener(view -> {
+            if (lyricsPagePanel != null) {
+                lyricsPagePanel.dismiss();
+            }
+        });
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        closeParams.topMargin = dp(10);
+        column.addView(close, closeParams);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(column);
+        PopupWindow window = new PopupWindow(scroll,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                Math.min(dp(520), (int) (getResources().getDisplayMetrics().heightPixels * 0.72f)),
+                true);
+        window.setBackgroundDrawable(roundDrawable(Color.argb(250, 12, 13, 18), dp(22)));
+        window.setOutsideTouchable(true);
+        window.showAtLocation(lyricsPage == null ? rootView : lyricsPage, Gravity.BOTTOM, 0, 0);
+        lyricsPagePanel = window;
+    }
+
+    private String platformOrderLabel() {
+        if (platformTranslationSettings == null) {
+            return "";
+        }
+        List<String> labels = new ArrayList<>();
+        for (String id : platformTranslationSettings.snapshot().order) {
+            String label = PlatformTranslationSettings.label(id);
+            if (!label.isEmpty()) {
+                labels.add(label);
+            }
+        }
+        return String.join(" → ", labels);
+    }
+
+    private void updatePlatformSourceLabels(TextView orderLabel, TextView manualLabel, String trackKey) {
+        if (orderLabel == null || manualLabel == null || platformTranslationSettings == null) {
+            return;
+        }
+        orderLabel.setText(ui("lyrics_enhance.source_order").replace("%s", platformOrderLabel()));
+        manualLabel.setText(ui("lyrics_enhance.source_manual") + ": " + manualSourceLabel(
+                platformTranslationSettings.manualSource(trackKey)));
+    }
+
+    private String manualSourceLabel(String manual) {
+        if (PlatformTranslationSettings.MANUAL_OFF.equals(manual)) {
+            return ui("lyrics_enhance.source_off");
+        }
+        if (PlatformTranslationSettings.MANUAL_AUTO.equals(manual)) {
+            return ui("lyrics_enhance.source_auto");
+        }
+        return PlatformTranslationSettings.label(manual);
+    }
+
+    private static String nextManualSource(String current) {
+        if (PlatformTranslationSettings.MANUAL_AUTO.equals(current)) {
+            return NeteaseLyricSource.ID;
+        }
+        if (NeteaseLyricSource.ID.equals(current)) {
+            return QqLyricSource.ID;
+        }
+        if (QqLyricSource.ID.equals(current)) {
+            return PlatformTranslationSettings.MANUAL_OFF;
+        }
+        return PlatformTranslationSettings.MANUAL_AUTO;
+    }
+
+    /**
+     * A source or order change invalidates the translations that were already merged into the displayed
+     * result, so the lyrics are asked for again instead of keeping the previous platform's lines.
+     */
+    private void refreshPlatformTranslationForCurrentTrack() {
+        if (currentTrack == null || aiLyricsRepository == null) {
+            return;
+        }
+        if (aiLyricsRepository.platformTranslations() != null) {
+            aiLyricsRepository.platformTranslations().clearCache();
+        }
+        if (currentLyricsResult != null && !currentLyricsResult.lines.isEmpty()) {
+            requestAiLyrics(true);
+        }
+    }
+
+    private LinearLayout panelSection(String titleText, String descriptionText) {
+        LinearLayout section = new LinearLayout(this);
+        section.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.topMargin = dp(16);
+        section.setLayoutParams(params);
+        TextView title = panelText(titleText, 13f, Color.WHITE);
+        title.setTypeface(AppFonts.bold(this));
+        section.addView(title);
+        if (descriptionText != null && !descriptionText.isEmpty()) {
+            section.addView(panelText(descriptionText, 11f, Color.argb(160, 255, 255, 255)));
+        }
+        return section;
+    }
+
+    private TextView panelText(String value, float sizeSp, int color) {
+        TextView view = label(value, sizeSp, color, AppFonts.regular(this));
+        view.setPadding(0, dp(3), 0, 0);
+        return view;
+    }
+
+    private TextView panelButton(String text) {
+        TextView button = label(text, 12f, Color.WHITE, AppFonts.bold(this));
+        button.setPadding(dp(12), dp(9), dp(12), dp(9));
+        button.setBackground(roundDrawable(Color.argb(38, 255, 255, 255), dp(12)));
+        button.setOnClickListener(null);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.topMargin = dp(8);
+        button.setLayoutParams(params);
+        makeRemoteFocusable(button);
+        return button;
+    }
+
+    // ---- Genius description and per-line annotations ----
+
+    private void openSongMeaning(int focusLineIndex) {
+        if (lyricsPageSettings != null && !lyricsPageSettings.meaningsEnabled()) {
+            return;
+        }
+        lastMeaningFocusLine = focusLineIndex;
+        if (meaningPopup == null) {
+            meaningContainer = new LinearLayout(this);
+            meaningContainer.setOrientation(LinearLayout.VERTICAL);
+            meaningContainer.setPadding(dp(20), dp(16), dp(20), dp(20));
+            ScrollView scroll = new ScrollView(this);
+            scroll.addView(meaningContainer, new ScrollView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            meaningPopup = new PopupWindow(scroll,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    Math.min(dp(560), (int) (getResources().getDisplayMetrics().heightPixels * 0.66f)),
+                    true);
+            meaningPopup.setBackgroundDrawable(roundDrawable(Color.argb(250, 12, 13, 18), dp(22)));
+            meaningPopup.setOutsideTouchable(true);
+        }
+        renderMeaningPanel(focusLineIndex);
+        meaningPopup.showAtLocation(lyricsPage == null ? rootView : lyricsPage, Gravity.BOTTOM, 0, 0);
+        if (!songMeaningLoaded && !songMeaningLoading) {
+            requestSongMeaning(false);
+        }
+    }
+
+    private void requestSongMeaning(boolean force) {
+        if (currentTrack == null || songMeaningService == null || lyricsPageSettings == null
+                || !lyricsPageSettings.meaningsEnabled() || !currentTrack.hasUsableMetadata()) {
+            return;
+        }
+        if (currentLyricsResult == null || currentLyricsResult.lines.isEmpty()) {
+            return;
+        }
+        List<String> texts = new ArrayList<>(currentLyricsResult.lines.size());
+        for (LyricsLine line : currentLyricsResult.lines) {
+            texts.add(line.text);
+        }
+        String trackKey = currentTrack.stableKey();
+        String requestKey = trackKey + "|" + texts.size() + "|" + texts.hashCode();
+        if (!force && requestKey.equals(songMeaningRequestKey) && songMeaningLoaded) {
+            return;
+        }
+        songMeaningRequestKey = requestKey;
+        songMeaningLoaded = false;
+        songMeaningLoading = true;
+        songMeaningError = "";
+        updateMeaningButtonVisibility();
+        if (meaningPopup != null && meaningPopup.isShowing()) {
+            renderMeaningPanel(lastMeaningFocusLine);
+        }
+        songMeaningService.load(trackKey, currentTrack.title, currentTrack.artist, texts, force,
+                (key, meaning, error) -> runOnUiThread(() -> {
+                    if (currentTrack == null || !key.equals(currentTrack.stableKey())) {
+                        // The track changed while Genius was answering; this answer belongs to the old one.
+                        return;
+                    }
+                    songMeaning = meaning == null ? SongMeaning.EMPTY : meaning;
+                    songMeaningLoading = false;
+                    songMeaningLoaded = true;
+                    songMeaningError = error == null ? "" : error;
+                    songMeaningTranslation = null;
+                    songMeaningShowTranslation = false;
+                    applySongMeaningAnnotations();
+                    updateMeaningButtonVisibility();
+                    if (meaningPopup != null && meaningPopup.isShowing()) {
+                        renderMeaningPanel(lastMeaningFocusLine);
+                    }
+                }));
+    }
+
+    /** Re-places an already loaded meaning on freshly displayed lyrics, without another network call. */
+    private void refreshSongMeaningForLyrics(LyricsResult result) {
+        if (lyricsPageSettings == null || !lyricsPageSettings.meaningsEnabled()) {
+            if (lyricsView != null) {
+                lyricsView.setAnnotatedLines(Collections.emptySet());
+            }
+            updateMeaningButtonVisibility();
+            return;
+        }
+        if (songMeaning == null || songMeaning.isEmpty()) {
+            requestSongMeaning(false);
+            return;
+        }
+        applySongMeaningAnnotations();
+        updateMeaningButtonVisibility();
+    }
+
+    private void applySongMeaningAnnotations() {
+        java.util.Set<LyricsLine> annotated = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<LyricsLine, Boolean>());
+        if (currentLyricsResult != null && songMeaning != null) {
+            for (SongAnnotation annotation : songMeaning.placedAnnotations) {
+                for (int index : annotation.lineIndexes) {
+                    if (index >= 0 && index < currentLyricsResult.lines.size()) {
+                        annotated.add(currentLyricsResult.lines.get(index));
+                    }
+                }
+            }
+        }
+        if (lyricsView != null) {
+            lyricsView.setAnnotatedLines(annotated);
+        }
+    }
+
+    private void updateMeaningButtonVisibility() {
+        if (lyricsMeaningButton == null) {
+            return;
+        }
+        boolean available = songMeaning != null && !songMeaning.isEmpty()
+                && (lyricsPageSettings == null || lyricsPageSettings.meaningsEnabled());
+        lyricsMeaningButton.setVisibility(available ? View.VISIBLE : View.GONE);
+    }
+
+    private void renderMeaningPanel(int focusLineIndex) {
+        if (meaningContainer == null) {
+            return;
+        }
+        meaningContainer.removeAllViews();
+        TextView title = panelText(ui("lyrics_meaning.title"), 16f, Color.WHITE);
+        title.setTypeface(AppFonts.bold(this));
+        meaningContainer.addView(title);
+
+        TextView closeButton = panelButton(ui("lyrics_enhance.close"));
+        closeButton.setOnClickListener(view -> {
+            if (meaningPopup != null) {
+                meaningPopup.dismiss();
+            }
+        });
+        meaningContainer.addView(closeButton);
+
+        if (songMeaningLoading) {
+            meaningContainer.addView(panelText(ui("lyrics_meaning.loading"), 12f,
+                    Color.argb(180, 255, 255, 255)));
+            return;
+        }
+        if (!songMeaningError.isEmpty()) {
+            meaningContainer.addView(panelText(ui("lyrics_meaning.error"), 12f, Color.argb(200, 255, 160, 160)));
+        }
+        if (songMeaning == null || songMeaning.isEmpty()) {
+            meaningContainer.addView(panelText(ui("lyrics_meaning.empty"), 12f,
+                    Color.argb(180, 255, 255, 255)));
+            return;
+        }
+
+        if (!songMeaning.artist.isEmpty() || !songMeaning.title.isEmpty()) {
+            meaningContainer.addView(panelText(songMeaning.title + " — " + songMeaning.artist, 11f,
+                    Color.argb(170, 255, 255, 255)));
+        }
+
+        if (songMeaning.hasDescription()) {
+            TextView heading = panelText(ui("lyrics_meaning.description"), 13f, Color.WHITE);
+            heading.setTypeface(AppFonts.bold(this));
+            LinearLayout.LayoutParams headingParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            headingParams.topMargin = dp(14);
+            meaningContainer.addView(heading, headingParams);
+            String description = songMeaningShowTranslation && songMeaningTranslation != null
+                    && !songMeaningTranslation.description.isEmpty()
+                    ? songMeaningTranslation.description
+                    : songMeaning.description;
+            meaningContainer.addView(panelText(description, 12f, Color.argb(214, 255, 255, 255)));
+        }
+
+        List<SongAnnotation> placed = songMeaning.placedAnnotations;
+        if (!placed.isEmpty()) {
+            TextView heading = panelText(ui("lyrics_meaning.annotations"), 13f, Color.WHITE);
+            heading.setTypeface(AppFonts.bold(this));
+            LinearLayout.LayoutParams headingParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            headingParams.topMargin = dp(16);
+            meaningContainer.addView(heading, headingParams);
+            for (SongAnnotation annotation : placed) {
+                boolean focused = focusLineIndex >= 0 && annotation.lineIndexes.contains(focusLineIndex);
+                addAnnotationBlock(annotation, focused);
+            }
+        }
+
+        if (!songMeaning.unplacedAnnotations.isEmpty()) {
+            TextView heading = panelText(ui("lyrics_meaning.unplaced"), 13f, Color.WHITE);
+            heading.setTypeface(AppFonts.bold(this));
+            LinearLayout.LayoutParams headingParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            headingParams.topMargin = dp(16);
+            meaningContainer.addView(heading, headingParams);
+            for (SongAnnotation annotation : songMeaning.unplacedAnnotations) {
+                addAnnotationBlock(annotation, false);
+            }
+        }
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        actionsParams.topMargin = dp(14);
+        TextView translate = panelButton(songMeaningShowTranslation
+                ? ui("lyrics_meaning.original")
+                : ui("lyrics_meaning.translated"));
+        translate.setOnClickListener(view -> toggleMeaningTranslation());
+        actions.addView(translate);
+        if (!songMeaning.url.isEmpty()) {
+            TextView open = panelButton(ui("lyrics_meaning.open_genius"));
+            LinearLayout.LayoutParams openParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            openParams.leftMargin = dp(8);
+            open.setOnClickListener(view -> openMeaningUrl(songMeaning.url));
+            actions.addView(open, openParams);
+        }
+        meaningContainer.addView(actions, actionsParams);
+        meaningContainer.addView(panelText(ui("lyrics_meaning.attribution"), 10f,
+                Color.argb(150, 255, 255, 255)));
+    }
+
+    private void addAnnotationBlock(SongAnnotation annotation, boolean focused) {
+        LinearLayout block = new LinearLayout(this);
+        block.setOrientation(LinearLayout.VERTICAL);
+        block.setPadding(dp(12), dp(10), dp(12), dp(10));
+        block.setBackground(roundDrawable(
+                focused ? Color.argb(46, 255, 255, 255) : Color.argb(24, 255, 255, 255), dp(12)));
+        LinearLayout.LayoutParams blockParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        blockParams.topMargin = dp(8);
+        block.setLayoutParams(blockParams);
+
+        String fragment = annotation.fragment.replace('\n', ' ');
+        TextView quote = panelText("“" + fragment + "”", 11f, Color.argb(170, 255, 255, 255));
+        quote.setTypeface(AppFonts.regular(this));
+        block.addView(quote);
+        String body = songMeaningShowTranslation && songMeaningTranslation != null
+                ? songMeaningTranslation.bodyFor(annotation)
+                : "";
+        block.addView(panelText(body.isEmpty() ? annotation.body : body, 12f,
+                Color.argb(226, 255, 255, 255)));
+        if (!annotation.url.isEmpty()) {
+            TextView link = panelText(ui("lyrics_meaning.open_genius"), 11f, Color.argb(190, 140, 200, 255));
+            link.setOnClickListener(view -> openMeaningUrl(annotation.url));
+            block.addView(link);
+        }
+        meaningContainer.addView(block);
+    }
+
+    private void toggleMeaningTranslation() {
+        if (songMeaning == null || songMeaning.isEmpty()) {
+            return;
+        }
+        if (songMeaningTranslation != null) {
+            songMeaningShowTranslation = !songMeaningShowTranslation;
+            renderMeaningPanel(lastMeaningFocusLine);
+            return;
+        }
+        songMeaningShowTranslation = true;
+        renderMeaningPanel(lastMeaningFocusLine);
+        final TrackSnapshot track = currentTrack;
+        final SongMeaning meaning = songMeaning;
+        final AiLyricsSettings.Snapshot settings = aiLyricsSettings == null ? null : aiLyricsSettings.snapshot();
+        if (settings == null || aiLyricsRepository == null) {
+            return;
+        }
+        new Thread(() -> {
+            SongMeaningService.MeaningTranslation translation = null;
+            try {
+                translation = songMeaningService.translate(meaning, "zh-CN",
+                        (texts, targetLanguage) -> aiLyricsRepository.translateFreeText(
+                                texts, targetLanguage, settings));
+            } catch (Exception ignored) {
+                // The original text stays readable when the translation chain fails.
+            }
+            final SongMeaningService.MeaningTranslation result = translation;
+            runOnUiThread(() -> {
+                if (track == null || currentTrack == null || !track.stableKey().equals(currentTrack.stableKey())) {
+                    return;
+                }
+                songMeaningTranslation = result;
+                renderMeaningPanel(lastMeaningFocusLine);
+            });
+        }, "ivlyrics-meaning-translation").start();
+    }
+
+    private void openMeaningUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return;
+        }
+        try {
+            startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse(url)));
+        } catch (Exception ignored) {
+            // No browser available: the panel stays usable and the link text is still visible.
+        }
+    }
+
+    private int lineIndexOf(LyricsLine line) {
+        if (line == null || currentLyricsResult == null) {
+            return -1;
+        }
+        for (int index = 0; index < currentLyricsResult.lines.size(); index++) {
+            if (currentLyricsResult.lines.get(index) == line) {
+                return index;
+            }
+        }
+        return -1;
     }
 
     private ImageButton lyricsToolbarButton(int icon, String description) {
@@ -15189,6 +15906,7 @@ public class BaseLyricsActivity extends Activity implements
         }
         updateLyricsProviderAttribution(result);
         updateLyricsContributorCredit(result);
+        refreshSongMeaningForLyrics(result);
         requestCreatorSupportPresentations(result);
         applyLandscapeNoLyricsLayout(true);
     }
@@ -15960,6 +16678,7 @@ public class BaseLyricsActivity extends Activity implements
             updateProgressLabels(position, snapshot.durationMs);
             updateLyricPreview(lyricsPosition);
             if (playPauseButton != null) playPauseButton.setPlaying(snapshot.playing);
+            syncLyricsTransportPlaybackState(snapshot.playing);
             updateYouTubeBackgroundPlaybackState();
         }
         setLyricPreviewFramePosition(lyricsFramePosition, frameTimeNanos);
@@ -15973,6 +16692,7 @@ public class BaseLyricsActivity extends Activity implements
     }
 
     private void updateProgressLabels(long position, long duration) {
+        updateLyricsTransport(position, duration);
         if (elapsedView != null) {
             elapsedView.setText(formatTime(position));
         }
@@ -18520,6 +19240,8 @@ public class BaseLyricsActivity extends Activity implements
         if (backgroundView != null) {
             backgroundView.setArtwork(artwork, artworkKey);
         }
+        // A cover that arrives after the placeholder is the only reason to repaint the colour.
+        applyStableBackgroundColor(artwork);
         if (pictureInPictureBackgroundView != null) {
             pictureInPictureBackgroundView.setArtwork(artwork, artworkKey);
         }

@@ -3,6 +3,8 @@ package kr.ivlis.ivlyricsandroid;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
+import android.graphics.DashPathEffect;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
@@ -99,6 +101,7 @@ public final class LyricsView extends View {
     private final float[] loadingSkeletonShaderWidths = new float[LOADING_SKELETON_WIDTH_FACTORS.length];
     private final Paint emptyIconPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint edgeFadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint annotationUnderlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final PorterDuffXfermode bottomEdgeFadeXfermode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
     private final Path emptyIconPath = new Path();
     private final RectF edgeFadeBounds = new RectF();
@@ -178,6 +181,41 @@ public final class LyricsView extends View {
     private boolean pronunciationLoading;
     private boolean translationLoading;
     private List<CulturalAnnotation> culturalAnnotations = Collections.emptyList();
+    /** Lines that carry an external annotation; these are drawn with a dashed underline. */
+    private Set<LyricsLine> annotatedLines = Collections.emptySet();
+    private OnAnnotationLongPressListener annotationLongPressListener;
+    private boolean annotationLongPressFired;
+    private Runnable annotationLongPressRunnable;
+
+    /**
+     * The pending long press. Created on first use: the body reads fields declared later in the
+     * class, which a field initializer may not reference yet.
+     */
+    private Runnable annotationLongPressRunnable() {
+        if (annotationLongPressRunnable == null) {
+            annotationLongPressRunnable = () -> {
+                LyricsLine line = pressedAnnotationLine();
+                if (line == null) {
+                    return;
+                }
+                annotationLongPressFired = true;
+                pressedTarget = null;
+                performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                annotationLongPressListener.onAnnotationLongPress(line);
+            };
+        }
+        return annotationLongPressRunnable;
+    }
+
+    /** The annotated line under the finger, or null when the press is not on one. */
+    private LyricsLine pressedAnnotationLine() {
+        if (annotationLongPressListener == null || pressedTarget == null) {
+            return null;
+        }
+        LyricsLine line = pressedTarget.line;
+        return line != null && annotatedLines.contains(line) ? line : null;
+    }
+
     private final Map<Integer, LineRenderInput> lineRenderInputs = new HashMap<>();
     private String culturalAnnotationFontFamily = AiLyricsSettings.CULTURAL_FONT_PRETENDARD;
     private int culturalAnnotationFontSize = 14;
@@ -712,6 +750,30 @@ public final class LyricsView extends View {
         postInvalidateOnAnimation();
     }
 
+    /** Marks the lyric lines that have an external annotation; the set is compared by identity. */
+    void setAnnotatedLines(Set<LyricsLine> lines) {
+        Set<LyricsLine> next = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        if (lines != null) {
+            for (LyricsLine line : lines) {
+                if (line != null) {
+                    next.add(line);
+                }
+            }
+        }
+        if (next.size() == annotatedLines.size() && next.containsAll(annotatedLines)) {
+            return;
+        }
+        annotatedLines = next;
+        invalidate();
+    }
+
+    void setOnAnnotationLongPressListener(OnAnnotationLongPressListener listener) {
+        annotationLongPressListener = listener;
+    }
+
+    interface OnAnnotationLongPressListener {
+        void onAnnotationLongPress(LyricsLine line);
+    }
     void setOnSeekListener(OnSeekListener seekListener) {
         this.seekListener = seekListener;
     }
@@ -1008,6 +1070,9 @@ public final class LyricsView extends View {
                 continue;
             }
             drawGroups(canvas, layout.groups, baselineCenter, fadeAlpha);
+            if (layout.displayLine.line != null && annotatedLines.contains(layout.displayLine.line)) {
+                drawAnnotationUnderline(canvas, layout, baselineCenter, fadeAlpha);
+            }
         }
         drawExitingInterlude(canvas, layouts);
         applyBottomEdgeFade(canvas);
@@ -1129,6 +1194,11 @@ public final class LyricsView extends View {
                     pressedTargetSnapshot.set(target);
                     pressedTarget = pressedTargetSnapshot;
                 }
+                annotationLongPressFired = false;
+                removeCallbacks(annotationLongPressRunnable());
+                if (target != null && annotationLongPressListener != null) {
+                    postDelayed(annotationLongPressRunnable(), ViewConfiguration.getLongPressTimeout());
+                }
                 return true;
             }
             case MotionEvent.ACTION_MOVE: {
@@ -1138,6 +1208,7 @@ public final class LyricsView extends View {
                 float y = event.getY();
                 float totalDy = y - touchStartY;
                 if (!draggingLyrics && Math.abs(totalDy) > touchSlop) {
+                    removeCallbacks(annotationLongPressRunnable());
                     draggingLyrics = true;
                     manualScrollActive = true;
                     manualCenterIndex = animatedCenterIndex;
@@ -1159,8 +1230,15 @@ public final class LyricsView extends View {
                 return true;
             }
             case MotionEvent.ACTION_UP: {
+                removeCallbacks(annotationLongPressRunnable());
                 if (velocityTracker != null) {
                     velocityTracker.addMovement(event);
+                }
+                if (annotationLongPressFired) {
+                    annotationLongPressFired = false;
+                    pressedTarget = null;
+                    recycleVelocityTracker();
+                    return true;
                 }
                 if (draggingLyrics) {
                     draggingLyrics = false;
@@ -1184,6 +1262,8 @@ public final class LyricsView extends View {
                 return super.onTouchEvent(event);
             }
             case MotionEvent.ACTION_CANCEL:
+                removeCallbacks(annotationLongPressRunnable());
+                annotationLongPressFired = false;
                 pressedTarget = null;
                 draggingLyrics = false;
                 recycleVelocityTracker();
@@ -2466,6 +2546,7 @@ public final class LyricsView extends View {
                 layout.active,
                 layout.displayLine.displayIndex + 1
         );
+        target.line = layout.displayLine.line;
         hitTargetCount++;
     }
 
@@ -2769,6 +2850,38 @@ public final class LyricsView extends View {
         return previous.height * 0.5f + blockGap + next.height * 0.5f;
     }
 
+    /**
+     * Dashed underline beneath a line that carries an external annotation. The underline spans the
+     * original lyric text only, so the translated row below it stays unmarked.
+     */
+    private void drawAnnotationUnderline(Canvas canvas, LineLayout layout, float baselineCenter, float fadeAlpha) {
+        float left = Float.MAX_VALUE;
+        float right = -Float.MAX_VALUE;
+        for (DrawGroup group : layout.groups) {
+            if (group.rows == null) {
+                continue;
+            }
+            for (TextRow row : group.rows) {
+                if (row == null || row.text == null || row.text.trim().isEmpty()) {
+                    continue;
+                }
+                float rowLeft = alignedRowLeft(row);
+                left = Math.min(left, rowLeft);
+                right = Math.max(right, rowLeft + row.width);
+            }
+        }
+        if (right <= left) {
+            return;
+        }
+        float baseline = baselineCenter + layout.height * 0.5f - sp(3f);
+        annotationUnderlinePaint.setShader(null);
+        annotationUnderlinePaint.setStyle(Paint.Style.STROKE);
+        annotationUnderlinePaint.setStrokeWidth(Math.max(1f, sp(1.2f)));
+        annotationUnderlinePaint.setPathEffect(new DashPathEffect(new float[]{sp(5f), sp(4f)}, 0f));
+        annotationUnderlinePaint.setColor(Color.WHITE);
+        annotationUnderlinePaint.setAlpha(Math.round(150f * Math.max(0f, Math.min(1f, fadeAlpha))));
+        canvas.drawLine(left, baseline, right, baseline, annotationUnderlinePaint);
+    }
     private void drawTextRow(Canvas canvas, TextRow row, float baseline, DrawGroup group, int rowIndex, float fadeAlpha) {
         float left = alignedRowLeft(row);
         int canvasSave = canvas.save();
@@ -5743,12 +5856,15 @@ public final class LyricsView extends View {
         float bottom;
         float centerY;
         long seekTimeMs;
+        /** The lyric line this row belongs to; null for an interlude row. */
+        LyricsLine line;
         String label = "";
         boolean active;
         int virtualId;
 
         void set(LineHitTarget source) {
             set(source.top, source.bottom, source.centerY, source.seekTimeMs, source.label, source.active, source.virtualId);
+            this.line = source.line;
         }
 
         void set(float top, float bottom, float centerY, long seekTimeMs, String label, boolean active, int virtualId) {

@@ -178,6 +178,17 @@ public final class PlatformTranslationRegression {
                 "Hallelujah", "Jeff Buckley", "", 413_000L, netease.candidates);
         check(ranked.get(0).candidate.id.equals("studio"), "studio ranked first");
         check(ranked.get(1).durationVetoed || !ranked.get(1).acceptable(), "live take rejected");
+
+        // The reverse direction: a live track must not borrow the studio translation either.
+        List<PlatformRecordingMatcher.Score> liveRanked = PlatformRecordingMatcher.rank(
+                "Hallelujah (Live at Bearsville Studios)", "Jeff Buckley", "", 395_000L, netease.candidates);
+        check(liveRanked.get(0).candidate.id.equals("live"), "live take wins for a live track");
+        for (PlatformRecordingMatcher.Score score : liveRanked) {
+            if (score.candidate.id.equals("studio")) {
+                check(score.durationVetoed || !score.acceptable(),
+                        "studio recording rejected for a live track");
+            }
+        }
     }
 
     static void differentLineSplitsAreJoined() {

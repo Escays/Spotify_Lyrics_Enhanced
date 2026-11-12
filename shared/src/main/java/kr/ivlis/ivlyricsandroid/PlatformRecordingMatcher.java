@@ -125,11 +125,21 @@ final class PlatformRecordingMatcher {
         return (title == null ? "" : title) + " " + (album == null ? "" : album);
     }
 
-    /** True when only the candidate carries a version tag that changes the performance. */
+    /**
+     * True when one side carries a version tag that changes the performance and the other does not.
+     * The check runs in both directions: a live take must not borrow the studio translation, and a
+     * studio track must not borrow the live one.
+     */
     private static boolean hasStrictVersionTag(String queryText, String candidateText) {
         Set<String> queryTags = versionTags(queryText);
-        for (String tag : versionTags(candidateText)) {
+        Set<String> candidateTags = versionTags(candidateText);
+        for (String tag : candidateTags) {
             if (STRICT_VERSION_TAGS.contains(tag) && !queryTags.contains(tag)) {
+                return true;
+            }
+        }
+        for (String tag : queryTags) {
+            if (STRICT_VERSION_TAGS.contains(tag) && !candidateTags.contains(tag)) {
                 return true;
             }
         }

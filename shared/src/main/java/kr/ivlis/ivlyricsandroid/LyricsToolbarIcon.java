@@ -43,16 +43,21 @@ final class LyricsToolbarIcon extends Drawable {
             canvas.drawCircle(19f, 12f, 1.7f, paint);
         } else if (type == BULB) {
             paint.setStyle(Paint.Style.STROKE);
+            // A symmetric bulb: dome, short neck, two base lines. The previous arc left an open
+            // wedge on one side and read as a broken circle once it was drawn small.
             shape.reset();
-            shape.moveTo(9f, 18f);
-            shape.lineTo(15f, 18f);
-            shape.moveTo(9.6f, 20.4f);
-            shape.lineTo(14.4f, 20.4f);
+            shape.moveTo(9.3f, 15.1f);
+            shape.cubicTo(9.3f, 12.9f, 6.6f, 11.6f, 6.6f, 9.0f);
+            shape.cubicTo(6.6f, 5.6f, 9.0f, 3.2f, 12f, 3.2f);
+            shape.cubicTo(15.0f, 3.2f, 17.4f, 5.6f, 17.4f, 9.0f);
+            shape.cubicTo(17.4f, 11.6f, 14.7f, 12.9f, 14.7f, 15.1f);
+            shape.close();
             canvas.drawPath(shape, paint);
             shape.reset();
-            shape.addArc(6.5f, 3f, 17.5f, 15.4f, 200f, 300f);
-            shape.lineTo(12f, 18f);
-            shape.close();
+            shape.moveTo(9.8f, 17.5f);
+            shape.lineTo(14.2f, 17.5f);
+            shape.moveTo(10.6f, 20.1f);
+            shape.lineTo(13.4f, 20.1f);
             canvas.drawPath(shape, paint);
         } else if (type == TUNE) {
             paint.setStyle(Paint.Style.STROKE);

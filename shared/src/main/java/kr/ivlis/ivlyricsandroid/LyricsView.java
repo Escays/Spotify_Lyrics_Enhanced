@@ -181,6 +181,9 @@ public final class LyricsView extends View {
     private boolean pronunciationLoading;
     private boolean translationLoading;
     private List<CulturalAnnotation> culturalAnnotations = Collections.emptyList();
+    /** Attribution shown after the last line, so it scrolls with the lyrics instead of sitting fixed. */
+    private String footerText = "";
+    private static final int FOOTER_TEXT_COLOR = 0x8affffff;
     /** Lines that carry an external annotation; these are drawn with a dashed underline. */
     private Set<LyricsLine> annotatedLines = Collections.emptySet();
     private OnAnnotationLongPressListener annotationLongPressListener;
@@ -764,6 +767,17 @@ public final class LyricsView extends View {
             return;
         }
         annotatedLines = next;
+        invalidate();
+    }
+
+    /** Source attribution drawn after the last lyric line; empty removes it. */
+    void setFooterText(String text) {
+        String next = text == null ? "" : text.trim();
+        if (next.equals(footerText)) {
+            return;
+        }
+        footerText = next;
+        invalidateDisplayLineCache();
         invalidate();
     }
 
@@ -1878,6 +1892,17 @@ public final class LyricsView extends View {
         if (displayLine.isInterlude()) {
             return Collections.singletonList(buildInterludeGroup(displayLine.interludeInfo, highlighted, distance));
         }
+        if (displayLine.isFooter()) {
+            return Collections.singletonList(buildSupplementGroup(
+                    displayLine.footerText,
+                    FOOTER_TEXT_COLOR,
+                    displayLine.displayIndex,
+                    "footer",
+                    0,
+                    null,
+                    null
+            ));
+        }
 
         int lineIndex = displayLine.sourceIndex;
         LyricsLine line = displayLine.line;
@@ -2854,6 +2879,47 @@ public final class LyricsView extends View {
      * Dashed underline beneath a line that carries an external annotation. The underline spans the
      * original lyric text only, so the translated row below it stays unmarked.
      */
+    /**
+     * Width of the row up to its last visible glyph. A row's measured width includes trailing spaces
+     * and padding, which made the annotation dashes run past the words they belong to.
+     */
+    private float visibleRowWidth(TextRow row) {
+        if (row == null) {
+            return 0f;
+        }
+        java.util.List<TextSegment> segments = row.segments;
+        if (segments == null || segments.isEmpty()) {
+            return row.width;
+        }
+        int lastVisible = -1;
+        for (int index = 0; index < segments.size(); index++) {
+            TextSegment segment = segments.get(index);
+            if (segment != null && segment.text != null && !segment.text.trim().isEmpty()) {
+                lastVisible = index;
+            }
+        }
+        if (lastVisible < 0) {
+            return 0f;
+        }
+        float width = 0f;
+        for (int index = 0; index <= lastVisible; index++) {
+            TextSegment segment = segments.get(index);
+            width += segment == null ? 0f : segment.width;
+        }
+        TextSegment last = segments.get(lastVisible);
+        if (last != null && last.text != null && !last.text.isEmpty()) {
+            int end = last.text.length();
+            while (end > 0 && Character.isWhitespace(last.text.charAt(end - 1))) {
+                end--;
+            }
+            int trimmed = last.text.length() - end;
+            if (trimmed > 0) {
+                width -= last.width * trimmed / (float) last.text.length();
+            }
+        }
+        return Math.max(0f, width);
+    }
+
     private void drawAnnotationUnderline(Canvas canvas, LineLayout layout, float baselineCenter, float fadeAlpha) {
         List<DrawGroup> groups = layout.groups;
         if (groups == null || groups.isEmpty()) {
@@ -2881,10 +2947,13 @@ public final class LyricsView extends View {
             for (TextRow row : group.rows) {
                 float baseline = rowTop + group.baselineOffset(row);
                 if (!group.supplement && row != null && row.text != null && !row.text.trim().isEmpty()) {
-                    float rowLeft = alignedRowLeft(row);
-                    float underline = baseline + sp(2f);
-                    canvas.drawLine(rowLeft, underline, rowLeft + row.width, underline,
-                            annotationUnderlinePaint);
+                    float visibleWidth = visibleRowWidth(row);
+                    if (visibleWidth > 0f) {
+                        float rowLeft = alignedRowLeft(row);
+                        float underline = baseline + sp(5f);
+                        canvas.drawLine(rowLeft, underline, rowLeft + visibleWidth, underline,
+                                annotationUnderlinePaint);
+                    }
                 }
                 rowTop += group.rowHeight(row);
             }
@@ -4395,6 +4464,11 @@ public final class LyricsView extends View {
             LyricsLine line = lines.get(0);
             displayLines.add(DisplayLine.real(line, 0, 0, interludeInfoForLine(line, 0, lineCount)));
         }
+        if (!footerText.isEmpty()) {
+            // The attribution is a synthetic trailing entry: it scrolls with the lyrics, has no
+            // timing, and gets no tap target.
+            displayLines.add(DisplayLine.footer(footerText, displayLines.size()));
+        }
         remapDisplayCenter(cachedDisplayLines, displayLines);
         cachedDisplayLines = displayLines;
         displayLineCacheStartMs = cacheStartMs;
@@ -4807,6 +4881,9 @@ public final class LyricsView extends View {
             return LineVisualState.INACTIVE;
         }
         DisplayLine displayLine = displayLines.get(index);
+        if (displayLine.isFooter()) {
+            return LineVisualState.INACTIVE;
+        }
         if (!displayLine.isTimed()) {
             return index == findActiveDisplayIndex(displayLines)
                     ? LineVisualState.ACTIVE
@@ -5546,6 +5623,8 @@ public final class LyricsView extends View {
         final int sourceIndex;
         final int displayIndex;
         final InterludeInfo interludeInfo;
+        /** Set on the synthetic last entry that carries the lyric/translation attribution. */
+        final String footerText;
         // LyricsLine and VocalPart copy their lists and expose final values.
         // Display rows are replaced on every result/display-list invalidation;
         // only source-derived metadata is retained, never visual frame state.
@@ -5554,18 +5633,28 @@ public final class LyricsView extends View {
         RowReflow reflow;
 
         static DisplayLine real(LyricsLine line, int sourceIndex, int displayIndex, InterludeInfo interludeInfo) {
-            return new DisplayLine(line, sourceIndex, displayIndex, interludeInfo);
+            return new DisplayLine(line, sourceIndex, displayIndex, interludeInfo, "");
         }
 
         static DisplayLine virtual(int sourceIndex, int displayIndex, InterludeInfo interludeInfo) {
-            return new DisplayLine(null, sourceIndex, displayIndex, interludeInfo);
+            return new DisplayLine(null, sourceIndex, displayIndex, interludeInfo, "");
         }
 
-        DisplayLine(LyricsLine line, int sourceIndex, int displayIndex, InterludeInfo interludeInfo) {
+        static DisplayLine footer(String text, int displayIndex) {
+            return new DisplayLine(null, -1, displayIndex, InterludeInfo.none(), text);
+        }
+
+        DisplayLine(LyricsLine line, int sourceIndex, int displayIndex, InterludeInfo interludeInfo,
+                String footerText) {
             this.line = line;
             this.sourceIndex = sourceIndex;
             this.displayIndex = displayIndex;
             this.interludeInfo = interludeInfo == null ? InterludeInfo.none() : interludeInfo;
+            this.footerText = footerText == null ? "" : footerText;
+        }
+
+        boolean isFooter() {
+            return !footerText.isEmpty();
         }
 
         boolean isInterlude() {

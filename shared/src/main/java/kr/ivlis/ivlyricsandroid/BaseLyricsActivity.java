@@ -3919,14 +3919,14 @@ public class BaseLyricsActivity extends Activity implements
             requestSongMeaning(true);
             return true;
         });
-        LinearLayout.LayoutParams meaningParams = new LinearLayout.LayoutParams(dp(40), dp(48));
+        LinearLayout.LayoutParams meaningParams = new LinearLayout.LayoutParams(dp(38), dp(44));
         metaRow.addView(lyricsMeaningButton, meaningParams);
 
         ImageButton settings = lyricsBareToolbarButton(LyricsToolbarIcon.MORE, ui("settings.title"));
         settings.setTag("lyrics.settings");
         settings.setOnClickListener(view -> showSettingsPanel(true));
-        LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(dp(40), dp(48));
-        settingsParams.leftMargin = dp(2);
+        LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(dp(38), dp(44));
+        settingsParams.leftMargin = 0;
         metaRow.addView(settings, settingsParams);
         setMeaningButtonState(MeaningButtonState.IDLE);
         attachLyricsMetaSwipe(lyricsTitleView);
@@ -3996,14 +3996,16 @@ public class BaseLyricsActivity extends Activity implements
         transportParams.topMargin = dp(6);
         content.addView(lyricsTransportBar, transportParams);
 
-        lyricsProviderAttributionView = createLyricsProviderAttributionView(false);
-        LinearLayout.LayoutParams attributionParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        attributionParams.gravity = Gravity.CENTER_HORIZONTAL;
-        attributionParams.bottomMargin = dp(2);
-        content.addView(lyricsProviderAttributionView.container, attributionParams);
+        if (!IvLyricsBridge.isEmbedded(this)) {
+            lyricsProviderAttributionView = createLyricsProviderAttributionView(false);
+            LinearLayout.LayoutParams attributionParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            attributionParams.gravity = Gravity.CENTER_HORIZONTAL;
+            attributionParams.bottomMargin = dp(2);
+            content.addView(lyricsProviderAttributionView.container, attributionParams);
+        }
         updateLyricsProviderAttribution(currentLyricsResult);
 
         attachPageSwipe(header, false, false);
@@ -4113,7 +4115,7 @@ public class BaseLyricsActivity extends Activity implements
         boolean compact = lyricsPageSettings != null && lyricsPageSettings.playButtonOnTheRight();
         column.addView(progressRow, progressRowParams);
         if (compact) {
-            LinearLayout.LayoutParams inline = new LinearLayout.LayoutParams(dp(34), dp(34));
+            LinearLayout.LayoutParams inline = new LinearLayout.LayoutParams(dp(40), dp(40));
             inline.leftMargin = dp(2);
             progressRow.addView(lyricsPlayPauseButton, inline);
         } else {
@@ -4123,7 +4125,7 @@ public class BaseLyricsActivity extends Activity implements
             LinearLayout.LayoutParams buttonRowParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             buttonRowParams.topMargin = dp(2);
-            buttonRow.addView(lyricsPlayPauseButton, new LinearLayout.LayoutParams(dp(38), dp(38)));
+            buttonRow.addView(lyricsPlayPauseButton, new LinearLayout.LayoutParams(dp(46), dp(46)));
             column.addView(buttonRow, buttonRowParams);
         }
         return column;
@@ -4666,7 +4668,8 @@ public class BaseLyricsActivity extends Activity implements
         ImageButton button = new ImageButton(this);
         button.setImageDrawable(new LyricsToolbarIcon(icon));
         button.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        button.setPadding(dp(11), dp(13), dp(11), dp(13));
+        // The box is the touch target; the glyph used to occupy only 18 dp of it.
+        button.setPadding(dp(7), dp(9), dp(7), dp(9));
         button.setBackground(null);
         button.setContentDescription(description);
         button.setTooltipText(description);
@@ -12684,6 +12687,17 @@ public class BaseLyricsActivity extends Activity implements
         return lyricsMetaMenuPopup != null && lyricsMetaMenuPopup.isShowing();
     }
 
+    /**
+     * The karaoke pill's long press lands here. The title uses the same sheet, so both entries show
+     * one set of per-song values.
+     */
+    protected void openLyricsMetaSettings() {
+        if (lyricsTitleView == null) {
+            return;
+        }
+        showLyricsMetaMenuPopup(lyricsTitleView);
+    }
+
     private void showLyricsMetaMenuPopup(View anchor) {
         if (rootView == null || lyricsLanguageSettingsPanel == null) {
             return;
@@ -16271,6 +16285,14 @@ public class BaseLyricsActivity extends Activity implements
 
     private void updateLyricsProviderAttribution(LyricsResult result) {
         String provider = LyricsProviderAttribution.displayName(result);
+        // Inside Spotify the attribution lives after the last lyric line instead of under the bar.
+        String footer = IvLyricsBridge.isEmbedded(this) ? lyricsSourceFooterText(result) : "";
+        if (lyricsView != null) {
+            lyricsView.setFooterText(footer);
+        }
+        if (landscapeLyricsView != null) {
+            landscapeLyricsView.setFooterText(footer);
+        }
         updateLyricsProviderAttributionView(lyricsProviderAttributionView, provider, "");
         updateLyricsProviderAttributionView(
                 landscapeLyricsProviderAttributionView,
@@ -16279,6 +16301,34 @@ public class BaseLyricsActivity extends Activity implements
                         ? ""
                         : contributorCreditText(result.contributors, 3, false)
         );
+    }
+
+    /** "Open Lyrics · 翻译: 网易云音乐" — the original source plus whoever supplied the translation. */
+    private String lyricsSourceFooterText(LyricsResult result) {
+        String provider = LyricsProviderAttribution.displayName(result);
+        String translation = translationSourceLabel(result);
+        StringBuilder text = new StringBuilder();
+        if (provider != null && !provider.trim().isEmpty()) {
+            text.append(provider.trim());
+        }
+        if (!translation.isEmpty()) {
+            if (text.length() > 0) {
+                text.append("  ·  ");
+            }
+            text.append(ui("lyrics.translation")).append(": ").append(translation);
+        }
+        return text.toString();
+    }
+
+    private String translationSourceLabel(LyricsResult result) {
+        String ai = result == null || result.translationProviderLabel == null
+                ? "" : result.translationProviderLabel.trim();
+        String platform = currentPlatformSnapshot == null || currentPlatformSnapshot.providerLabel == null
+                ? "" : currentPlatformSnapshot.providerLabel.trim();
+        if (!platform.isEmpty() && !ai.isEmpty() && !platform.equals(ai)) {
+            return platform + " + " + ai;
+        }
+        return !platform.isEmpty() ? platform : ai;
     }
 
     private void updateLyricsProviderAttributionView(

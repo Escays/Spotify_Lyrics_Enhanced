@@ -19,6 +19,8 @@ public final class SpotifyLyricsActivity extends BaseLyricsActivity {
     @Override protected View createLyricsFooterAccessory() {
         // The control speaks the app's UI language, like the rest of this page, rather than the phone's.
         karaokeToolbar = new SpotifyKaraokeToolbar(this, KARAOKE, this::localizedText);
+        // Long press mirrors the translation pill: it opens the per-song settings for this track.
+        karaokeToolbar.setOnLongPressListener(this::openLyricsMetaSettings);
         if (karaokeOwner == this) bindKaraokeToolbar();
         return karaokeToolbar;
     }

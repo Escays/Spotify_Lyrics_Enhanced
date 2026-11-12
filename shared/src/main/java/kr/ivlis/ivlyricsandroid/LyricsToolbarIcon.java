@@ -37,27 +37,47 @@ final class LyricsToolbarIcon extends Drawable {
         canvas.translate(bounds.left, bounds.top);
         canvas.scale(bounds.width() / 24f, bounds.height() / 24f);
         if (type == MORE) {
+            // Vertical, like the reference: three dots stacked, not a row.
             paint.setStyle(Paint.Style.FILL);
-            canvas.drawCircle(5f, 12f, 1.7f, paint);
-            canvas.drawCircle(12f, 12f, 1.7f, paint);
-            canvas.drawCircle(19f, 12f, 1.7f, paint);
+            canvas.drawCircle(12f, 5.5f, 2f, paint);
+            canvas.drawCircle(12f, 12f, 2f, paint);
+            canvas.drawCircle(12f, 18.5f, 2f, paint);
         } else if (type == BULB) {
-            paint.setStyle(Paint.Style.STROKE);
-            // A symmetric bulb: dome, short neck, two base lines. The previous arc left an open
-            // wedge on one side and read as a broken circle once it was drawn small.
+            // Material's outlined light bulb: a hollow dome on a plated neck, drawn even-odd so the
+            // glass reads as an outline instead of a blob.
+            paint.setStyle(Paint.Style.FILL);
+            paint.setPathEffect(null);
             shape.reset();
-            shape.moveTo(9.3f, 15.1f);
-            shape.cubicTo(9.3f, 12.9f, 6.6f, 11.6f, 6.6f, 9.0f);
-            shape.cubicTo(6.6f, 5.6f, 9.0f, 3.2f, 12f, 3.2f);
-            shape.cubicTo(15.0f, 3.2f, 17.4f, 5.6f, 17.4f, 9.0f);
-            shape.cubicTo(17.4f, 11.6f, 14.7f, 12.9f, 14.7f, 15.1f);
+            shape.setFillType(Path.FillType.EVEN_ODD);
+            shape.moveTo(9f, 21f);
+            shape.cubicTo(9f, 21.55f, 9.45f, 22f, 10f, 22f);
+            shape.lineTo(14f, 22f);
+            shape.cubicTo(14.55f, 22f, 15f, 21.55f, 15f, 21f);
+            shape.lineTo(15f, 20f);
+            shape.lineTo(9f, 20f);
             shape.close();
-            canvas.drawPath(shape, paint);
-            shape.reset();
-            shape.moveTo(9.8f, 17.5f);
-            shape.lineTo(14.2f, 17.5f);
-            shape.moveTo(10.6f, 20.1f);
-            shape.lineTo(13.4f, 20.1f);
+            shape.moveTo(12f, 2f);
+            shape.cubicTo(8.14f, 2f, 5f, 5.14f, 5f, 9f);
+            shape.cubicTo(5f, 11.38f, 6.19f, 13.47f, 8f, 14.74f);
+            shape.lineTo(8f, 17f);
+            shape.cubicTo(8f, 17.55f, 8.45f, 18f, 9f, 18f);
+            shape.lineTo(15f, 18f);
+            shape.cubicTo(15.55f, 18f, 16f, 17.55f, 16f, 17f);
+            shape.lineTo(16f, 14.74f);
+            shape.cubicTo(17.81f, 13.47f, 19f, 11.38f, 19f, 9f);
+            shape.cubicTo(19f, 5.14f, 15.86f, 2f, 12f, 2f);
+            shape.close();
+            shape.moveTo(14.85f, 13.1f);
+            shape.lineTo(14f, 13.7f);
+            shape.lineTo(14f, 16f);
+            shape.lineTo(10f, 16f);
+            shape.lineTo(10f, 13.7f);
+            shape.lineTo(9.15f, 13.1f);
+            shape.cubicTo(7.8f, 12.16f, 7f, 10.63f, 7f, 9f);
+            shape.cubicTo(7f, 6.24f, 9.24f, 4f, 12f, 4f);
+            shape.cubicTo(14.76f, 4f, 17f, 6.24f, 17f, 9f);
+            shape.cubicTo(17f, 10.63f, 16.2f, 12.16f, 14.85f, 13.1f);
+            shape.close();
             canvas.drawPath(shape, paint);
         } else if (type == TUNE) {
             paint.setStyle(Paint.Style.STROKE);

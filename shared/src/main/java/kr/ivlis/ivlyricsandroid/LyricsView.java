@@ -2927,10 +2927,13 @@ public final class LyricsView extends View {
         }
         annotationUnderlinePaint.setShader(null);
         annotationUnderlinePaint.setStyle(Paint.Style.STROKE);
-        annotationUnderlinePaint.setStrokeWidth(Math.max(1f, sp(1.2f)));
-        annotationUnderlinePaint.setPathEffect(new DashPathEffect(new float[]{sp(5f), sp(4f)}, 0f));
+        // The reference draws round dots: a near-zero dash, a gap of 2.5x the dot, and a round cap.
+        float dot = sp(2f);
+        annotationUnderlinePaint.setStrokeWidth(dot);
+        annotationUnderlinePaint.setStrokeCap(Paint.Cap.ROUND);
+        annotationUnderlinePaint.setPathEffect(new DashPathEffect(new float[]{0.01f, dot * 2.5f}, 0f));
         annotationUnderlinePaint.setColor(Color.WHITE);
-        annotationUnderlinePaint.setAlpha(Math.round(150f * Math.max(0f, Math.min(1f, fadeAlpha))));
+        annotationUnderlinePaint.setAlpha(Math.round(140f * Math.max(0f, Math.min(1f, fadeAlpha))));
         // Walk the same layout the renderer used, but only underline the lyric itself: a translation or
         // pronunciation group sits below it and must neither carry the dashes nor push them down.
         float top = baselineCenter - groupsHeight(groups) * 0.5f;

@@ -3916,7 +3916,7 @@ public class BaseLyricsActivity extends Activity implements
         // Only the bulb and the three dots live here; both are bare icons with a 48 dp touch area.
         lyricsMeaningButton = lyricsBareToolbarButton(LyricsToolbarIcon.BULB, ui("lyrics_meaning.button"));
         lyricsMeaningButton.setTag("lyrics.meaning");
-        lyricsMeaningButton.setOnClickListener(view -> openSongMeaning(lastMeaningFocusLine));
+        lyricsMeaningButton.setOnClickListener(view -> openSongMeaning(-1));
         lyricsMeaningButton.setOnLongClickListener(view -> {
             requestSongMeaning(true);
             return true;
@@ -4117,7 +4117,7 @@ public class BaseLyricsActivity extends Activity implements
         boolean compact = lyricsPageSettings != null && lyricsPageSettings.playButtonOnTheRight();
         column.addView(progressRow, progressRowParams);
         if (compact) {
-            LinearLayout.LayoutParams inline = new LinearLayout.LayoutParams(dp(40), dp(40));
+            LinearLayout.LayoutParams inline = new LinearLayout.LayoutParams(dp(46), dp(46));
             inline.leftMargin = dp(2);
             progressRow.addView(lyricsPlayPauseButton, inline);
         } else {
@@ -4127,7 +4127,7 @@ public class BaseLyricsActivity extends Activity implements
             LinearLayout.LayoutParams buttonRowParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             buttonRowParams.topMargin = dp(2);
-            buttonRow.addView(lyricsPlayPauseButton, new LinearLayout.LayoutParams(dp(46), dp(46)));
+            buttonRow.addView(lyricsPlayPauseButton, new LinearLayout.LayoutParams(dp(56), dp(56)));
             column.addView(buttonRow, buttonRowParams);
         }
         return column;
@@ -4331,30 +4331,327 @@ public class BaseLyricsActivity extends Activity implements
 
     // ---- Genius description and per-line annotations ----
 
+    private static final String MEANING_TAB_ABOUT = "about";
+    private static final String MEANING_TAB_NOTES = "notes";
+    private String meaningTab = MEANING_TAB_ABOUT;
+    private LinearLayout meaningSheetRoot;
+    private LinearLayout meaningTabsRow;
+    private TextView meaningTitleView;
+    private ScrollView meaningScrollView;
+    private View meaningFocusCard;
+
+    /**
+     * Opens the song sheet. The bulb asks about the song (-1), a long press on an annotated line
+     * opens that line's note, and the sheet slides up from the bottom either way.
+     */
     private void openSongMeaning(int focusLineIndex) {
         if (lyricsPageSettings != null && !lyricsPageSettings.meaningsEnabled()) {
             return;
         }
         lastMeaningFocusLine = focusLineIndex;
-        if (meaningPopup == null) {
-            meaningContainer = new LinearLayout(this);
-            meaningContainer.setOrientation(LinearLayout.VERTICAL);
-            meaningContainer.setPadding(dp(20), dp(16), dp(20), dp(20));
-            ScrollView scroll = new ScrollView(this);
-            scroll.addView(meaningContainer, new ScrollView.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            meaningPopup = new PopupWindow(scroll,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    Math.min(dp(560), (int) (getResources().getDisplayMetrics().heightPixels * 0.66f)),
-                    true);
-            meaningPopup.setBackgroundDrawable(roundDrawable(Color.argb(250, 12, 13, 18), dp(22)));
-            meaningPopup.setOutsideTouchable(true);
-        }
+        SongAnnotation focused = focusLineIndex >= 0 ? findAnnotationForLine(focusLineIndex) : null;
+        meaningTab = focused != null ? MEANING_TAB_NOTES : MEANING_TAB_ABOUT;
+        ensureMeaningSheet();
         renderMeaningPanel(focusLineIndex);
-        meaningPopup.showAtLocation(lyricsPage == null ? rootView : lyricsPage, Gravity.BOTTOM, 0, 0);
+        if (!meaningPopup.isShowing()) {
+            View anchor = lyricsPage == null ? rootView : lyricsPage;
+            meaningSheetRoot.setTranslationY(dp(64));
+            meaningSheetRoot.setAlpha(0f);
+            meaningPopup.showAtLocation(anchor, Gravity.BOTTOM, 0, 0);
+            meaningSheetRoot.animate()
+                    .translationY(0f)
+                    .alpha(1f)
+                    .setDuration(260L)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+        }
         if (!songMeaningLoaded && !songMeaningLoading) {
             requestSongMeaning(false);
         }
+    }
+
+    /** Builds the sheet's shell once: drag handle, title, tabs and the scrolling body. */
+    private void ensureMeaningSheet() {
+        if (meaningPopup != null) {
+            return;
+        }
+        meaningSheetRoot = new LinearLayout(this);
+        meaningSheetRoot.setOrientation(LinearLayout.VERTICAL);
+        // Bottom padding clears the gesture area, like the reference sheet's navigationBarsPadding.
+        meaningSheetRoot.setPadding(dp(22), dp(8), dp(22), dp(30));
+        meaningSheetRoot.setBackground(meaningSheetBackground());
+
+        View handle = new View(this);
+        handle.setBackground(roundDrawable(Color.argb(96, 255, 255, 255), dp(2)));
+        LinearLayout.LayoutParams handleParams = new LinearLayout.LayoutParams(dp(34), dp(4));
+        handleParams.gravity = Gravity.CENTER_HORIZONTAL;
+        handleParams.topMargin = dp(4);
+        handleParams.bottomMargin = dp(16);
+        meaningSheetRoot.addView(handle, handleParams);
+
+        meaningTitleView = label("", 23f, Color.WHITE, AppFonts.bold(this));
+        meaningSheetRoot.addView(meaningTitleView);
+
+        meaningTabsRow = new LinearLayout(this);
+        meaningTabsRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams tabsParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        tabsParams.topMargin = dp(10);
+        meaningSheetRoot.addView(meaningTabsRow, tabsParams);
+        addMeaningTab(ui("lyrics_meaning.description"), MEANING_TAB_ABOUT, 0);
+        addMeaningTab(ui("lyrics_meaning.annotations"), MEANING_TAB_NOTES, 1);
+
+        meaningScrollView = new ScrollView(this);
+        meaningScrollView.setClipToPadding(false);
+        meaningScrollView.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+        meaningContainer = new LinearLayout(this);
+        meaningContainer.setOrientation(LinearLayout.VERTICAL);
+        meaningScrollView.addView(meaningContainer, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        scrollParams.topMargin = dp(14);
+        meaningSheetRoot.addView(meaningScrollView, scrollParams);
+
+        int height = Math.min(dp(640), (int) (getResources().getDisplayMetrics().heightPixels * 0.72f));
+        meaningPopup = new PopupWindow(meaningSheetRoot, ViewGroup.LayoutParams.MATCH_PARENT, height, true);
+        meaningPopup.setOutsideTouchable(true);
+        meaningPopup.setFocusable(true);
+        meaningPopup.setBackgroundDrawable(
+                new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+    }
+
+    private void addMeaningTab(String text, String tabId, int index) {
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setTag(tabId);
+        TextView label = label(text, 15f, Color.WHITE, AppFonts.bold(this));
+        label.setGravity(Gravity.CENTER);
+        column.addView(label);
+        View indicator = new View(this);
+        LinearLayout.LayoutParams indicatorParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(2));
+        indicatorParams.topMargin = dp(5);
+        column.addView(indicator, indicatorParams);
+        column.setOnClickListener(view -> {
+            meaningTab = tabId;
+            renderMeaningPanel(lastMeaningFocusLine);
+        });
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        if (index > 0) {
+            params.leftMargin = dp(22);
+        }
+        meaningTabsRow.addView(column, params);
+    }
+
+    private void updateMeaningTabs() {
+        if (meaningTabsRow == null) {
+            return;
+        }
+        for (int index = 0; index < meaningTabsRow.getChildCount(); index++) {
+            LinearLayout column = (LinearLayout) meaningTabsRow.getChildAt(index);
+            boolean selected = (index == 0 ? MEANING_TAB_ABOUT : MEANING_TAB_NOTES).equals(meaningTab);
+            TextView label = (TextView) column.getChildAt(0);
+            label.setTextColor(selected ? Color.WHITE : Color.argb(138, 255, 255, 255));
+            View indicator = column.getChildAt(1);
+            indicator.setBackground(roundDrawable(
+                    selected ? Color.WHITE : Color.TRANSPARENT, dp(1)));
+        }
+        if (meaningTitleView != null) {
+            meaningTitleView.setText(MEANING_TAB_NOTES.equals(meaningTab)
+                    ? ui("lyrics_meaning.annotations")
+                    : ui("lyrics_meaning.description"));
+        }
+    }
+
+    /** The sheet takes the song's own colour, darkened, so white text reads on any of them. */
+    private android.graphics.drawable.Drawable meaningSheetBackground() {
+        int base = 0xff12131a;
+        if (currentTrack != null) {
+            Integer cached = stableBackgroundColors.get(currentTrack.stableKey());
+            if (cached != null) {
+                base = cached;
+            }
+        }
+        int red = Math.round(Color.red(base) * 0.62f);
+        int green = Math.round(Color.green(base) * 0.62f);
+        int blue = Math.round(Color.blue(base) * 0.62f);
+        android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+        drawable.setColor(Color.argb(255, red, green, blue));
+        drawable.setCornerRadii(new float[]{dp(28), dp(28), dp(28), dp(28), 0f, 0f, 0f, 0f});
+        return drawable;
+    }
+
+    private SongAnnotation findAnnotationForLine(int lineIndex) {
+        if (songMeaning == null || lineIndex < 0) {
+            return null;
+        }
+        for (SongAnnotation annotation : songMeaning.placedAnnotations) {
+            if (annotation.lineIndexes.contains(lineIndex)) {
+                return annotation;
+            }
+        }
+        return null;
+    }
+
+    private boolean meaningIsEmpty() {
+        return songMeaning == null || songMeaning.isEmpty();
+    }
+
+    private void renderMeaningPanel(int focusLineIndex) {
+        if (meaningContainer == null || meaningSheetRoot == null) {
+            return;
+        }
+        meaningFocusCard = null;
+        meaningContainer.removeAllViews();
+        updateMeaningTabs();
+
+        if (meaningIsEmpty() && songMeaningLoading) {
+            meaningContainer.addView(panelText(ui("lyrics_meaning.loading"), 14f,
+                    Color.argb(184, 255, 255, 255)));
+            return;
+        }
+        if (meaningIsEmpty() && !songMeaningError.isEmpty()) {
+            meaningContainer.addView(panelText(ui("lyrics_meaning.error"), 14f,
+                    Color.argb(215, 255, 160, 160)));
+            meaningContainer.addView(panelText(songMeaningError, 12f,
+                    Color.argb(150, 255, 255, 255)));
+            TextView retry = panelButton(ui("lyrics_meaning.retry"));
+            retry.setOnClickListener(view -> requestSongMeaning(true));
+            meaningContainer.addView(retry, topMargin(matchWrap(), dp(10)));
+            return;
+        }
+        if (meaningIsEmpty()) {
+            meaningContainer.addView(panelText(ui("lyrics_meaning.empty"), 14f,
+                    Color.argb(184, 255, 255, 255)));
+            TextView retry = panelButton(ui("lyrics_meaning.retry"));
+            retry.setOnClickListener(view -> requestSongMeaning(true));
+            meaningContainer.addView(retry, topMargin(matchWrap(), dp(10)));
+            return;
+        }
+
+        if (MEANING_TAB_NOTES.equals(meaningTab)) {
+            renderMeaningNotes(focusLineIndex);
+        } else {
+            renderMeaningAbout();
+        }
+        addMeaningFooter();
+
+        final View target = meaningFocusCard;
+        if (target != null && meaningScrollView != null) {
+            meaningScrollView.post(() -> meaningScrollView.smoothScrollTo(0, Math.max(0, target.getTop() - dp(8))));
+        }
+    }
+
+    private void renderMeaningAbout() {
+        if (!songMeaning.title.isEmpty() || !songMeaning.artist.isEmpty()) {
+            TextView meta = label(songMeaning.title + " \u00b7 " + songMeaning.artist, 14f,
+                    Color.argb(178, 255, 255, 255), AppFonts.regular(this));
+            meaningContainer.addView(meta);
+        }
+        if (!songMeaning.hasDescription()) {
+            meaningContainer.addView(panelText(ui("lyrics_meaning.empty"), 14f,
+                    Color.argb(184, 255, 255, 255)), topMargin(matchWrap(), dp(12)));
+            return;
+        }
+        String description = songMeaningShowTranslation && songMeaningTranslation != null
+                && !songMeaningTranslation.description.isEmpty()
+                ? songMeaningTranslation.description
+                : songMeaning.description;
+        TextView body = label(description, 16f, Color.argb(235, 255, 255, 255), AppFonts.regular(this));
+        body.setLineSpacing(dp(7), 1f);
+        meaningContainer.addView(body, topMargin(matchWrap(), dp(16)));
+    }
+
+    private void renderMeaningNotes(int focusLineIndex) {
+        List<SongAnnotation> placed = songMeaning.placedAnnotations;
+        if (placed.isEmpty()) {
+            meaningContainer.addView(panelText(ui("lyrics_meaning.empty"), 14f,
+                    Color.argb(184, 255, 255, 255)));
+        }
+        for (SongAnnotation annotation : placed) {
+            boolean focused = focusLineIndex >= 0 && annotation.lineIndexes.contains(focusLineIndex);
+            addMeaningNoteCard(annotation, focused, false);
+        }
+        if (!songMeaning.unplacedAnnotations.isEmpty()) {
+            TextView heading = label(ui("lyrics_meaning.unplaced"), 13f,
+                    Color.argb(160, 255, 255, 255), AppFonts.bold(this));
+            meaningContainer.addView(heading, topMargin(matchWrap(), dp(20)));
+            for (SongAnnotation annotation : songMeaning.unplacedAnnotations) {
+                addMeaningNoteCard(annotation, false, true);
+            }
+        }
+    }
+
+    private void addMeaningNoteCard(SongAnnotation annotation, boolean focused, boolean unplaced) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackground(roundDrawable(
+                focused ? Color.argb(48, 255, 255, 255) : Color.argb(18, 255, 255, 255), dp(14)));
+
+        String fragment = annotation.fragment.replace('\n', ' ').trim();
+        TextView quote = label(unplaced ? "\u201c" + fragment + "\u201d" : fragment,
+                unplaced ? 14f : 17f, Color.WHITE, AppFonts.bold(this));
+        quote.setLineSpacing(dp(4), 1f);
+        card.addView(quote);
+
+        String translated = songMeaningShowTranslation && songMeaningTranslation != null
+                ? songMeaningTranslation.bodyFor(annotation)
+                : "";
+        TextView body = label(translated.isEmpty() ? annotation.body : translated,
+                unplaced ? 14f : 15f, Color.argb(224, 255, 255, 255), AppFonts.regular(this));
+        body.setLineSpacing(dp(6), 1f);
+        card.addView(body, topMargin(matchWrap(), dp(10)));
+
+        if (!annotation.url.isEmpty()) {
+            TextView link = label(ui("lyrics_meaning.open_genius"), 13f,
+                    Color.argb(200, 150, 205, 255), AppFonts.regular(this));
+            link.setOnClickListener(view -> openMeaningUrl(annotation.url));
+            card.addView(link, topMargin(matchWrap(), dp(8)));
+        }
+        meaningContainer.addView(card, topMargin(matchWrap(), dp(10)));
+        if (focused && meaningFocusCard == null) {
+            meaningFocusCard = card;
+        }
+    }
+
+    /** The reference puts the two chips at the end of the text, not pinned to the sheet. */
+    private void addMeaningFooter() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView translate = meaningChip(songMeaningShowTranslation
+                ? ui("lyrics_meaning.original")
+                : ui("lyrics_meaning.translated"));
+        translate.setOnClickListener(view -> toggleMeaningTranslation());
+        row.addView(translate, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        if (songMeaning != null && !songMeaning.url.isEmpty()) {
+            TextView source = meaningChip(ui("lyrics_meaning.open_genius"));
+            source.setOnClickListener(view -> openMeaningUrl(songMeaning.url));
+            LinearLayout.LayoutParams sourceParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            sourceParams.leftMargin = dp(12);
+            row.addView(source, sourceParams);
+        }
+        meaningContainer.addView(row, topMargin(matchWrap(), dp(22)));
+    }
+
+    /** Spotify's small outlined pill, as the reference draws its translate control. */
+    private TextView meaningChip(String text) {
+        TextView chip = label(text, 13f, Color.WHITE, AppFonts.bold(this));
+        chip.setPadding(dp(14), dp(7), dp(14), dp(7));
+        android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
+        shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        shape.setColor(Color.TRANSPARENT);
+        shape.setStroke(dp(1), Color.argb(128, 255, 255, 255));
+        chip.setBackground(shape);
+        makeRemoteFocusable(chip);
+        return chip;
     }
 
     private void requestSongMeaning(boolean force) {
@@ -4408,7 +4705,6 @@ public class BaseLyricsActivity extends Activity implements
                 }));
     }
 
-    /** Re-places an already loaded meaning on freshly displayed lyrics, without another network call. */
     private void refreshSongMeaningForLyrics(LyricsResult result) {
         if (lyricsPageSettings == null || !lyricsPageSettings.meaningsEnabled()) {
             if (lyricsView != null) {
@@ -4465,141 +4761,6 @@ public class BaseLyricsActivity extends Activity implements
         }
     }
 
-    private void renderMeaningPanel(int focusLineIndex) {
-        if (meaningContainer == null) {
-            return;
-        }
-        meaningContainer.removeAllViews();
-        TextView title = panelText(ui("lyrics_meaning.title"), 16f, Color.WHITE);
-        title.setTypeface(AppFonts.bold(this));
-        meaningContainer.addView(title);
-
-        TextView closeButton = panelButton(ui("lyrics_enhance.close"));
-        closeButton.setOnClickListener(view -> {
-            if (meaningPopup != null) {
-                meaningPopup.dismiss();
-            }
-        });
-        meaningContainer.addView(closeButton);
-
-        if (songMeaningLoading) {
-            meaningContainer.addView(panelText(ui("lyrics_meaning.loading"), 12f,
-                    Color.argb(180, 255, 255, 255)));
-            return;
-        }
-        if (!songMeaningError.isEmpty()) {
-            meaningContainer.addView(panelText(ui("lyrics_meaning.error"), 12f,
-                    Color.argb(200, 255, 160, 160)));
-            meaningContainer.addView(panelText(songMeaningError, 10f, Color.argb(150, 255, 255, 255)));
-            TextView retry = panelButton(ui("lyrics_meaning.retry"));
-            retry.setOnClickListener(view -> requestSongMeaning(true));
-            meaningContainer.addView(retry);
-            return;
-        }
-        if (songMeaning == null || songMeaning.isEmpty()) {
-            meaningContainer.addView(panelText(ui("lyrics_meaning.empty"), 12f,
-                    Color.argb(180, 255, 255, 255)));
-            TextView retry = panelButton(ui("lyrics_meaning.retry"));
-            retry.setOnClickListener(view -> requestSongMeaning(true));
-            meaningContainer.addView(retry);
-            return;
-        }
-
-        if (!songMeaning.artist.isEmpty() || !songMeaning.title.isEmpty()) {
-            meaningContainer.addView(panelText(songMeaning.title + " — " + songMeaning.artist, 11f,
-                    Color.argb(170, 255, 255, 255)));
-        }
-
-        if (songMeaning.hasDescription()) {
-            TextView heading = panelText(ui("lyrics_meaning.description"), 13f, Color.WHITE);
-            heading.setTypeface(AppFonts.bold(this));
-            LinearLayout.LayoutParams headingParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            headingParams.topMargin = dp(14);
-            meaningContainer.addView(heading, headingParams);
-            String description = songMeaningShowTranslation && songMeaningTranslation != null
-                    && !songMeaningTranslation.description.isEmpty()
-                    ? songMeaningTranslation.description
-                    : songMeaning.description;
-            meaningContainer.addView(panelText(description, 12f, Color.argb(214, 255, 255, 255)));
-        }
-
-        List<SongAnnotation> placed = songMeaning.placedAnnotations;
-        if (!placed.isEmpty()) {
-            TextView heading = panelText(ui("lyrics_meaning.annotations"), 13f, Color.WHITE);
-            heading.setTypeface(AppFonts.bold(this));
-            LinearLayout.LayoutParams headingParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            headingParams.topMargin = dp(16);
-            meaningContainer.addView(heading, headingParams);
-            for (SongAnnotation annotation : placed) {
-                boolean focused = focusLineIndex >= 0 && annotation.lineIndexes.contains(focusLineIndex);
-                addAnnotationBlock(annotation, focused);
-            }
-        }
-
-        if (!songMeaning.unplacedAnnotations.isEmpty()) {
-            TextView heading = panelText(ui("lyrics_meaning.unplaced"), 13f, Color.WHITE);
-            heading.setTypeface(AppFonts.bold(this));
-            LinearLayout.LayoutParams headingParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            headingParams.topMargin = dp(16);
-            meaningContainer.addView(heading, headingParams);
-            for (SongAnnotation annotation : songMeaning.unplacedAnnotations) {
-                addAnnotationBlock(annotation, false);
-            }
-        }
-
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        actionsParams.topMargin = dp(14);
-        TextView translate = panelButton(songMeaningShowTranslation
-                ? ui("lyrics_meaning.original")
-                : ui("lyrics_meaning.translated"));
-        translate.setOnClickListener(view -> toggleMeaningTranslation());
-        actions.addView(translate);
-        if (!songMeaning.url.isEmpty()) {
-            TextView open = panelButton(ui("lyrics_meaning.open_genius"));
-            LinearLayout.LayoutParams openParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            openParams.leftMargin = dp(8);
-            open.setOnClickListener(view -> openMeaningUrl(songMeaning.url));
-            actions.addView(open, openParams);
-        }
-        meaningContainer.addView(actions, actionsParams);
-        meaningContainer.addView(panelText(ui("lyrics_meaning.attribution"), 10f,
-                Color.argb(150, 255, 255, 255)));
-    }
-
-    private void addAnnotationBlock(SongAnnotation annotation, boolean focused) {
-        LinearLayout block = new LinearLayout(this);
-        block.setOrientation(LinearLayout.VERTICAL);
-        block.setPadding(dp(12), dp(10), dp(12), dp(10));
-        block.setBackground(roundDrawable(
-                focused ? Color.argb(46, 255, 255, 255) : Color.argb(24, 255, 255, 255), dp(12)));
-        LinearLayout.LayoutParams blockParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        blockParams.topMargin = dp(8);
-        block.setLayoutParams(blockParams);
-
-        String fragment = annotation.fragment.replace('\n', ' ');
-        TextView quote = panelText("“" + fragment + "”", 11f, Color.argb(170, 255, 255, 255));
-        quote.setTypeface(AppFonts.regular(this));
-        block.addView(quote);
-        String body = songMeaningShowTranslation && songMeaningTranslation != null
-                ? songMeaningTranslation.bodyFor(annotation)
-                : "";
-        block.addView(panelText(body.isEmpty() ? annotation.body : body, 12f,
-                Color.argb(226, 255, 255, 255)));
-        if (!annotation.url.isEmpty()) {
-            TextView link = panelText(ui("lyrics_meaning.open_genius"), 11f, Color.argb(190, 140, 200, 255));
-            link.setOnClickListener(view -> openMeaningUrl(annotation.url));
-            block.addView(link);
-        }
-        meaningContainer.addView(block);
-    }
 
     private void toggleMeaningTranslation() {
         if (songMeaning == null || songMeaning.isEmpty()) {

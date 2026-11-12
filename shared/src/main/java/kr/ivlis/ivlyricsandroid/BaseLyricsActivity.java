@@ -4334,7 +4334,7 @@ public class BaseLyricsActivity extends Activity implements
     private static final String MEANING_TAB_ABOUT = "about";
     private static final String MEANING_TAB_NOTES = "notes";
     private String meaningTab = MEANING_TAB_ABOUT;
-    private LinearLayout meaningSheetRoot;
+    private android.widget.FrameLayout meaningSheetRoot;
     private LinearLayout meaningSheetCard;
     private LinearLayout meaningTabsRow;
     private LinearLayout meaningHeader;
@@ -4346,6 +4346,7 @@ public class BaseLyricsActivity extends Activity implements
     private String meaningSheetColorKey = "";
     private TextView meaningHeaderChip;
     private boolean meaningTranslating;
+    private android.animation.ValueAnimator meaningBodyAnimator;
     private boolean meaningTranslationFailed;
 
     /**
@@ -4383,16 +4384,25 @@ public class BaseLyricsActivity extends Activity implements
         if (meaningPopup != null) {
             return;
         }
-        meaningSheetRoot = new LinearLayout(this);
-        meaningSheetRoot.setOrientation(LinearLayout.VERTICAL);
+        // A fixed, full-height window that stays put: only the card's height changes, so a tab switch
+        // cannot shrink the window for a frame and let the lyrics show through behind the tabs.
+        meaningSheetRoot = new android.widget.FrameLayout(this);
         meaningSheetRoot.setBackgroundColor(Color.TRANSPARENT);
+        meaningSheetRoot.setOnClickListener(view -> {
+            if (meaningPopup != null && meaningPopup.isShowing()) {
+                meaningPopup.dismiss();
+            }
+        });
 
-        meaningSheetCard = new LinearLayout(this);
+        meaningSheetCard = new MeaningCard(this);
         meaningSheetCard.setOrientation(LinearLayout.VERTICAL);
         meaningSheetCard.setPadding(dp(22), 0, dp(22), dp(28));
         meaningSheetCard.setBackground(meaningSheetBackground());
-        meaningSheetRoot.addView(meaningSheetCard, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        // Taps on the sheet itself must not fall through to the dismiss listener above it.
+        meaningSheetCard.setClickable(true);
+        android.widget.FrameLayout.LayoutParams cardParams = new android.widget.FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
+        meaningSheetRoot.addView(meaningSheetCard, cardParams);
 
         meaningHeader = new LinearLayout(this);
         meaningHeader.setOrientation(LinearLayout.VERTICAL);
@@ -4444,7 +4454,7 @@ public class BaseLyricsActivity extends Activity implements
         android.util.Log.d("ivLyricsDebug", "meaning tabs=" + meaningTabsRow.getChildCount()
                 + " labels=" + ui("lyrics_meaning.description") + "/" + ui("lyrics_meaning.annotations"));
 
-        meaningScrollView = new MeaningScrollView(this);
+        meaningScrollView = new ScrollView(this);
         meaningScrollView.setClipToPadding(false);
         meaningScrollView.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
         meaningContainer = new LinearLayout(this);
@@ -4459,7 +4469,7 @@ public class BaseLyricsActivity extends Activity implements
         meaningSheetCard.addView(meaningScrollView, scrollParams);
 
         meaningPopup = new PopupWindow(meaningSheetRoot,
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, true);
         meaningPopup.setOutsideTouchable(true);
         meaningPopup.setFocusable(true);
         meaningPopup.setBackgroundDrawable(
@@ -4545,30 +4555,42 @@ public class BaseLyricsActivity extends Activity implements
     }
 
     /**
-     * The sheet body scrolls vertically, so a sideways drag would otherwise do nothing. Stealing it
-     * once it is clearly horizontal gives the two tabs a page swipe without touching the cards' taps.
+     * The sheet body scrolls vertically and its cards are tappable, so a sideways drag has to be read
+     * before the touch reaches either of them: the card dispatches, notices a clearly horizontal drag,
+     * cancels the children and switches the tab. Reading it here rather than in the scroll view is what
+     * makes the gesture work in both directions, including when it starts on an annotation card.
      */
-    private final class MeaningScrollView extends ScrollView {
+    private final class MeaningCard extends LinearLayout {
         private float downX;
         private float downY;
+        private boolean swiped;
 
-        MeaningScrollView(android.content.Context context) {
+        MeaningCard(android.content.Context context) {
             super(context);
         }
 
-        @Override public boolean onInterceptTouchEvent(MotionEvent event) {
+        @Override public boolean dispatchTouchEvent(MotionEvent event) {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                 downX = event.getX();
                 downY = event.getY();
-            } else if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
+                swiped = false;
+            } else if (event.getActionMasked() == MotionEvent.ACTION_MOVE && !swiped) {
                 float dx = event.getX() - downX;
                 float dy = event.getY() - downY;
-                if (Math.abs(dx) > dp(48) && Math.abs(dx) > Math.abs(dy) * 1.5f) {
+                if (Math.abs(dx) > dp(40) && Math.abs(dx) > Math.abs(dy) * 1.3f) {
+                    swiped = true;
+                    MotionEvent cancel = MotionEvent.obtain(event);
+                    cancel.setAction(MotionEvent.ACTION_CANCEL);
+                    super.dispatchTouchEvent(cancel);
+                    cancel.recycle();
                     switchMeaningTab(dx < 0 ? 1 : -1);
                     return true;
                 }
             }
-            return super.onInterceptTouchEvent(event);
+            if (swiped) {
+                return true;
+            }
+            return super.dispatchTouchEvent(event);
         }
     }
 
@@ -4698,16 +4720,55 @@ public class BaseLyricsActivity extends Activity implements
         int height = Math.min(content, room);
         height = Math.max(height, dp(160));
 
+        setMeaningBodyHeight(height);
+    }
+
+    /**
+     * Applies the body height, easing between the old and new size. The window is already full height,
+     * so only the card's top edge moves: the tabs travel with it instead of collapsing, and the page
+     * behind is never exposed while the size changes.
+     */
+    private void setMeaningBodyHeight(int height) {
+        if (meaningScrollView == null) {
+            return;
+        }
         ViewGroup.LayoutParams params = meaningScrollView.getLayoutParams();
-        if (params.height != height) {
+        if (params == null || params.height == height) {
+            return;
+        }
+        if (meaningBodyAnimator != null) {
+            meaningBodyAnimator.cancel();
+            meaningBodyAnimator = null;
+        }
+        int from = params.height;
+        boolean animate = meaningPopup != null && meaningPopup.isShowing() && from > 0
+                && Math.abs(height - from) > dp(24);
+        if (!animate) {
             params.height = height;
             meaningScrollView.setLayoutParams(params);
-            meaningSheetCard.requestLayout();
-            if (meaningPopup.isShowing()) {
-                // A WRAP_CONTENT window re-measures on update and keeps its bottom edge.
-                meaningPopup.update();
-            }
+            return;
         }
+        android.animation.ValueAnimator animator = android.animation.ValueAnimator.ofInt(from, height);
+        animator.setDuration(220L);
+        animator.setInterpolator(new android.view.animation.DecelerateInterpolator());
+        animator.addUpdateListener(value -> {
+            ViewGroup.LayoutParams current = meaningScrollView.getLayoutParams();
+            current.height = (int) value.getAnimatedValue();
+            meaningScrollView.setLayoutParams(current);
+        });
+        animator.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override public void onAnimationEnd(android.animation.Animator animation) {
+                if (meaningBodyAnimator != animation) {
+                    return;
+                }
+                meaningBodyAnimator = null;
+                ViewGroup.LayoutParams current = meaningScrollView.getLayoutParams();
+                current.height = height;
+                meaningScrollView.setLayoutParams(current);
+            }
+        });
+        meaningBodyAnimator = animator;
+        animator.start();
     }
 
     private SongAnnotation findAnnotationForLine(int lineIndex) {

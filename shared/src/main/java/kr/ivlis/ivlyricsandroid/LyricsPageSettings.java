@@ -20,6 +20,7 @@ final class LyricsPageSettings {
     private static final String KEY_SIDE_PADDING_DP = "side_padding_dp";
     private static final String KEY_ARTWORK_SOLID = "artwork_solid_background";
     private static final String KEY_MEANINGS_ENABLED = "genius_meanings_enabled";
+    private static final String KEY_PLAY_BUTTON_RIGHT = "play_button_right";
 
     private final SharedPreferences prefs;
     private volatile Snapshot cached;
@@ -40,7 +41,8 @@ final class LyricsPageSettings {
                 : prefs.getInt(KEY_SIDE_PADDING_DP, DEFAULT_SIDE_PADDING_DP);
         boolean artworkSolid = prefs != null && prefs.getBoolean(KEY_ARTWORK_SOLID, false);
         boolean meanings = prefs == null || prefs.getBoolean(KEY_MEANINGS_ENABLED, true);
-        Snapshot snapshot = new Snapshot(clampPadding(padding), artworkSolid, meanings);
+        boolean playButtonRight = prefs != null && prefs.getBoolean(KEY_PLAY_BUTTON_RIGHT, false);
+        Snapshot snapshot = new Snapshot(clampPadding(padding), artworkSolid, meanings, playButtonRight);
         cached = snapshot;
         return snapshot;
     }
@@ -59,6 +61,17 @@ final class LyricsPageSettings {
 
     boolean meaningsEnabled() {
         return snapshot().meaningsEnabled;
+    }
+
+    boolean playButtonOnTheRight() {
+        return snapshot().playButtonRight;
+    }
+
+    void setPlayButtonOnTheRight(boolean onTheRight) {
+        cached = null;
+        if (prefs != null) {
+            prefs.edit().putBoolean(KEY_PLAY_BUTTON_RIGHT, onTheRight).apply();
+        }
     }
 
     void setSidePaddingDp(int value) {
@@ -86,11 +99,14 @@ final class LyricsPageSettings {
         final int sidePaddingDp;
         final boolean artworkSolidBackground;
         final boolean meaningsEnabled;
+        final boolean playButtonRight;
 
-        Snapshot(int sidePaddingDp, boolean artworkSolidBackground, boolean meaningsEnabled) {
+        Snapshot(int sidePaddingDp, boolean artworkSolidBackground, boolean meaningsEnabled,
+                boolean playButtonRight) {
             this.sidePaddingDp = sidePaddingDp;
             this.artworkSolidBackground = artworkSolidBackground;
             this.meaningsEnabled = meaningsEnabled;
+            this.playButtonRight = playButtonRight;
         }
     }
 }

@@ -4610,9 +4610,10 @@ public class BaseLyricsActivity extends Activity implements
             if (base == 0) {
                 base = 0xff2b3350;
             }
-            int red = Math.round(Color.red(base) * 0.78f);
-            int green = Math.round(Color.green(base) * 0.78f);
-            int blue = Math.round(Color.blue(base) * 0.78f);
+            // The sheet has to read as a layer over the lyrics: the same hue, clearly darker.
+            int red = Math.round(Color.red(base) * 0.62f);
+            int green = Math.round(Color.green(base) * 0.62f);
+            int blue = Math.round(Color.blue(base) * 0.62f);
             meaningSheetColor = Color.argb(255, red, green, blue);
             // A placeholder is not remembered: the real cover colour replaces it when art arrives.
             meaningSheetColorKey = fromCover ? key : "";
@@ -4791,6 +4792,11 @@ public class BaseLyricsActivity extends Activity implements
             card.addView(link, topMargin(matchWrap(), dp(8)));
         }
         card.setOnClickListener(view -> {
+            if (songMeaningTranslation == null) {
+                // Nothing translated yet: the first tap asks for it, later taps flip one card.
+                fetchMeaningTranslation();
+                return;
+            }
             String key = annotation.cacheKey();
             if (!meaningNotesShowOriginal.remove(key)) {
                 meaningNotesShowOriginal.add(key);
@@ -7348,6 +7354,23 @@ public class BaseLyricsActivity extends Activity implements
         registerSetting(solidColorRow, ui("field.solid_color"), ui("field.solid_color_desc"), null);
         backgroundSolidColorGroup = settingsConditional(solidColorRow, this::isGlobalSolidBackground, backgroundLabel);
 
+        // The per-song cover colour belongs with the background choices, right under the solid one.
+        Switch perSongSolid = settingsToggle(details, ui("lyrics_enhance.artwork_solid"),
+                ui("lyrics_enhance.artwork_solid_desc"));
+        perSongSolid.setChecked(lyricsPageSettings.artworkSolidBackground());
+        perSongSolid.setOnCheckedChangeListener((button, checked) -> {
+            if (suppressSettingsEvents) {
+                return;
+            }
+            lyricsPageSettings.setArtworkSolidBackground(checked);
+            stableBackgroundTrackKey = "";
+            stableBackgroundHadArtwork = false;
+            applyStableBackgroundColor(currentTrack == null ? null : currentTrack.artwork);
+            // With a colour taken from the cover the manual picker no longer applies.
+            refreshSettingsVisibility();
+            showSavedToast(ui("toast.settings_saved"));
+        });
+
         LinearLayout tune = settingsGroup(section);
         SettingsKit.Range brightness = settingsRange(0, 100, 1, "%", ui("setting.brightness"));
         backgroundBrightnessSeekBar = brightness.seekBar;
@@ -7474,20 +7497,6 @@ public class BaseLyricsActivity extends Activity implements
             showSavedToast(ui("toast.settings_saved"));
         });
 
-        Switch solid = settingsToggle(group, ui("lyrics_enhance.artwork_solid"),
-                ui("lyrics_enhance.artwork_solid_desc"));
-        solid.setChecked(lyricsPageSettings.artworkSolidBackground());
-        solid.setOnCheckedChangeListener((button, checked) -> {
-            if (suppressSettingsEvents) {
-                return;
-            }
-            lyricsPageSettings.setArtworkSolidBackground(checked);
-            stableBackgroundTrackKey = "";
-            stableBackgroundHadArtwork = false;
-            applyStableBackgroundColor(currentTrack == null ? null : currentTrack.artwork);
-            showSavedToast(ui("toast.settings_saved"));
-        });
-
         if (platformTranslationSettings != null) {
             Switch platform = settingsToggle(group, ui("lyrics_enhance.platform_enabled"),
                     ui("lyrics_enhance.platform_enabled_desc"));
@@ -7609,6 +7618,8 @@ public class BaseLyricsActivity extends Activity implements
 
     private boolean isGlobalSolidBackground() {
         if (aiLyricsSettings == null) return false;
+        // The cover's own colour replaces the manual one, so the picker steps aside.
+        if (lyricsPageSettings != null && lyricsPageSettings.artworkSolidBackground()) return false;
         String mode = AiLyricsSettings.normalizeBackgroundMode(aiLyricsSettings.snapshot().background.mode);
         return AiLyricsSettings.BACKGROUND_MODE_SOLID.equals(mode)
                 || (AiLyricsSettings.BACKGROUND_MODE_VIDEO.equals(mode)

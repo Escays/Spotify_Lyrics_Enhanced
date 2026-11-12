@@ -14,6 +14,8 @@ import android.graphics.Color;
  */
 final class ArtworkColorPicker {
     private static final int SAMPLE_GRID = 48;
+    /** Luminance ceiling for a colour that has to carry white text. */
+    private static final float MAX_TINT_LUMINANCE = 0.14f;
     private static final float MIN_VALUE = 0.22f;
     private static final float MAX_VALUE = 0.40f;
     private static final float MIN_SATURATION = 0.24f;
@@ -24,42 +26,67 @@ final class ArtworkColorPicker {
     private ArtworkColorPicker() {
     }
 
-    /** A colour for the track; a deterministic dark tone when there is no usable artwork yet. */
+    /**
+     * A colour for the track, chosen the way the reference app does it: AndroidX Palette's
+     * darkVibrant swatch, then darkMuted, then the dominant colour, then vibrant, and finally darkened
+     * until white text reads on it. A weighted average (what this used to do) averages a cover's two
+     * halves into a grey that matches neither.
+     */
     static int pick(Bitmap artwork, String fallbackKey) {
         if (artwork == null || artwork.isRecycled() || artwork.getWidth() <= 0 || artwork.getHeight() <= 0) {
             return fallbackFor(fallbackKey);
         }
-        int stepX = Math.max(1, artwork.getWidth() / SAMPLE_GRID);
-        int stepY = Math.max(1, artwork.getHeight() / SAMPLE_GRID);
-        double weightSum = 0d;
-        double redSum = 0d;
-        double greenSum = 0d;
-        double blueSum = 0d;
-        float[] hsv = new float[3];
-        for (int y = 0; y < artwork.getHeight(); y += stepY) {
-            for (int x = 0; x < artwork.getWidth(); x += stepX) {
-                int pixel = artwork.getPixel(x, y);
-                if (Color.alpha(pixel) < 160) {
-                    continue;
-                }
-                Color.colorToHSV(pixel, hsv);
-                // Ignore the studio-white and pure-black frames most covers are padded with.
-                if (hsv[2] > 0.93f || hsv[2] < 0.05f) {
-                    continue;
-                }
-                double weight = 0.35d + hsv[1] * 1.6d;
-                weightSum += weight;
-                redSum += Color.red(pixel) * weight;
-                greenSum += Color.green(pixel) * weight;
-                blueSum += Color.blue(pixel) * weight;
+        Bitmap source = artwork;
+        try {
+            // The reference decodes the cover at 128 px before extracting; the same size keeps the
+            // quantiser's buckets, and therefore the chosen swatch, identical.
+            int longest = Math.max(artwork.getWidth(), artwork.getHeight());
+            if (longest > 128) {
+                float scale = 128f / longest;
+                int scaledWidth = Math.max(1, Math.round(artwork.getWidth() * scale));
+                int scaledHeight = Math.max(1, Math.round(artwork.getHeight() * scale));
+                source = Bitmap.createScaledBitmap(artwork, scaledWidth, scaledHeight, true);
+            }
+            // AndroidX Palette with its default filters, and the reference's fallback order.
+            androidx.palette.graphics.Palette palette =
+                    androidx.palette.graphics.Palette.from(source).generate();
+            androidx.palette.graphics.Palette.Swatch swatch = palette.getDarkVibrantSwatch();
+            if (swatch == null) swatch = palette.getDarkMutedSwatch();
+            if (swatch == null) swatch = palette.getDominantSwatch();
+            if (swatch == null) swatch = palette.getVibrantSwatch();
+            if (swatch == null) return fallbackFor(fallbackKey);
+            return readableUnderWhite(swatch.getRgb());
+        } catch (Throwable unavailable) {
+            return fallbackFor(fallbackKey);
+        } finally {
+            if (source != artwork && source != null && !source.isRecycled()) {
+                source.recycle();
             }
         }
-        if (weightSum <= 0d) {
-            return fallbackFor(fallbackKey);
+    }
+
+    /**
+     * Darkens the colour, keeping its hue, until white text has about a 5.5:1 contrast — the same
+     * luminance ceiling the reference uses for its tint.
+     */
+    static int readableUnderWhite(int color) {
+        int out = color;
+        double current = luminance(out);
+        float step = 0f;
+        while (current > MAX_TINT_LUMINANCE && step < 0.8f) {
+            step += 0.05f;
+            out = blend(color, Color.BLACK, step);
+            current = luminance(out);
         }
-        return readable((int) Math.round(redSum / weightSum),
-                (int) Math.round(greenSum / weightSum),
-                (int) Math.round(blueSum / weightSum));
+        return out | 0xFF000000;
+    }
+
+    private static int blend(int from, int to, float fraction) {
+        float t = Math.max(0f, Math.min(1f, fraction));
+        int red = Math.round(Color.red(from) + (Color.red(to) - Color.red(from)) * t);
+        int green = Math.round(Color.green(from) + (Color.green(to) - Color.green(from)) * t);
+        int blue = Math.round(Color.blue(from) + (Color.blue(to) - Color.blue(from)) * t);
+        return Color.argb(255, clamp(red), clamp(green), clamp(blue));
     }
 
     /** Keeps the hue, makes the colour saturated enough to read as a colour, and dark enough for text. */

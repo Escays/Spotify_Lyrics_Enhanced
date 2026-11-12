@@ -536,6 +536,11 @@ final class AppI18n {
         addRows(languages, preview, previewRows);
 
         // Existing labels the new home list and provider cards show prominently; a few were mistranslated.
+        // The sheet's two tabs read as the user asked: 歌曲简介 / 逐句歌词.
+        applyTranslationOverrides(languages, "zh-CN", new String[]{"lyrics_meaning.annotations", "逐句歌词",
+                "lyrics_meaning.original", "查看原文"});
+        applyTranslationOverrides(languages, "zh-TW", new String[]{"lyrics_meaning.annotations", "逐句歌詞",
+                "lyrics_meaning.original", "查看原文"});
         applyTranslationOverrides(languages, "de", new String[]{"tab.display", "Anzeige"});
         applyTranslationOverrides(languages, "zh-TW", new String[]{"tab.display", "顯示"});
         applyTranslationOverrides(languages, "sv", new String[]{"tab.display", "Visning", "button.close", "Stäng"});

@@ -4444,20 +4444,22 @@ public class BaseLyricsActivity extends Activity implements
         android.util.Log.d("ivLyricsDebug", "meaning tabs=" + meaningTabsRow.getChildCount()
                 + " labels=" + ui("lyrics_meaning.description") + "/" + ui("lyrics_meaning.annotations"));
 
-        meaningScrollView = new ScrollView(this);
+        meaningScrollView = new MeaningScrollView(this);
         meaningScrollView.setClipToPadding(false);
         meaningScrollView.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
         meaningContainer = new LinearLayout(this);
         meaningContainer.setOrientation(LinearLayout.VERTICAL);
         meaningScrollView.addView(meaningContainer, new ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        // The body carries its own height: the window is WRAP_CONTENT, so the sheet grows upward from
+        // the bottom instead of the window being resized under a fixed anchor.
         LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(160));
         scrollParams.topMargin = dp(10);
         meaningSheetCard.addView(meaningScrollView, scrollParams);
 
         meaningPopup = new PopupWindow(meaningSheetRoot,
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(360), true);
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, true);
         meaningPopup.setOutsideTouchable(true);
         meaningPopup.setFocusable(true);
         meaningPopup.setBackgroundDrawable(
@@ -4529,6 +4531,44 @@ public class BaseLyricsActivity extends Activity implements
             tab.setBackground(selected
                     ? roundDrawable(Color.argb(38, 255, 255, 255), dp(14))
                     : null);
+        }
+    }
+
+    /** One tab across, clamped: swiping left reveals the next tab, right the previous one. */
+    private void switchMeaningTab(int direction) {
+        String next = direction > 0 ? MEANING_TAB_NOTES : MEANING_TAB_ABOUT;
+        if (next.equals(meaningTab)) {
+            return;
+        }
+        meaningTab = next;
+        renderMeaningPanel(lastMeaningFocusLine);
+    }
+
+    /**
+     * The sheet body scrolls vertically, so a sideways drag would otherwise do nothing. Stealing it
+     * once it is clearly horizontal gives the two tabs a page swipe without touching the cards' taps.
+     */
+    private final class MeaningScrollView extends ScrollView {
+        private float downX;
+        private float downY;
+
+        MeaningScrollView(android.content.Context context) {
+            super(context);
+        }
+
+        @Override public boolean onInterceptTouchEvent(MotionEvent event) {
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                downX = event.getX();
+                downY = event.getY();
+            } else if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
+                float dx = event.getX() - downX;
+                float dy = event.getY() - downY;
+                if (Math.abs(dx) > dp(48) && Math.abs(dx) > Math.abs(dy) * 1.5f) {
+                    switchMeaningTab(dx < 0 ? 1 : -1);
+                    return true;
+                }
+            }
+            return super.onInterceptTouchEvent(event);
         }
     }
 
@@ -4632,26 +4672,39 @@ public class BaseLyricsActivity extends Activity implements
         return drawable;
     }
 
-    /** Content-sized, capped at 80% of the screen, so a short description is not a tall empty card. */
+    /**
+     * The sheet takes the height its content needs, up to 85% of the screen: a two-line description
+     * stays a small card while eight annotations get a page worth reading. The height lands on the
+     * scrolling body, and the window is WRAP_CONTENT, so the sheet grows upward from the bottom edge
+     * instead of the window being resized underneath a fixed anchor — which used to push the card off
+     * the bottom of the screen and leave the reader with a one-inch window.
+     */
     private void resizeMeaningSheet() {
-        if (meaningPopup == null || meaningContainer == null) {
+        if (meaningPopup == null || meaningContainer == null || meaningScrollView == null) {
             return;
         }
-        int width = getResources().getDisplayMetrics().widthPixels - dp(44);
-        meaningContainer.measure(
-                View.MeasureSpec.makeMeasureSpec(Math.max(1, width), View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        int width = Math.max(1, getResources().getDisplayMetrics().widthPixels - dp(44));
+        int exact = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY);
+        int unspecified = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        meaningContainer.measure(exact, unspecified);
         int content = meaningContainer.getMeasuredHeight();
-        meaningHeader.measure(
-                View.MeasureSpec.makeMeasureSpec(Math.max(1, width), View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-        int header = meaningHeader.getMeasuredHeight();
-        int max = (int) (getResources().getDisplayMetrics().heightPixels * 0.8f);
-        int target = Math.min(max, header + dp(10) + content + dp(28));
-        target = Math.max(target, dp(280));
-        if (meaningPopup.getHeight() != target) {
-            meaningPopup.setHeight(target);
+        if (meaningHeader != null) {
+            meaningHeader.measure(exact, unspecified);
+        }
+        int header = meaningHeader == null ? 0 : meaningHeader.getMeasuredHeight();
+
+        int max = (int) (getResources().getDisplayMetrics().heightPixels * 0.85f);
+        int room = Math.max(dp(160), max - header - dp(10) - dp(28));
+        int height = Math.min(content, room);
+        height = Math.max(height, dp(160));
+
+        ViewGroup.LayoutParams params = meaningScrollView.getLayoutParams();
+        if (params.height != height) {
+            params.height = height;
+            meaningScrollView.setLayoutParams(params);
+            meaningSheetCard.requestLayout();
             if (meaningPopup.isShowing()) {
+                // A WRAP_CONTENT window re-measures on update and keeps its bottom edge.
                 meaningPopup.update();
             }
         }

@@ -222,6 +222,12 @@ public class BaseLyricsActivity extends Activity implements
     private LinearLayout meaningContainer;
     private SongMeaning songMeaning = SongMeaning.EMPTY;
     private long platformTranslationGeneration;
+    /**
+     * Lookups already running for the exact same track and lyric text. Several refresh paths call the
+     * platform stage for one track; without this they each start their own NetEase/QQ/Kugou round.
+     */
+    private final java.util.Set<String> platformLookupsInFlight =
+            java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
     private LinearLayout lyricsActionRow;
     private TextView lyricsTranslationButton;
     private boolean lyricsTranslationVisible = true;
@@ -15579,9 +15585,14 @@ public class BaseLyricsActivity extends Activity implements
         final long generation = ++platformTranslationGeneration;
         final String trackKey = currentLyricsKey;
         final LyricsResult base = currentBaseLyricsResult;
+        final String lookupKey = trackKey + "|" + base.lines.size() + "|" + base.lines.hashCode();
+        if (!platformLookupsInFlight.add(lookupKey)) {
+            return;
+        }
         AiLyricsSettings.Snapshot snapshot = aiLyricsSettings == null ? null : aiLyricsSettings.snapshot();
         aiLyricsRepository.loadPlatformTranslation(currentTrack, base, snapshot,
                 (key, result, platformSnapshot) -> {
+                    platformLookupsInFlight.remove(lookupKey);
                     if (generation != platformTranslationGeneration) {
                         return;
                     }

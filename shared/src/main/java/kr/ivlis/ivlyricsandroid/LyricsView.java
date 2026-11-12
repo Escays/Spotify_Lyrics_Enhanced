@@ -2855,32 +2855,44 @@ public final class LyricsView extends View {
      * original lyric text only, so the translated row below it stays unmarked.
      */
     private void drawAnnotationUnderline(Canvas canvas, LineLayout layout, float baselineCenter, float fadeAlpha) {
-        float left = Float.MAX_VALUE;
-        float right = -Float.MAX_VALUE;
-        for (DrawGroup group : layout.groups) {
-            if (group.rows == null) {
-                continue;
-            }
-            for (TextRow row : group.rows) {
-                if (row == null || row.text == null || row.text.trim().isEmpty()) {
-                    continue;
-                }
-                float rowLeft = alignedRowLeft(row);
-                left = Math.min(left, rowLeft);
-                right = Math.max(right, rowLeft + row.width);
-            }
-        }
-        if (right <= left) {
+        List<DrawGroup> groups = layout.groups;
+        if (groups == null || groups.isEmpty()) {
             return;
         }
-        float baseline = baselineCenter + layout.height * 0.5f - sp(3f);
         annotationUnderlinePaint.setShader(null);
         annotationUnderlinePaint.setStyle(Paint.Style.STROKE);
         annotationUnderlinePaint.setStrokeWidth(Math.max(1f, sp(1.2f)));
         annotationUnderlinePaint.setPathEffect(new DashPathEffect(new float[]{sp(5f), sp(4f)}, 0f));
         annotationUnderlinePaint.setColor(Color.WHITE);
         annotationUnderlinePaint.setAlpha(Math.round(150f * Math.max(0f, Math.min(1f, fadeAlpha))));
-        canvas.drawLine(left, baseline, right, baseline, annotationUnderlinePaint);
+        // Walk the same layout the renderer used, but only underline the lyric itself: a translation or
+        // pronunciation group sits below it and must neither carry the dashes nor push them down.
+        float top = baselineCenter - groupsHeight(groups) * 0.5f;
+        for (int groupIndex = 0; groupIndex < groups.size(); groupIndex++) {
+            DrawGroup group = groups.get(groupIndex);
+            if (group.isInterlude()) {
+                top += group.height();
+                if (groupIndex + 1 < groups.size()) {
+                    top += sp(PART_GAP_SP);
+                }
+                continue;
+            }
+            float rowTop = top;
+            for (TextRow row : group.rows) {
+                float baseline = rowTop + group.baselineOffset(row);
+                if (!group.supplement && row != null && row.text != null && !row.text.trim().isEmpty()) {
+                    float rowLeft = alignedRowLeft(row);
+                    float underline = baseline + sp(2f);
+                    canvas.drawLine(rowLeft, underline, rowLeft + row.width, underline,
+                            annotationUnderlinePaint);
+                }
+                rowTop += group.rowHeight(row);
+            }
+            top = rowTop;
+            if (groupIndex + 1 < groups.size()) {
+                top += gapBetweenGroups(groups, groupIndex, groupIndex + 1);
+            }
+        }
     }
     private void drawTextRow(Canvas canvas, TextRow row, float baseline, DrawGroup group, int rowIndex, float fadeAlpha) {
         float left = alignedRowLeft(row);

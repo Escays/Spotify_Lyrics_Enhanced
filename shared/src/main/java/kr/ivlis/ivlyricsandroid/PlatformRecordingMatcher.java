@@ -46,6 +46,145 @@ final class PlatformRecordingMatcher {
     private PlatformRecordingMatcher() {
     }
 
+    /**
+     * The title as a search service should see it: the version tail is removed for recall only.
+     * Filtering still uses the full title, because that tail is what separates the studio take, the
+     * live take and the edit.
+     */
+    static String searchTitle(String title) {
+        String value = normalizeQuotes(title).trim();
+        if (value.isEmpty()) {
+            return "";
+        }
+        int dash = versionTailIndex(value);
+        if (dash > 0) {
+            value = value.substring(0, dash).trim();
+        }
+        value = stripVersionParenthetical(value);
+        if (value.isEmpty()) {
+            // A title that is nothing but a version marker keeps its original form.
+            return normalizeQuotes(title).trim();
+        }
+        return value;
+    }
+
+    /** Index of a " - "/" – "/" — " tail that introduces a version marker, or -1. */
+    private static int versionTailIndex(String value) {
+        int best = -1;
+        for (String separator : new String[]{" - ", " – ", " — ", "-"}) {
+            int index = value.indexOf(separator);
+            while (index > 0) {
+                String tail = value.substring(index + separator.length());
+                if (!versionTags(tail).isEmpty() || looksLikeVersionTail(tail)) {
+                    if (best < 0 || index < best) {
+                        best = index;
+                    }
+                    break;
+                }
+                index = value.indexOf(separator, index + 1);
+            }
+        }
+        return best;
+    }
+
+    /** "2007 Stereo Mix", "2011 Remaster", "Live at Wembley" and similar tails. */
+    private static boolean looksLikeVersionTail(String tail) {
+        String lower = ChineseLyricText.lower(tail);
+        return lower.startsWith("live") || lower.startsWith("remaster")
+                || lower.startsWith("remastered") || lower.startsWith("digital remaster")
+                || lower.startsWith("stereo mix") || lower.startsWith("mono mix")
+                || lower.startsWith("single version") || lower.startsWith("album version")
+                || lower.startsWith("radio edit") || lower.startsWith("extended")
+                || lower.startsWith("from the") || lower.startsWith("original motion picture")
+                || lower.matches("^\\d{4}\\s+.*");
+    }
+
+    /** Drops trailing parenthetical groups that are only a version marker. */
+    private static String stripVersionParenthetical(String value) {
+        String current = value.trim();
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            int end = current.length() - 1;
+            while (end >= 0 && Character.isWhitespace(current.charAt(end))) {
+                end--;
+            }
+            if (end < 1) {
+                break;
+            }
+            char closing = current.charAt(end);
+            char opening = closing == ')' ? '(' : closing == '）' ? '（' : closing == ']' ? '[' : 0;
+            if (opening == 0) {
+                break;
+            }
+            int depth = 0;
+            int start = -1;
+            for (int index = end; index >= 0; index--) {
+                char value2 = current.charAt(index);
+                if (value2 == closing) {
+                    depth++;
+                } else if (value2 == opening) {
+                    depth--;
+                    if (depth == 0) {
+                        start = index;
+                        break;
+                    }
+                }
+            }
+            if (start < 0) {
+                break;
+            }
+            String inner = current.substring(start + 1, end);
+            if (!versionTags(inner).isEmpty() || looksLikeVersionTail(inner)) {
+                String stripped = current.substring(0, start).trim();
+                if (!stripped.isEmpty()) {
+                    current = stripped;
+                    changed = true;
+                }
+            }
+        }
+        return current;
+    }
+
+    /** Curly quotes in a Spotify title must not survive into a search query. */
+    static String normalizeQuotes(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace('\u2018', '\'').replace('\u2019', '\'')
+                .replace('\u201c', '"').replace('\u201d', '"')
+                .replace('\u00a0', ' ');
+    }
+
+    /** The first credited artist, without the "(CV: ...)"/kanji-reading decorations. */
+    static String primaryArtist(String artist) {
+        List<String> tokens = artistTokens(artist);
+        return tokens.isEmpty() ? normalizeQuotes(artist).trim() : tokens.get(0);
+    }
+
+    /**
+     * Queries to try in order, most specific first. A search that returns nothing usable falls back to
+     * the next one; the recording filter stays identical for all of them.
+     */
+    static List<String> searchQueries(String title, String artist) {
+        String cleanTitle = searchTitle(title);
+        String fullArtist = normalizeQuotes(artist).trim();
+        String primary = primaryArtist(artist);
+        List<String> queries = new ArrayList<>();
+        addQuery(queries, cleanTitle, primary);
+        if (!fullArtist.isEmpty() && !fullArtist.equalsIgnoreCase(primary)) {
+            addQuery(queries, cleanTitle, fullArtist);
+        }
+        addQuery(queries, cleanTitle, "");
+        return queries;
+    }
+
+    private static void addQuery(List<String> queries, String title, String artist) {
+        String query = (title + " " + artist).trim().replaceAll("\\s+", " ");
+        if (!query.isEmpty() && !queries.contains(query)) {
+            queries.add(query);
+        }
+    }
     static final class Candidate {
         final String id;
         final String title;

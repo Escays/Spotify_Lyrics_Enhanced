@@ -60,9 +60,9 @@ public final class PlatformTranslationRegression {
         }
 
         @Override
-        public List<PlatformRecordingMatcher.Candidate> search(String title, String artist, int limit) {
+        public List<PlatformRecordingMatcher.Candidate> search(String query, int limit) {
             searchCount++;
-            queries.add(title + " / " + artist);
+            queries.add(query);
             if (onSearch != null) {
                 onSearch.run();
             }
@@ -90,7 +90,53 @@ public final class PlatformTranslationRegression {
             "[00:16.76]一饮而尽 再缓缓诉起衷肠"
     ));
 
+    static void searchVariantsNormaliseVersionTails() {
+        check(PlatformRecordingMatcher.searchTitle("Supper's Ready - 2007 Stereo Mix")
+                .equals("Supper's Ready"), "dash version tail removed for search");
+        check(PlatformRecordingMatcher.searchTitle("Sound and Vision - 2017 Remaster")
+                .equals("Sound and Vision"), "remaster tail removed");
+        check(PlatformRecordingMatcher.searchTitle("Lemon (Live)").equals("Lemon"), "live parenthetical removed");
+        check(PlatformRecordingMatcher.searchTitle("残酷な天使のテーゼ (残酷天使的行动纲领)")
+                .contains("残酷な天使のテーゼ"), "alias parenthetical kept");
+        check(PlatformRecordingMatcher.searchTitle("Don\u2019t Stop Me Now").equals("Don't Stop Me Now"),
+                "curly apostrophe normalised");
+        List<String> queries = PlatformRecordingMatcher.searchQueries(
+                "Sound and Vision - 2017 Remaster", "David Bowie");
+        check(queries.get(0).equals("Sound and Vision David Bowie"), "most specific query first");
+        check(queries.size() >= 2, "title-only fallback present");
+
+        // The version tail still decides the recording even though the search dropped it.
+        List<PlatformRecordingMatcher.Candidate> candidates = Arrays.asList(
+                new PlatformRecordingMatcher.Candidate("studio", "Sound and Vision", "David Bowie", "", 205_000L),
+                new PlatformRecordingMatcher.Candidate("live", "Sound and Vision (Live)", "David Bowie", "", 260_000L));
+        List<PlatformRecordingMatcher.Score> ranked = PlatformRecordingMatcher.rank(
+                "Sound and Vision - 2017 Remaster", "David Bowie", "", 205_000L, candidates);
+        check(ranked.get(0).candidate.id.equals("studio"), "studio wins after the tail is only used for filtering");
+    }
+
+    static void sourceWithoutChineseDoesNotBlockTheNextOne() {
+        FakeSource netease = new FakeSource(NeteaseLyricSource.ID, NeteaseLyricSource.LABEL)
+                .candidate("a", "No Chinese", "Artist", "", 200_000L,
+                        "[00:01.00]first line\n[00:02.00]second line", "");
+        FakeSource qq = new FakeSource(QqLyricSource.ID, QqLyricSource.LABEL)
+                .candidate("b", "No Chinese", "Artist", "", 200_000L,
+                        "[00:01.00]first line\n[00:02.00]second line",
+                        "[00:01.00]第一行\n[00:02.00]第二行");
+        PlatformTranslationService service = new PlatformTranslationService(Arrays.asList(netease, qq));
+        PlatformTranslationService.Snapshot snapshot = lookup(service, "spotify:track:b",
+                "No Chinese", "Artist", 200_000L, Arrays.asList("first line", "second line"));
+        check(snapshot.translatedLines == 2, "second source filled every line");
+        PlatformTranslationService.SourceStatus first = snapshot.statusOf(NeteaseLyricSource.ID);
+        check(first != null && first.state.equals(PlatformTranslationService.SourceStatus.STATE_NO_CHINESE),
+                "first source reports a matched recording without Chinese");
+        check(first.matched(), "a matched recording is distinguishable from no result");
+        PlatformTranslationService.SourceStatus second = snapshot.statusOf(QqLyricSource.ID);
+        check(second != null && second.contributedLines == 2, "contribution count is per source");
+    }
+
     public static void main(String[] args) {
+        searchVariantsNormaliseVersionTails();
+        sourceWithoutChineseDoesNotBlockTheNextOne();
         englishSongUsesPlatformTranslation();
         japaneseCharacterSongMatchesDecoratedArtist();
         liveVersionLosesToStudioRecording();

@@ -45,10 +45,8 @@ final class NeteaseLyricSource implements PlatformLyricSource {
     }
 
     @Override
-    public List<PlatformRecordingMatcher.Candidate> search(String title, String artist, int limit)
-            throws Exception {
-        String query = encode(title + " " + artist);
-        String url = SEARCH_ENDPOINT + "?s=" + query + "&type=1&offset=0&limit=" + Math.max(1, limit);
+    public List<PlatformRecordingMatcher.Candidate> search(String query, int limit) throws Exception {
+        String url = SEARCH_ENDPOINT + "?s=" + encode(query) + "&type=1&offset=0&limit=" + Math.max(1, limit);
         PlatformHttpTransport.Response response = transport.get(url, HEADERS);
         if (!response.ok()) {
             throw new IOException(LABEL + " search failed (" + response.status + ")");
@@ -136,7 +134,9 @@ final class NeteaseLyricSource implements PlatformLyricSource {
 
     private static String encode(String value) {
         try {
-            return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8.name());
+            // Kugou (and some QQ endpoints) read "+" literally; %20 is a space everywhere.
+            return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8.name())
+                    .replace("+", "%20");
         } catch (java.io.UnsupportedEncodingException impossible) {
             throw new IllegalStateException(impossible);
         }

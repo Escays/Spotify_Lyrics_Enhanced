@@ -15,8 +15,8 @@ interface PlatformLyricSource {
 
     String label();
 
-    /** Search results for the query; never throws for an empty result, only for a transport failure. */
-    List<PlatformRecordingMatcher.Candidate> search(String title, String artist, int limit) throws Exception;
+    /** Search results for one prepared query; an empty list is a normal answer, a failure is not. */
+    List<PlatformRecordingMatcher.Candidate> search(String query, int limit) throws Exception;
 
     PlatformLyricDocument fetch(String candidateId) throws Exception;
 

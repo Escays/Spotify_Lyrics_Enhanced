@@ -18,10 +18,11 @@ import java.util.function.Supplier;
 /**
  * Combines the platform sources into one per-line Chinese translation.
  *
- * <p>Order matters but coverage does not follow the order: the first platform supplies the lines it can,
- * the second fills the gaps it has, and whatever is still empty is left for the AI stage. A line keeps
- * the source that produced it, so a partly NetEase, partly QQ translation is never reported as one
- * platform's work.
+ * <p>Every source is asked the same way: try the search variants from most to least specific, rank the
+ * recordings, reject a different recording, align the rows on normalised text, and keep only the lines
+ * the source can actually translate. The first source fills what it can, the next fills the gaps, and
+ * the remaining lines are left for the AI stage. Each source records a status so the song settings can
+ * say "found the recording, no usable Chinese" instead of showing one generic failure.
  */
 final class PlatformTranslationService {
     private static final String CACHE_PREFS = "platform_translation_cache";
@@ -32,10 +33,52 @@ final class PlatformTranslationService {
     /** A document whose own rows barely match the displayed lyrics is a different recording. */
     private static final double MIN_ORIGINAL_COVERAGE = 0.25d;
 
+    /** What happened with one source, in a form the settings page can render. */
+    static final class SourceStatus {
+        static final String STATE_DISABLED = "disabled";
+        static final String STATE_NO_RESULT = "no_result";
+        static final String STATE_NO_RECORDING = "no_recording";
+        static final String STATE_NO_CHINESE = "no_chinese";
+        static final String STATE_MISMATCH = "mismatch";
+        static final String STATE_NETWORK = "network";
+        static final String STATE_OK = "ok";
+
+        final String sourceId;
+        final String label;
+        final String state;
+        final String recordingTitle;
+        final String recordingArtist;
+        final long recordingDurationMs;
+        final int translatedLines;
+        final int translatableLines;
+        final int contributedLines;
+        final String detail;
+
+        SourceStatus(String sourceId, String label, String state, String recordingTitle,
+                String recordingArtist, long recordingDurationMs, int translatedLines,
+                int translatableLines, int contributedLines, String detail) {
+            this.sourceId = sourceId == null ? "" : sourceId;
+            this.label = label == null ? "" : label;
+            this.state = state == null ? STATE_NO_RESULT : state;
+            this.recordingTitle = recordingTitle == null ? "" : recordingTitle;
+            this.recordingArtist = recordingArtist == null ? "" : recordingArtist;
+            this.recordingDurationMs = recordingDurationMs;
+            this.translatedLines = translatedLines;
+            this.translatableLines = translatableLines;
+            this.contributedLines = contributedLines;
+            this.detail = detail == null ? "" : detail;
+        }
+
+        boolean matched() {
+            return STATE_OK.equals(state) || STATE_NO_CHINESE.equals(state);
+        }
+    }
+
     static final class Snapshot {
         final List<String> lineTranslations;
         final List<String> lineSources;
         final List<String> diagnostics;
+        final List<SourceStatus> statuses;
         final String primarySourceId;
         final String providerLabel;
         final int translatedLines;
@@ -43,11 +86,13 @@ final class PlatformTranslationService {
         final boolean stale;
 
         Snapshot(List<String> lineTranslations, List<String> lineSources, List<String> diagnostics,
-                String primarySourceId, String providerLabel, int translatedLines,
-                int translatableLines, boolean stale) {
+                List<SourceStatus> statuses, String primarySourceId, String providerLabel,
+                int translatedLines, int translatableLines, boolean stale) {
             this.lineTranslations = Collections.unmodifiableList(new ArrayList<>(lineTranslations));
             this.lineSources = Collections.unmodifiableList(new ArrayList<>(lineSources));
             this.diagnostics = Collections.unmodifiableList(new ArrayList<>(diagnostics));
+            this.statuses = Collections.unmodifiableList(
+                    statuses == null ? new ArrayList<>() : new ArrayList<>(statuses));
             this.primarySourceId = primarySourceId == null ? "" : primarySourceId;
             this.providerLabel = providerLabel == null ? "" : providerLabel;
             this.translatedLines = translatedLines;
@@ -68,9 +113,18 @@ final class PlatformTranslationService {
             return lineIndex >= 0 && lineIndex < lineSources.size() ? lineSources.get(lineIndex) : "";
         }
 
+        SourceStatus statusOf(String sourceId) {
+            for (SourceStatus status : statuses) {
+                if (status.sourceId.equals(sourceId)) {
+                    return status;
+                }
+            }
+            return null;
+        }
+
         static Snapshot empty() {
             return new Snapshot(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
-                    "", "", 0, 0, false);
+                    Collections.emptyList(), "", "", 0, 0, false);
         }
     }
 
@@ -100,6 +154,7 @@ final class PlatformTranslationService {
         this.sources = new ArrayList<>();
         this.sources.add(new NeteaseLyricSource(transport));
         this.sources.add(new QqLyricSource(transport));
+        this.sources.add(new KugouLyricSource(transport));
         this.currentTrackKey = currentTrackKey;
     }
 
@@ -187,77 +242,34 @@ final class PlatformTranslationService {
         List<String> translations = new ArrayList<>(Collections.nCopies(baseTexts.size(), ""));
         List<String> lineSources = new ArrayList<>(Collections.nCopies(baseTexts.size(), ""));
         List<String> diagnostics = new ArrayList<>();
+        List<SourceStatus> statuses = new ArrayList<>();
         Map<String, Integer> lineCountBySource = new LinkedHashMap<>();
-        int translatable = 0;
-        for (String text : baseTexts) {
-            if (text != null && !text.trim().isEmpty() && !ChineseLyricText.isPlaceholder(text)) {
-                translatable++;
-            }
-        }
 
         for (String sourceId : order) {
             if (isStale(trackKey)) {
                 diagnostics.add("stale track, result discarded");
                 return new Snapshot(Collections.emptyList(), Collections.emptyList(), diagnostics,
-                        "", "", 0, 0, true);
+                        Collections.emptyList(), "", "", 0, 0, true);
             }
             PlatformLyricSource source = sourceById(sourceId);
             if (source == null) {
                 continue;
             }
-            try {
-                List<PlatformRecordingMatcher.Candidate> candidates =
-                        source.search(title, artist, SEARCH_LIMIT);
-                if (candidates.isEmpty()) {
-                    diagnostics.add(source.label() + ": no search result");
-                    continue;
-                }
-                List<PlatformRecordingMatcher.Score> ranked =
-                        PlatformRecordingMatcher.rank(title, artist, album, durationMs, candidates);
-                PlatformRecordingMatcher.Score best = null;
-                for (PlatformRecordingMatcher.Score score : ranked) {
-                    if (score.acceptable()) {
-                        best = score;
-                        break;
-                    }
-                }
-                if (best == null) {
-                    diagnostics.add(source.label() + ": no acceptable recording among "
-                            + candidates.size() + " results");
-                    continue;
-                }
-                PlatformLyricSource.PlatformLyricDocument document = source.fetch(best.candidate.id);
-                PlatformTranslationAligner.Result aligned = PlatformTranslationAligner.align(
-                        baseTexts, document.originalRows, document.translationRows);
-                diagnostics.add(source.label() + ": picked \"" + best.candidate.title + "\" / "
-                        + best.candidate.artist + " score=" + round(best.total)
-                        + " delta=" + Math.abs(durationMs - best.candidate.durationMs) + "ms"
-                        + " translated=" + aligned.translatedLines + "/" + aligned.translatableLines
-                        + " originals=" + round(aligned.originalCoverage()));
-                if (aligned.originalCoverage() < MIN_ORIGINAL_COVERAGE) {
-                    diagnostics.add(source.label() + ": rows do not match the displayed lyrics");
-                    continue;
-                }
-                int added = 0;
-                for (int index = 0; index < translations.size() && index < aligned.translations.size(); index++) {
-                    String value = aligned.translations.get(index);
-                    if (value.isEmpty() || !translations.get(index).isEmpty()) {
-                        continue;
-                    }
-                    translations.set(index, value);
-                    lineSources.set(index, sourceId);
-                    added++;
-                }
-                if (added > 0) {
-                    lineCountBySource.put(sourceId, added);
-                }
-            } catch (Exception error) {
-                String message = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
-                diagnostics.add(source.label() + ": " + message);
-                PlatformTranslationSettings.log(source.label() + " failed: " + message);
+            SourceStatus status = resolveOne(source, title, artist, album, durationMs, baseTexts,
+                    translations, lineSources, diagnostics);
+            statuses.add(status);
+            if (status.contributedLines > 0) {
+                lineCountBySource.put(sourceId, status.contributedLines);
             }
         }
 
+        int translatable = 0;
+        for (String text : baseTexts) {
+            if (text != null && !text.trim().isEmpty() && !ChineseLyricText.isPlaceholder(text)
+                    && !PlatformLyricRow.isCreditRow(text)) {
+                translatable++;
+            }
+        }
         int translated = 0;
         for (String value : translations) {
             if (!value.isEmpty()) {
@@ -273,8 +285,115 @@ final class PlatformTranslationService {
             }
         }
         String label = providerLabel(lineCountBySource.keySet());
-        return new Snapshot(translations, lineSources, diagnostics, primary, label, translated,
-                translatable, isStale(trackKey));
+        return new Snapshot(translations, lineSources, diagnostics, statuses, primary, label,
+                translated, translatable, isStale(trackKey));
+    }
+
+    /** One source: search variants, recording filter, alignment, and the status that describes it. */
+    private SourceStatus resolveOne(
+            PlatformLyricSource source,
+            String title,
+            String artist,
+            String album,
+            long durationMs,
+            List<String> baseTexts,
+            List<String> translations,
+            List<String> lineSources,
+            List<String> diagnostics
+    ) {
+        String label = source.label();
+        PlatformRecordingMatcher.Score matched = null;
+        PlatformTranslationAligner.Result aligned = null;
+        String lastFailure = "";
+        for (String query : PlatformRecordingMatcher.searchQueries(title, artist)) {
+            List<PlatformRecordingMatcher.Candidate> candidates;
+            try {
+                candidates = source.search(query, SEARCH_LIMIT);
+            } catch (Exception error) {
+                diagnostics.add(label + " search \"" + query + "\" failed: " + describe(error));
+                return new SourceStatus(source.id(), label, SourceStatus.STATE_NETWORK, "", "", 0L,
+                        0, 0, 0, describe(error));
+            }
+            if (candidates.isEmpty()) {
+                diagnostics.add(label + " search \"" + query + "\": no result");
+                lastFailure = "no result";
+                continue;
+            }
+            List<PlatformRecordingMatcher.Score> ranked =
+                    PlatformRecordingMatcher.rank(title, artist, album, durationMs, candidates);
+            PlatformRecordingMatcher.Score best = null;
+            for (PlatformRecordingMatcher.Score score : ranked) {
+                if (score.acceptable()) {
+                    best = score;
+                    break;
+                }
+            }
+            if (best == null) {
+                diagnostics.add(label + " search \"" + query + "\": " + candidates.size()
+                        + " results, none the same recording (best " + round(ranked.get(0).total)
+                        + (ranked.get(0).durationVetoed ? " duration-veto" : "") + ")");
+                lastFailure = "no recording";
+                continue;
+            }
+            PlatformLyricSource.PlatformLyricDocument document;
+            try {
+                document = source.fetch(best.candidate.id);
+            } catch (Exception error) {
+                diagnostics.add(label + " fetch \"" + best.candidate.title + "\" failed: " + describe(error));
+                return new SourceStatus(source.id(), label, SourceStatus.STATE_NETWORK,
+                        best.candidate.title, best.candidate.artist, best.candidate.durationMs,
+                        0, 0, 0, describe(error));
+            }
+            PlatformTranslationAligner.Result attempt = PlatformTranslationAligner.align(
+                    baseTexts, document.originalRows, document.translationRows);
+            if (attempt.originalCoverage() < MIN_ORIGINAL_COVERAGE) {
+                diagnostics.add(label + " picked \"" + best.candidate.title
+                        + "\" but its rows do not match the displayed lyrics (originals "
+                        + round(attempt.originalCoverage()) + ")");
+                lastFailure = "mismatch";
+                continue;
+            }
+            matched = best;
+            aligned = attempt;
+            break;
+        }
+
+        if (matched == null || aligned == null) {
+            String state = "no result".equals(lastFailure) || lastFailure.isEmpty()
+                    ? SourceStatus.STATE_NO_RESULT
+                    : "no recording".equals(lastFailure)
+                    ? SourceStatus.STATE_NO_RECORDING
+                    : SourceStatus.STATE_MISMATCH;
+            return new SourceStatus(source.id(), label, state, "", "", 0L, 0, 0, 0, lastFailure);
+        }
+
+        int added = 0;
+        for (int index = 0; index < translations.size() && index < aligned.translations.size(); index++) {
+            String value = aligned.translations.get(index);
+            if (value.isEmpty() || !translations.get(index).isEmpty()) {
+                continue;
+            }
+            translations.set(index, value);
+            lineSources.set(index, source.id());
+            added++;
+        }
+        diagnostics.add(label + " picked \"" + matched.candidate.title + "\" / "
+                + matched.candidate.artist + " score=" + round(matched.total)
+                + " delta=" + Math.abs(durationMs - matched.candidate.durationMs) + "ms"
+                + " translated=" + aligned.translatedLines + "/" + aligned.translatableLines
+                + " originals=" + round(aligned.originalCoverage())
+                + " contributed=" + added);
+        boolean chinese = aligned.translatedLines > 0;
+        return new SourceStatus(source.id(), label,
+                chinese ? SourceStatus.STATE_OK : SourceStatus.STATE_NO_CHINESE,
+                matched.candidate.title, matched.candidate.artist, matched.candidate.durationMs,
+                aligned.translatedLines, aligned.translatableLines, added,
+                chinese ? "" : "found the recording, but no usable Chinese rows");
+    }
+
+    private static String describe(Exception error) {
+        String message = error.getMessage() == null ? "" : error.getMessage().trim();
+        return message.isEmpty() ? error.getClass().getSimpleName() : message;
     }
 
     private String providerLabel(java.util.Set<String> contributing) {
@@ -344,8 +463,9 @@ final class PlatformTranslationService {
                 }
             }
             return new Snapshot(translations, lineSources, Collections.emptyList(),
-                    entry.optString("primary", ""), entry.optString("label", ""),
-                    entry.optInt("translated", 0), entry.optInt("translatable", 0), false);
+                    Collections.emptyList(), entry.optString("primary", ""),
+                    entry.optString("label", ""), entry.optInt("translated", 0),
+                    entry.optInt("translatable", 0), false);
         } catch (Exception unreadable) {
             return null;
         }
@@ -388,12 +508,25 @@ final class PlatformTranslationService {
         while (iterator.hasNext()) {
             keys.add(iterator.next());
         }
-        keys.sort((left, right) -> Long.compare(entries.optJSONObject(left) == null
-                ? 0L : entries.optJSONObject(left).optLong("at", 0L),
+        keys.sort((left, right) -> Long.compare(
+                entries.optJSONObject(left) == null ? 0L : entries.optJSONObject(left).optLong("at", 0L),
                 entries.optJSONObject(right) == null ? 0L : entries.optJSONObject(right).optLong("at", 0L)));
         for (int index = 0; index < keys.size() - MAX_CACHE_ENTRIES; index++) {
             entries.remove(keys.get(index));
         }
+    }
+
+    /** True when the user wants platform translations only, with gaps left empty. */
+    boolean platformOnly() {
+        return settings != null && settings.platformOnly();
+    }
+
+    boolean enabled() {
+        return settings != null && settings.enabled();
+    }
+
+    List<String> sourceOrder() {
+        return settings == null ? java.util.Collections.<String>emptyList() : settings.snapshot().order;
     }
 
     void clearCache() {

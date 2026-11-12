@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -35,6 +36,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class AiLyricsRepository {
+    private static final String TAG = "ivLyricsDebug";
     private static final int CONNECT_TIMEOUT_MS = 12_000;
     private static final int READ_TIMEOUT_MS = 70_000;
     private static final long STREAM_PARTIAL_DISPATCH_INTERVAL_MS = 600L;
@@ -86,6 +88,9 @@ final class AiLyricsRepository {
     private final PlatformTranslationService platformTranslations;
     /** The track the newest supplement request belongs to; a late platform answer is dropped. */
     private volatile String activeTrackKey = "";
+    /** Latest per-source platform status, for the song settings page. */
+    private final Map<String, PlatformTranslationService.Snapshot> platformSnapshots =
+            newBoundedCache(32);
 
     AiLyricsRepository() {
         diskCache = null;
@@ -919,11 +924,14 @@ final class AiLyricsRepository {
             callback.onAiLyricsLoaded(trackKey, baseResult);
             return;
         }
+        // The platform policy is part of the identity: a cached AI-only result must not stand in for a
+        // run that would have used the platforms.
         String cacheKey = trackKey
                 + "|source=" + sourceLang
                 + "|detected=" + detectedSourceLang
                 + "|prompt=" + SUPPLEMENT_PROMPT_VERSION
                 + "|" + settings.cacheKey()
+                + "|platform=" + platformSignature(targetLang)
                 + "|text=" + sha256(textPayload);
         if (!bypassCache) {
             LyricsResult cached = cache.get(cacheKey);
@@ -1973,12 +1981,122 @@ final class AiLyricsRepository {
         }
     }
 
+    /** Result callback for the platform stage; it never carries AI providers. */
+    interface PlatformCallback {
+        void onPlatformTranslation(String trackKey, LyricsResult result,
+                PlatformTranslationService.Snapshot snapshot);
+    }
+
+    /**
+     * Runs the platform lookups on their own.
+     *
+     * <p>This stage is deliberately independent of every AI setting and of the AI cache: those gates
+     * used to return before the platforms were ever queried, which is why an existing Bing result kept
+     * winning. The returned result is the caller's base result with only translation rows replaced.
+     */
+    void loadPlatformTranslation(TrackSnapshot track, LyricsResult baseResult,
+            AiLyricsSettings.Snapshot settings, PlatformCallback callback) {
+        if (track == null || baseResult == null || baseResult.lines.isEmpty() || callback == null) {
+            return;
+        }
+        String trackKey = track.stableKey();
+        activeTrackKey = trackKey;
+        executor.execute(() -> {
+            LyricsResult result = baseResult;
+            PlatformTranslationService.Snapshot snapshot = PlatformTranslationService.Snapshot.empty();
+            String error = null;
+            try {
+                List<String> baseLines = new ArrayList<>(baseResult.lines.size());
+                for (LyricsLine line : baseResult.lines) {
+                    baseLines.add(displayLineText(line));
+                }
+                String textPayload = buildPayloadText(baseResult.lines);
+                String sourceLang = detectLanguage(textPayload);
+                String targetLang = resolvePlatformTargetLanguage(sourceLang, settings);
+                if (PlatformTranslationSettings.isChineseTarget(targetLang)) {
+                    long startedAt = SystemClock.uptimeMillis();
+                    snapshot = platformTranslations.lookup(trackKey, track.title, track.artist,
+                            track.album, track.durationMs, baseLines, targetLang, false);
+                    platformSnapshots.put(trackKey, snapshot);
+                    Log.d(TAG, "platform stage " + trackKey + " in "
+                            + (SystemClock.uptimeMillis() - startedAt) + "ms lines="
+                            + snapshot.translatedLines + "/" + snapshot.translatableLines
+                            + " sources=" + snapshot.providerLabel);
+                    for (String diagnostic : snapshot.diagnostics) {
+                        Log.d(TAG, "platform stage: " + diagnostic);
+                    }
+                    if (snapshot.hasAny()) {
+                        result = mergePlatformLines(baseResult, snapshot);
+                    }
+                }
+            } catch (Exception failure) {
+                error = failure.getMessage() == null ? failure.getClass().getSimpleName()
+                        : failure.getMessage();
+                Log.d(TAG, "platform stage failed for " + trackKey + ": " + error);
+            }
+            final LyricsResult delivered = result;
+            final PlatformTranslationService.Snapshot deliveredSnapshot = snapshot;
+            mainHandler.post(() -> callback.onPlatformTranslation(trackKey, delivered,
+                    deliveredSnapshot));
+        });
+    }
+
+    /** The per-source status of the last platform run for this track, or null. */
+    PlatformTranslationService.Snapshot platformSnapshot(String trackKey) {
+        return trackKey == null ? null : platformSnapshots.get(trackKey);
+    }
+
+    private String resolvePlatformTargetLanguage(String sourceLang, AiLyricsSettings.Snapshot settings) {
+        if (settings != null) {
+            return settings.resolveTargetLanguage(sourceLang);
+        }
+        return "zh-CN";
+    }
+
+    /** Replaces only the translation rows; timing, syllables, furigana and speakers are untouched. */
+    private static LyricsResult mergePlatformLines(LyricsResult baseResult,
+            PlatformTranslationService.Snapshot snapshot) {
+        List<LyricsLine> merged = new ArrayList<>(baseResult.lines.size());
+        for (int index = 0; index < baseResult.lines.size(); index++) {
+            LyricsLine line = baseResult.lines.get(index);
+            String translation = snapshot.isTranslated(index) ? snapshot.lineTranslations.get(index) : "";
+            if (translation.isEmpty()) {
+                merged.add(line);
+                continue;
+            }
+            if (line.vocalParts == null || line.vocalParts.isEmpty()) {
+                merged.add(line.withSupplements(line.pronunciationText, translation, line.furiganaText));
+                continue;
+            }
+            List<LyricsLine.VocalPart> parts = new ArrayList<>(line.vocalParts.size());
+            boolean assigned = false;
+            for (LyricsLine.VocalPart part : line.vocalParts) {
+                if (!assigned && !part.text.trim().isEmpty()) {
+                    parts.add(part.withSupplements(part.pronunciationText, translation,
+                            part.furiganaText));
+                    assigned = true;
+                } else {
+                    parts.add(part);
+                }
+            }
+            merged.add(new LyricsLine(line.startTimeMs, line.endTimeMs, line.text, line.syllables,
+                    line.speaker, line.speakerColor, line.speakerFallback, line.kind, parts,
+                    line.pronunciationText, translation, line.furiganaText));
+        }
+        return new LyricsResult(merged, baseResult.providerLabel, baseResult.detail, baseResult.karaoke,
+                baseResult.isrc, baseResult.spotifyTrackId, baseResult.contributors,
+                baseResult.providerId, baseResult.selectionPolicyKey, baseResult.syncType,
+                baseResult.syncPoints, baseResult.pronunciationProviderLabel,
+                snapshot.providerLabel);
+    }
+
     /**
      * The platform result for one translation task: the rows already translated, and the rows the AI
      * stage still has to fill, kept in their original slots so the merge cannot shift a translation
      * onto the wrong line.
      */
     private static final class PlatformSeed {
+        final boolean platformOnly;
         final List<String> values;
         final List<SupplementRequest> pendingRequests;
         final List<String> pendingTexts;
@@ -1987,7 +2105,9 @@ final class AiLyricsRepository {
         final int coveredLines;
 
         PlatformSeed(List<String> values, List<SupplementRequest> pendingRequests, List<String> pendingTexts,
-                List<Integer> pendingSlots, String providerLabel, int coveredLines) {
+                List<Integer> pendingSlots, String providerLabel, int coveredLines,
+                boolean platformOnly) {
+            this.platformOnly = platformOnly;
             this.values = values;
             this.pendingRequests = pendingRequests;
             this.pendingTexts = pendingTexts;
@@ -2001,7 +2121,8 @@ final class AiLyricsRepository {
         }
 
         boolean complete() {
-            return coveredLines > 0 && pendingRequests.isEmpty();
+            // Platform-only never falls through to the AI stage, even when nothing was covered.
+            return platformOnly || (coveredLines > 0 && pendingRequests.isEmpty());
         }
 
         List<String> merge(List<String> aiValues) {
@@ -2040,7 +2161,8 @@ final class AiLyricsRepository {
             pendingSlots.add(index);
         }
         if (track == null || requests.isEmpty() || !PlatformTranslationSettings.isChineseTarget(targetLang)) {
-            return new PlatformSeed(values, pending, pendingTexts, pendingSlots, "", 0);
+            return new PlatformSeed(values, pending, pendingTexts, pendingSlots, "", 0,
+                platformTranslations.platformOnly());
         }
         List<String> baseLines = new ArrayList<>(session.baseResult.lines.size());
         for (LyricsLine line : session.baseResult.lines) {
@@ -2060,7 +2182,8 @@ final class AiLyricsRepository {
             log.write(diagnostic);
         }
         if (!snapshot.hasAny()) {
-            return new PlatformSeed(values, pending, pendingTexts, pendingSlots, "", 0);
+            return new PlatformSeed(values, pending, pendingTexts, pendingSlots, "", 0,
+                platformTranslations.platformOnly());
         }
 
         List<SupplementRequest> remainingRequests = new ArrayList<>();
@@ -2084,7 +2207,7 @@ final class AiLyricsRepository {
             }
         }
         return new PlatformSeed(values, remainingRequests, remainingTexts, remainingSlots,
-                snapshot.providerLabel, covered);
+                snapshot.providerLabel, covered, platformTranslations.platformOnly());
     }
 
     private static String combineProviderLabels(String platformLabel, String aiLabel) {

@@ -28,8 +28,10 @@ final class PlatformTranslationSettings {
     private static final String KEY_MANUAL_PREFIX = "manual_source:";
     private static final String KEY_SELECTED_PREFIX = "selected_source:";
 
-    static final List<String> SOURCE_IDS = Collections.unmodifiableList(
-            java.util.Arrays.asList(NeteaseLyricSource.ID, QqLyricSource.ID));
+    static final List<String> SOURCE_IDS = Collections.unmodifiableList(java.util.Arrays.asList(
+            NeteaseLyricSource.ID, QqLyricSource.ID, KugouLyricSource.ID));
+    private static final String KEY_ENABLED_PREFIX = "source_enabled:";
+    static final String KEY_PLATFORM_ONLY = "platform_only";
 
     private final SharedPreferences prefs;
     private volatile Snapshot cached;
@@ -55,6 +57,9 @@ final class PlatformTranslationSettings {
         }
         if (QqLyricSource.ID.equals(sourceId)) {
             return QqLyricSource.LABEL;
+        }
+        if (KugouLyricSource.ID.equals(sourceId)) {
+            return KugouLyricSource.LABEL;
         }
         return "";
     }
@@ -188,12 +193,51 @@ final class PlatformTranslationSettings {
         if (MANUAL_OFF.equals(manual)) {
             return Collections.emptyList();
         }
-        List<String> order = new ArrayList<>(snapshot.order);
+        List<String> order = new ArrayList<>();
+        for (String id : snapshot.order) {
+            if (isSourceEnabled(id)) {
+                order.add(id);
+            }
+        }
         if (!MANUAL_AUTO.equals(manual)) {
-            order.remove(manual);
-            order.add(0, manual);
+            if (!order.contains(manual)) {
+                // A manual choice still runs even when its global switch is off.
+                order.add(0, manual);
+            } else {
+                order.remove(manual);
+                order.add(0, manual);
+            }
         }
         return order;
+    }
+
+    boolean isSourceEnabled(String sourceId) {
+        if (prefs == null) {
+            return true;
+        }
+        return prefs.getBoolean(KEY_ENABLED_PREFIX + sourceId, true);
+    }
+
+    void setSourceEnabled(String sourceId, boolean enabled) {
+        if (prefs == null || sourceId == null || sourceId.isEmpty()) {
+            return;
+        }
+        prefs.edit().putBoolean(KEY_ENABLED_PREFIX + sourceId, enabled).apply();
+        cached = null;
+    }
+
+    /**
+     * When set, platform translations are the only source: lines the platforms cannot cover stay
+     * empty instead of going to the machine/AI stage.
+     */
+    boolean platformOnly() {
+        return prefs != null && prefs.getBoolean(KEY_PLATFORM_ONLY, false);
+    }
+
+    void setPlatformOnly(boolean platformOnly) {
+        if (prefs != null) {
+            prefs.edit().putBoolean(KEY_PLATFORM_ONLY, platformOnly).apply();
+        }
     }
 
     static final class Snapshot {

@@ -325,6 +325,8 @@ public class BaseLyricsActivity extends Activity implements
     private LinearLayout lyricsLanguageSettingsPanel;
     private LinearLayout lyricsPopupTabButtonsContainer;
     private LinearLayout lyricsLanguageSettingsContent;
+    private View lyricsMatchStatusBlock;
+    private TextView lyricsMatchStatusText;
     private LinearLayout lyricsSyncSettingsContent;
     private LinearLayout videoSyncSettingsContent;
     private LinearLayout lyricsBackgroundSettingsContent;
@@ -4872,17 +4874,20 @@ public class BaseLyricsActivity extends Activity implements
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         ), dp(10)));
-        addLyricsPopupTabButton(LYRICS_POPUP_TAB_LANGUAGE, ui("lyrics.tab.language"));
+        // Language and lyric source are one page now; the separate provider tab is gone.
+        addLyricsPopupTabButton(LYRICS_POPUP_TAB_LANGUAGE, ui("lyrics.tab.lyrics_translation"));
         addLyricsPopupTabButton(LYRICS_POPUP_TAB_SYNC, ui("lyrics.tab.sync"));
         if (!videoBackgroundUnavailable()) {
             addLyricsPopupTabButton(LYRICS_POPUP_TAB_VIDEO, ui("lyrics.tab.video"));
         }
         addLyricsPopupTabButton(LYRICS_POPUP_TAB_BACKGROUND, ui("lyrics.tab.background"));
-        addLyricsPopupTabButton(LYRICS_POPUP_TAB_LRCLIB, ui("section.lyrics_providers"));
 
         lyricsLanguageSettingsContent = new LinearLayout(this);
         lyricsLanguageSettingsContent.setOrientation(LinearLayout.VERTICAL);
         panel.addView(lyricsLanguageSettingsContent, topMargin(matchWrap(), dp(10)));
+
+        lyricsMatchStatusBlock = buildLyricsMatchStatusBlock();
+        lyricsLanguageSettingsContent.addView(lyricsMatchStatusBlock, matchWrap());
 
         selectedLanguageRuleView = label("", 12f, Color.argb(210, 255, 255, 255), AppFonts.semiBold(this));
         selectedLanguageRuleView.setLineSpacing(dp(2), 1f);
@@ -11862,11 +11867,14 @@ public class BaseLyricsActivity extends Activity implements
                 updateLyricsBackgroundSettingsUi(true);
             }
         }
+        boolean lyricsTab = LYRICS_POPUP_TAB_LANGUAGE.equals(activeLyricsPopupTab);
         if (lyricsManualSearchContent != null) {
+            // Merged: the provider search lives on the lyrics tab instead of its own tab.
             lyricsManualSearchContent.setVisibility(
-                    LYRICS_POPUP_TAB_LRCLIB.equals(activeLyricsPopupTab) ? View.VISIBLE : View.GONE
+                    lyricsTab || LYRICS_POPUP_TAB_LRCLIB.equals(activeLyricsPopupTab)
+                            ? View.VISIBLE : View.GONE
             );
-            if (LYRICS_POPUP_TAB_LRCLIB.equals(activeLyricsPopupTab)) {
+            if (lyricsTab || LYRICS_POPUP_TAB_LRCLIB.equals(activeLyricsPopupTab)) {
                 populateManualLrclibSearchDefaults(false);
             }
         }
@@ -11921,7 +11929,7 @@ public class BaseLyricsActivity extends Activity implements
             return LYRICS_POPUP_TAB_BACKGROUND;
         }
         if (LYRICS_POPUP_TAB_LRCLIB.equals(tabId)) {
-            return LYRICS_POPUP_TAB_LRCLIB;
+            return LYRICS_POPUP_TAB_LANGUAGE;
         }
         return LYRICS_POPUP_TAB_LANGUAGE;
     }
@@ -12691,6 +12699,73 @@ public class BaseLyricsActivity extends Activity implements
      * The karaoke pill's long press lands here. The title uses the same sheet, so both entries show
      * one set of per-song values.
      */
+    /**
+     * The merged page opens with what the platforms actually answered for this song: the recording
+     * each one picked and how many displayed lines it filled, plus a real retry.
+     */
+    private View buildLyricsMatchStatusBlock() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(2), 0, dp(2), dp(8));
+        TextView header = label(ui("lyrics_enhance.match_status"), 12f,
+                Color.argb(150, 255, 255, 255), AppFonts.bold(this));
+        box.addView(header);
+        lyricsMatchStatusText = label("", 12f, Color.argb(215, 255, 255, 255), AppFonts.regular(this));
+        lyricsMatchStatusText.setLineSpacing(dp(2), 1f);
+        box.addView(lyricsMatchStatusText, topMargin(matchWrap(), dp(4)));
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        Button retry = SettingsAppearance.button(this, ui("lyrics_meaning.retry"), 12f);
+        makeRemoteFocusable(retry);
+        retry.setOnClickListener(view -> requestAiLyrics(true));
+        row.addView(retry, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        Button restore = SettingsAppearance.button(this, ui("lyrics_enhance.restore_defaults"), 12f);
+        makeRemoteFocusable(restore);
+        restore.setOnClickListener(view -> {
+            if (platformTranslationSettings != null && currentLyricsKey != null) {
+                platformTranslationSettings.setManualSource(currentLyricsKey, "");
+            }
+            requestAiLyrics(true);
+        });
+        LinearLayout.LayoutParams restoreParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        restoreParams.leftMargin = dp(8);
+        row.addView(restore, restoreParams);
+        box.addView(row, topMargin(matchWrap(), dp(6)));
+        return box;
+    }
+
+    private void updateLyricsMatchStatusBlock() {
+        if (lyricsMatchStatusText == null) {
+            return;
+        }
+        PlatformTranslationService.Snapshot snapshot = currentPlatformSnapshot;
+        if (snapshot == null || snapshot.statuses.isEmpty()) {
+            lyricsMatchStatusText.setText("-");
+            return;
+        }
+        StringBuilder text = new StringBuilder();
+        for (PlatformTranslationService.SourceStatus status : snapshot.statuses) {
+            if (text.length() > 0) {
+                text.append('\n');
+            }
+            text.append(status.label);
+            if (PlatformTranslationService.SourceStatus.STATE_OK.equals(status.state)) {
+                text.append(' ').append(status.translatedLines).append('/')
+                        .append(status.translatableLines);
+                if (status.contributedLines > 0) {
+                    text.append("  +").append(status.contributedLines);
+                }
+            } else if (PlatformTranslationService.SourceStatus.STATE_NO_CHINESE.equals(status.state)) {
+                text.append(" \u00b7 ").append(ui("lyrics_enhance.no_chinese"));
+            } else {
+                text.append(" \u00b7 ").append(ui("lyrics_enhance.no_match"));
+            }
+        }
+        lyricsMatchStatusText.setText(text.toString());
+    }
+
     protected void openLyricsMetaSettings() {
         if (lyricsTitleView == null) {
             return;
@@ -12704,6 +12779,7 @@ public class BaseLyricsActivity extends Activity implements
         }
         dismissLyricsMetaMenuPopup();
         updateLyricsLanguageSettingsUi();
+        updateLyricsMatchStatusBlock();
         switchLyricsPopupTab(activeLyricsPopupTab);
         rememberLyricsLanguageSettingsParent();
         detachFromParent(lyricsLanguageSettingsPanel);
@@ -15614,6 +15690,7 @@ public class BaseLyricsActivity extends Activity implements
                         return;
                     }
                     currentPlatformSnapshot = platformSnapshot;
+                    updateLyricsMatchStatusBlock();
                     if (result == base) {
                         // No platform had anything usable; the base lyrics stay as they are.
                         updateLyricsProviderAttribution(currentLyricsResult);

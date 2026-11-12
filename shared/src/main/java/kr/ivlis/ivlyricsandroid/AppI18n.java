@@ -150,6 +150,7 @@ final class AppI18n {
         addAlbumArtLpStrings(languages);
         addLyricsRegenerateStrings(languages);
         addSingAlongStrings(languages);
+        addLyricsTranslationTabStrings(languages);
         addErrorMessageStrings(languages);
         addAccessibilityLabelStrings(languages);
         addSettingsRedesignStrings(languages);
@@ -157,6 +158,42 @@ final class AppI18n {
         addLrclibPlaybackSettingsStrings(languages);
         assertComplete(languages);
         return Collections.unmodifiableMap(languages);
+    }
+
+    /** The merged per-song tab: language and lyric source live on one page. */
+    private static void addLyricsTranslationTabStrings(Map<String, Map<String, String>> languages) {
+        String[] keys = {
+                "lyrics.tab.lyrics_translation",
+                "lyrics_enhance.match_status",
+                "lyrics_enhance.no_chinese",
+                "lyrics_enhance.no_match",
+                "lyrics_enhance.restore_defaults"
+        };
+        String[][] rows = {
+                {"en", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"ko", "가사 및 번역", "매칭 상태", "중국어 없음", "매칭 없음", "전역 기본값 복원"},
+                {"zh-CN", "歌词与翻译", "匹配状态", "命中但无中文", "未匹配到录音", "恢复全局默认"},
+                {"zh-TW", "歌詞與翻譯", "匹配狀態", "命中但無中文", "未匹配到錄音", "恢復全域預設"},
+                {"ja", "歌詞と翻訳", "マッチ状態", "中國語なし", "該当なし", "グローバル既定に戻す"},
+                {"hi", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"es", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"fr", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"ar", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"fa", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"de", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"ru", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"sv", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"pt", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"bn", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"cs", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"it", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"th", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"vi", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"id", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"ms", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"tr", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+        };
+        addRows(languages, keys, rows);
     }
 
     /** The Spotify module's sing-along control, in the app's UI language like the rest of its lyrics page. */

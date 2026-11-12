@@ -34,6 +34,8 @@ final class PlatformTranslationSettings {
     static final String KEY_PLATFORM_ONLY = "platform_only";
     /** When off, the first source that fills anything owns the whole translation. */
     static final String KEY_MIX = "mix_sources";
+    /** Global translation source: "auto" follows the order, otherwise one source leads. */
+    static final String KEY_GLOBAL_SOURCE = "global_source";
     /** Per-song switch: "true"/"false"; absent means follow the global setting. */
     private static final String KEY_TRACK_ENABLED_PREFIX = "track_enabled:";
 
@@ -106,6 +108,24 @@ final class PlatformTranslationSettings {
         }
     }
 
+    String globalSource() {
+        if (prefs == null) {
+            return MANUAL_AUTO;
+        }
+        String value = prefs.getString(KEY_GLOBAL_SOURCE, MANUAL_AUTO);
+        String normalized = value == null ? MANUAL_AUTO : value.trim().toLowerCase(Locale.ROOT);
+        return normalized.isEmpty() ? MANUAL_AUTO : normalized;
+    }
+
+    void setGlobalSource(String sourceId) {
+        if (prefs == null) {
+            return;
+        }
+        String value = sourceId == null || sourceId.trim().isEmpty()
+                ? MANUAL_AUTO : sourceId.trim().toLowerCase(Locale.ROOT);
+        prefs.edit().putString(KEY_GLOBAL_SOURCE, value).apply();
+    }
+
     boolean mixSources() {
         return prefs == null || prefs.getBoolean(KEY_MIX, true);
     }
@@ -121,7 +141,14 @@ final class PlatformTranslationSettings {
         if (prefs == null || trackKey == null || trackKey.isEmpty()) {
             return null;
         }
-        String stored = prefs.getString(KEY_TRACK_ENABLED_PREFIX + trackKey, "");
+        String stored;
+        try {
+            stored = prefs.getString(KEY_TRACK_ENABLED_PREFIX + trackKey, "");
+        } catch (ClassCastException wrongType) {
+            // An earlier build wrote a boolean under this key; treat it as "not set".
+            prefs.edit().remove(KEY_TRACK_ENABLED_PREFIX + trackKey).apply();
+            return null;
+        }
         if ("true".equals(stored)) {
             return Boolean.TRUE;
         }
@@ -139,7 +166,8 @@ final class PlatformTranslationSettings {
             prefs.edit().remove(KEY_TRACK_ENABLED_PREFIX + trackKey).apply();
             return;
         }
-        prefs.edit().putBoolean(KEY_TRACK_ENABLED_PREFIX + trackKey, enabled).apply();
+        // Stored as a string, which is what trackEnabled() reads back.
+        prefs.edit().putString(KEY_TRACK_ENABLED_PREFIX + trackKey, enabled ? "true" : "false").apply();
     }
 
     boolean enabledForTrack(String trackKey) {
@@ -242,6 +270,14 @@ final class PlatformTranslationSettings {
         for (String id : snapshot.order) {
             if (isSourceEnabled(id)) {
                 order.add(id);
+            }
+        }
+        if (MANUAL_AUTO.equals(manual)) {
+            // No per-song choice: the global source leads, the rest still backs it up.
+            String globalSource = globalSource();
+            if (!MANUAL_AUTO.equals(globalSource) && !MANUAL_OFF.equals(globalSource)) {
+                order.remove(globalSource);
+                order.add(0, globalSource);
             }
         }
         if (!MANUAL_AUTO.equals(manual)) {

@@ -4340,6 +4340,8 @@ public class BaseLyricsActivity extends Activity implements
     private LinearLayout meaningHeader;
     private ScrollView meaningScrollView;
     private View meaningFocusCard;
+    /** Notes the reader switched back to Genius' own words; everything else follows the header chip. */
+    private final java.util.Set<String> meaningNotesShowOriginal = new java.util.HashSet<>();
     private int meaningSheetColor;
     private String meaningSheetColorKey = "";
     private TextView meaningHeaderChip;
@@ -4532,6 +4534,14 @@ public class BaseLyricsActivity extends Activity implements
 
     /** Drag the handle down to dismiss; a short pull springs back. */
     private void installMeaningSheetDrag(View dragArea) {
+        installSheetDrag(dragArea, meaningSheetCard, () -> {
+            if (meaningPopup != null) {
+                meaningPopup.dismiss();
+            }
+        });
+    }
+
+    private void installSheetDrag(View dragArea, LinearLayout card, Runnable onDismissed) {
         final float[] startY = new float[1];
         final boolean[] moved = new boolean[1];
         dragArea.setOnTouchListener((view, event) -> {
@@ -4544,7 +4554,7 @@ public class BaseLyricsActivity extends Activity implements
                     float delta = event.getRawY() - startY[0];
                     if (delta > dp(4)) {
                         moved[0] = true;
-                        meaningSheetCard.setTranslationY(delta);
+                        card.setTranslationY(delta);
                     }
                     return moved[0];
                 }
@@ -4553,20 +4563,18 @@ public class BaseLyricsActivity extends Activity implements
                     if (!moved[0]) {
                         return true;
                     }
-                    float delta = meaningSheetCard.getTranslationY();
+                    float delta = card.getTranslationY();
                     if (delta > dp(90)) {
-                        meaningSheetCard.animate()
-                                .translationY(meaningSheetCard.getHeight())
+                        card.animate()
+                                .translationY(card.getHeight())
                                 .setDuration(180L)
                                 .withEndAction(() -> {
-                                    if (meaningPopup != null) {
-                                        meaningPopup.dismiss();
-                                    }
-                                    meaningSheetCard.setTranslationY(0f);
+                                    onDismissed.run();
+                                    card.setTranslationY(0f);
                                 })
                                 .start();
                     } else {
-                        meaningSheetCard.animate()
+                        card.animate()
                                 .translationY(0f)
                                 .setDuration(160L)
                                 .start();
@@ -4768,6 +4776,7 @@ public class BaseLyricsActivity extends Activity implements
         card.addView(quote);
 
         String translated = songMeaningShowTranslation && songMeaningTranslation != null
+                && !meaningNotesShowOriginal.contains(annotation.cacheKey())
                 ? songMeaningTranslation.bodyFor(annotation)
                 : "";
         TextView body = label(translated.isEmpty() ? annotation.body : translated,
@@ -4781,6 +4790,13 @@ public class BaseLyricsActivity extends Activity implements
             link.setOnClickListener(view -> openMeaningUrl(annotation.url));
             card.addView(link, topMargin(matchWrap(), dp(8)));
         }
+        card.setOnClickListener(view -> {
+            String key = annotation.cacheKey();
+            if (!meaningNotesShowOriginal.remove(key)) {
+                meaningNotesShowOriginal.add(key);
+            }
+            renderMeaningPanel(lastMeaningFocusLine);
+        });
         meaningContainer.addView(card, topMargin(matchWrap(), dp(10)));
         if (focused && meaningFocusCard == null) {
             meaningFocusCard = card;
@@ -13169,13 +13185,22 @@ public class BaseLyricsActivity extends Activity implements
         translationSettingsCard.setPadding(dp(22), dp(8), dp(22), dp(26));
         translationSettingsCard.setBackground(meaningSheetBackground());
 
+        FrameLayout translationDragArea = new FrameLayout(this);
         View handle = new View(this);
         handle.setBackground(roundDrawable(Color.argb(110, 255, 255, 255), dp(2)));
-        LinearLayout.LayoutParams handleParams = new LinearLayout.LayoutParams(dp(34), dp(4));
-        handleParams.gravity = Gravity.CENTER_HORIZONTAL;
-        handleParams.topMargin = dp(4);
-        handleParams.bottomMargin = dp(16);
-        translationSettingsCard.addView(handle, handleParams);
+        FrameLayout.LayoutParams handleParams = new FrameLayout.LayoutParams(dp(34), dp(4));
+        handleParams.gravity = Gravity.CENTER;
+        translationDragArea.addView(handle, handleParams);
+        LinearLayout.LayoutParams translationDragParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(26));
+        translationDragParams.topMargin = dp(4);
+        translationDragParams.bottomMargin = dp(8);
+        translationSettingsCard.addView(translationDragArea, translationDragParams);
+        installSheetDrag(translationDragArea, translationSettingsCard, () -> {
+            if (translationSettingsPopup != null) {
+                translationSettingsPopup.dismiss();
+            }
+        });
 
         translationSettingsTabs = new LinearLayout(this);
         translationSettingsTabs.setOrientation(LinearLayout.HORIZONTAL);
@@ -13232,6 +13257,16 @@ public class BaseLyricsActivity extends Activity implements
                         platformTranslationSettings.setEnabled(checked);
                         reloadLyricsForTranslation();
                     });
+            translationSettingsContent.addView(translationSectionTitle(ui("translation.source")),
+                    topMargin(matchWrap(), dp(12)));
+            String globalSource = platformTranslationSettings.globalSource();
+            addGlobalSourceChoice(ui("translation.auto"),
+                    PlatformTranslationSettings.MANUAL_AUTO, globalSource);
+            addGlobalSourceChoice(NeteaseLyricSource.LABEL, NeteaseLyricSource.ID, globalSource);
+            addGlobalSourceChoice(QqLyricSource.LABEL, QqLyricSource.ID, globalSource);
+            addGlobalSourceChoice(KugouLyricSource.LABEL, KugouLyricSource.ID, globalSource);
+            translationSettingsContent.addView(translationSectionTitle(ui("translation.mix")),
+                    topMargin(matchWrap(), dp(12)));
             addTranslationSwitch(ui("translation.mix"), platformTranslationSettings.mixSources(),
                     checked -> {
                         platformTranslationSettings.setMixSources(checked);
@@ -13304,6 +13339,15 @@ public class BaseLyricsActivity extends Activity implements
         }
         row.setOnClickListener(view -> action.run());
         return row;
+    }
+
+    private void addGlobalSourceChoice(String text, String sourceId, String current) {
+        boolean selected = sourceId.equals(current);
+        translationSettingsContent.addView(translationChoiceRow(text, selected, () -> {
+            platformTranslationSettings.setGlobalSource(sourceId);
+            reloadLyricsForTranslation();
+            renderTranslationSettings();
+        }), matchWrap());
     }
 
     private void addSourceChoice(String text, String sourceId, String current, String trackKey) {

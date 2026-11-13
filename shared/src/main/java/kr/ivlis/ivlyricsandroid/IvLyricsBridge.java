@@ -39,7 +39,7 @@ import java.util.Map;
 public final class IvLyricsBridge {
     public static final String EXTRA_EMBEDDED_MODE = "kr.ivlis.ivlyricsandroid.EMBEDDED_MODE";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
-    private static final String STANDALONE_PACKAGE = "kr.ivlis.ivlyricsandroid";
+    private static final String STANDALONE_PACKAGE = "dev.lyriscope.app";
     private static Context application;
     private static Engine engine;
     private static boolean wordSegmenterInitialized;

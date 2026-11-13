@@ -3401,7 +3401,7 @@ final class AiLyricsRepository {
         headers.put("Authorization", "Bearer " + apiKey);
         if ("openrouter".equals(settings.provider.id)) {
             headers.put("HTTP-Referer", "https://github.com/ivLis-STUDIO/ivLyrics");
-            headers.put("X-Title", "ivLyrics");
+            headers.put("X-Title", "Lyriscope");
         }
         return headers;
     }

@@ -1440,12 +1440,12 @@ public class BaseLyricsActivity extends Activity implements
             if (vinylModeVisible) {
                 showVinylMode(false);
             }
-            if (titleView != null) titleView.setText("ivLyrics");
+            if (titleView != null) titleView.setText("Lyriscope");
             if (artistView != null) artistView.setText(ui("status.waiting_spotify"));
             applyNowPlayingTextColors();
-            lyricsTitleView.setText("ivLyrics");
+            lyricsTitleView.setText("Lyriscope");
             lyricsArtistView.setText(ui("status.waiting_spotify"));
-            updatePictureInPictureMetadataText("ivLyrics", ui("status.waiting_spotify"));
+            updatePictureInPictureMetadataText("Lyriscope", ui("status.waiting_spotify"));
             translatedTrackTitle = "";
             translatedTrackArtist = "";
             updateArtwork(null, "");
@@ -2616,7 +2616,7 @@ public class BaseLyricsActivity extends Activity implements
         meta.setOrientation(LinearLayout.VERTICAL);
         info.addView(meta, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        titleView = slidingLabel("ivLyrics", 28f, Color.WHITE, AppFonts.bold(this));
+        titleView = slidingLabel("Lyriscope", 28f, Color.WHITE, AppFonts.bold(this));
         titleView.setMaxLines(1);
         attachSpotifyMetaTap(titleView);
         meta.addView(titleView, new LinearLayout.LayoutParams(
@@ -2819,7 +2819,7 @@ public class BaseLyricsActivity extends Activity implements
         artworkParams.gravity = Gravity.CENTER_HORIZONTAL;
         meta.addView(pictureInPictureArtworkView, artworkParams);
 
-        pictureInPictureTitleView = label("ivLyrics", 22f, Color.WHITE, AppFonts.bold(this));
+        pictureInPictureTitleView = label("Lyriscope", 22f, Color.WHITE, AppFonts.bold(this));
         pictureInPictureTitleView.setGravity(Gravity.CENTER);
         pictureInPictureTitleView.setSingleLine(true);
         pictureInPictureTitleView.setEllipsize(TextUtils.TruncateAt.END);
@@ -2922,7 +2922,7 @@ public class BaseLyricsActivity extends Activity implements
         textParams.leftMargin = dp(16);
         meta.addView(textColumn, textParams);
 
-        pictureInPictureTitleView = label("ivLyrics", 21f, Color.WHITE, AppFonts.bold(this));
+        pictureInPictureTitleView = label("Lyriscope", 21f, Color.WHITE, AppFonts.bold(this));
         pictureInPictureTitleView.setGravity(Gravity.CENTER_VERTICAL);
         pictureInPictureTitleView.setSingleLine(true);
         pictureInPictureTitleView.setEllipsize(TextUtils.TruncateAt.END);
@@ -3005,7 +3005,7 @@ public class BaseLyricsActivity extends Activity implements
         textParams.leftMargin = dp(16);
         meta.addView(textColumn, textParams);
 
-        pictureInPictureTitleView = label("ivLyrics", 22f, Color.WHITE, AppFonts.bold(this));
+        pictureInPictureTitleView = label("Lyriscope", 22f, Color.WHITE, AppFonts.bold(this));
         pictureInPictureTitleView.setGravity(Gravity.CENTER_VERTICAL);
         pictureInPictureTitleView.setSingleLine(true);
         pictureInPictureTitleView.setEllipsize(TextUtils.TruncateAt.END);
@@ -3144,7 +3144,7 @@ public class BaseLyricsActivity extends Activity implements
         metaParams.topMargin = landscapeMetadataTopMargin(true);
         landscapeHeroContainer.addView(meta, metaParams);
 
-        titleView = label("ivLyrics", 23f, Color.WHITE, AppFonts.bold(this));
+        titleView = label("Lyriscope", 23f, Color.WHITE, AppFonts.bold(this));
         titleView.setGravity(Gravity.CENTER);
         titleView.setMaxLines(1);
         titleView.setEllipsize(TextUtils.TruncateAt.END);
@@ -3700,7 +3700,7 @@ public class BaseLyricsActivity extends Activity implements
         lyricsMeta.setGravity(Gravity.CENTER_VERTICAL);
         metaRow.addView(lyricsMeta, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        lyricsTitleView = label("ivLyrics", 19f, Color.WHITE, AppFonts.bold(this));
+        lyricsTitleView = label("Lyriscope", 19f, Color.WHITE, AppFonts.bold(this));
         lyricsTitleView.setSingleLine(true);
         lyricsTitleView.setEllipsize(TextUtils.TruncateAt.END);
         lyricsTitleView.setIncludeFontPadding(true);
@@ -8339,7 +8339,7 @@ public class BaseLyricsActivity extends Activity implements
         columnHost.addView(outer, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
 
-        outer.addView(kit.text("ivLyrics", 16f, kit.p.text, kit.semi), matchWrap());
+        outer.addView(kit.text("Lyriscope", 16f, kit.p.text, kit.semi), matchWrap());
         onboardingStepLabel = kit.text("", 13f, kit.p.text2, kit.regular);
         onboardingStepLabel.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         outer.addView(onboardingStepLabel, topMargin(matchWrap(), dp(24)));
@@ -9050,11 +9050,11 @@ public class BaseLyricsActivity extends Activity implements
 
     private void restoreNowPlayingViewsAfterUiLanguageChange() {
         if (currentTrack == null || !currentTrack.hasUsableMetadata()) {
-            if (titleView != null) titleView.setText("ivLyrics");
+            if (titleView != null) titleView.setText("Lyriscope");
             if (artistView != null) artistView.setText(ui("status.waiting_spotify"));
-            lyricsTitleView.setText("ivLyrics");
+            lyricsTitleView.setText("Lyriscope");
             lyricsArtistView.setText(ui("status.waiting_spotify"));
-            updatePictureInPictureMetadataText("ivLyrics", ui("status.waiting_spotify"));
+            updatePictureInPictureMetadataText("Lyriscope", ui("status.waiting_spotify"));
             sourceView.setText("");
             statusView.setText("");
             debugProgressView.setText("0:00 / 0:00");
@@ -13581,7 +13581,7 @@ public class BaseLyricsActivity extends Activity implements
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
-        String safeLabel = label == null || label.trim().isEmpty() ? "ivLyrics" : label.trim();
+        String safeLabel = label == null || label.trim().isEmpty() ? "Lyriscope" : label.trim();
         return new RemoteAction(
                 Icon.createWithResource(this, iconResource),
                 safeLabel,
@@ -13669,7 +13669,7 @@ public class BaseLyricsActivity extends Activity implements
         } else if (spotifySetupRequired) {
             updatePictureInPictureMetadataText(ui("status.spotify_required_title"), ui("status.spotify_required_subtitle"));
         } else {
-            updatePictureInPictureMetadataText("ivLyrics", ui("status.waiting_spotify"));
+            updatePictureInPictureMetadataText("Lyriscope", ui("status.waiting_spotify"));
         }
         updateArtwork(currentArtworkBitmap, currentArtworkKey);
     }
@@ -13894,7 +13894,7 @@ public class BaseLyricsActivity extends Activity implements
 
     private void updatePictureInPictureMetadataText(String title, String artist) {
         if (pictureInPictureTitleView != null) {
-            pictureInPictureTitleView.setText(title == null || title.trim().isEmpty() ? "ivLyrics" : title.trim());
+            pictureInPictureTitleView.setText(title == null || title.trim().isEmpty() ? "Lyriscope" : title.trim());
         }
         if (pictureInPictureArtistView != null) {
             pictureInPictureArtistView.setText(artist == null ? "" : artist.trim());

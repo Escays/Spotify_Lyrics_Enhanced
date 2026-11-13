@@ -4643,6 +4643,22 @@ public class BaseLyricsActivity extends Activity implements
         }
     }
 
+    /** "Could not reach Genius" and "Genius has nothing" are different problems for the reader. */
+    private String describeMeaningFailure(String error) {
+        if (error == null || error.isEmpty()) {
+            return "";
+        }
+        String message = error;
+        String lower = message.toLowerCase(java.util.Locale.ROOT);
+        boolean network = lower.contains("unable to resolve host")
+                || lower.contains("timeout")
+                || lower.contains("timed out")
+                || lower.contains("failed to connect")
+                || lower.contains("connection")
+                || lower.contains("ssl");
+        return network ? ui("lyrics_meaning.network_error") : message;
+    }
+
     private boolean meaningIsEmpty() {
         return songMeaning == null || songMeaning.isEmpty();
     }
@@ -4887,7 +4903,7 @@ public class BaseLyricsActivity extends Activity implements
                     songMeaning = meaning == null ? SongMeaning.EMPTY : meaning;
                     songMeaningLoading = false;
                     songMeaningLoaded = true;
-                    songMeaningError = error == null ? "" : error;
+                    songMeaningError = describeMeaningFailure(error);
                     songMeaningTranslation = null;
                     songMeaningShowTranslation = false;
                     meaningItemTranslations.clear();
@@ -8303,7 +8319,7 @@ public class BaseLyricsActivity extends Activity implements
         LinearLayout section = settingsSection(page, "网络与地区", "决定默认翻译引擎与提示，随时可改", -1);
         LinearLayout group = settingsGroup(section);
         addNetworkRegionRow(group, NetworkRegion.CN, "中国大陆",
-                "翻译默认用 Bing，Genius 提示可能需要代理，视频背景默认关闭");
+                "释义翻译默认用 Bing，歌词源优先中文译词");
         addNetworkRegionRow(group, NetworkRegion.GLOBAL, "海外", "保持现状：翻译跟随设置里的引擎链");
         addNetworkRegionRow(group, NetworkRegion.CUSTOM, "自定义", "只记住你的选择，不改任何默认值");
 
@@ -8354,6 +8370,18 @@ public class BaseLyricsActivity extends Activity implements
             TextView row = settingsKit.text(mark + "  " + result.endpoint.label + "   " + detail,
                     13f, color, settingsKit.regular);
             networkHealthRows.addView(row, topMargin(matchWrap(), dp(3)));
+            if (!result.reachable && "google".equals(result.endpoint.id)) {
+                // The one failure with a one-tap answer: the other keyless engine still works.
+                TextView fix = settingsKit.text("   改用 Bing 翻译 ›", 13f,
+                        settingsKit.p.danger, settingsKit.regular);
+                fix.setOnClickListener(view -> {
+                    lyricsPageSettings.setMeaningTranslationEngine(KeylessTranslationProviders.BING_ID);
+                    songMeaningTranslation = null;
+                    android.widget.Toast.makeText(this, "已改用 Bing 翻译",
+                            android.widget.Toast.LENGTH_SHORT).show();
+                });
+                networkHealthRows.addView(fix, matchWrap());
+            }
         }
     }
 

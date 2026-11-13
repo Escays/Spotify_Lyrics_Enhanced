@@ -11895,16 +11895,10 @@ final class AppI18n {
             if (table == null) {
                 throw new IllegalStateException("Missing i18n table: " + language.code);
             }
-            if (!table.keySet().containsAll(english.keySet())) {
-                // A key that only exists in English is not an error any more: it is an untranslated
-                // string, and English stands in until someone writes it. Filling here keeps every
-                // table complete for the readers that iterate keys.
-                for (Map.Entry<String, String> entry : english.entrySet()) {
-                    if (!table.containsKey(entry.getKey())) {
-                        table.put(entry.getKey(), entry.getValue());
-                    }
-                }
-            }
+            // A key that only exists in English is an untranslated string, not a programming error:
+            // AppI18n.t() already falls back to English for it. The tables are unmodifiable by the
+            // time they get here, so nothing may be written into them either.
+
             for (Map.Entry<String, String> entry : table.entrySet()) {
                 if (entry.getValue() == null || entry.getValue().trim().isEmpty()) {
                     throw new IllegalStateException(

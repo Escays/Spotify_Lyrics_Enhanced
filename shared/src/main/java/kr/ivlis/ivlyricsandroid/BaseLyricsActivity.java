@@ -641,6 +641,11 @@ public class BaseLyricsActivity extends Activity implements
     private boolean automaticUpdateCheckStarted;
     private boolean spotifySetupRequired;
     private boolean manualLrclibSearchInFlight;
+    /** Which catalogue the manual search asks: lrclib, qq, netease or kugou. */
+    private static final String MANUAL_SOURCE_LRCLIB = "lrclib";
+    private String manualSearchSource = MANUAL_SOURCE_LRCLIB;
+    private final java.util.List<TextView> manualSearchSourceChips = new java.util.ArrayList<>();
+    private PlatformHttpTransport.Transport manualSearchTransport;
     private boolean pictureInPictureUiActive;
     private boolean pictureInPictureActionsInitialized;
     private boolean pictureInPictureActionsPlaying;
@@ -5946,13 +5951,31 @@ public class BaseLyricsActivity extends Activity implements
         description.setLineSpacing(dp(2), 1f);
         content.addView(description, topMargin(matchWrap(), dp(5)));
 
+        // Four catalogues: LRCLIB keeps the old behaviour, the three Chinese platforms carry their
+        // own translations, which is often what a missing lyric needs.
+        LinearLayout sourceRow = new LinearLayout(this);
+        sourceRow.setOrientation(LinearLayout.HORIZONTAL);
+        manualSearchSourceChips.clear();
+        addManualSearchSourceChip(sourceRow, MANUAL_SOURCE_LRCLIB, "LRCLIB");
+        addManualSearchSourceChip(sourceRow, "netease", manualLyricSource("netease").label());
+        addManualSearchSourceChip(sourceRow, "qq", manualLyricSource("qq").label());
+        addManualSearchSourceChip(sourceRow, "kugou", manualLyricSource("kugou").label());
+        HorizontalScrollView sourceScroll = new HorizontalScrollView(this);
+        sourceScroll.setHorizontalScrollBarEnabled(false);
+        sourceScroll.setFillViewport(false);
+        sourceScroll.addView(sourceRow, new HorizontalScrollView.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+        content.addView(sourceScroll, topMargin(matchWrap(), dp(8)));
+
         lyricsManualSearchTitleInput = settingEditText(ui("lyrics.lrclib_search.title_hint"), false, false);
         lyricsManualSearchArtistInput = settingEditText(ui("lyrics.lrclib_search.artist_hint"), false, false);
         content.addView(settingField(ui("lyrics.lrclib_search.field_title"), "", lyricsManualSearchTitleInput), topMargin(matchWrap(), dp(10)));
         content.addView(settingField(ui("lyrics.lrclib_search.field_artist"), "", lyricsManualSearchArtistInput), topMargin(matchWrap(), dp(8)));
 
         TextView searchButton = primaryButton(ui("lyrics.lrclib_search.button"));
-        searchButton.setOnClickListener(view -> performManualLrclibSearch());
+        searchButton.setOnClickListener(view -> performManualSearch());
         content.addView(searchButton, topMargin(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(42)
@@ -11987,6 +12010,35 @@ public class BaseLyricsActivity extends Activity implements
         lyricsPopupTabButtonsContainer.addView(button, params);
     }
 
+    /** The visible tab body, so a switch can slide it in instead of swapping without a transition. */
+    private View lyricsPopupTabContent() {
+        if (LYRICS_POPUP_TAB_SYNC.equals(activeLyricsPopupTab)) {
+            return lyricsSyncSettingsContent;
+        }
+        if (LYRICS_POPUP_TAB_VIDEO.equals(activeLyricsPopupTab)) {
+            return videoSyncSettingsContent;
+        }
+        if (LYRICS_POPUP_TAB_BACKGROUND.equals(activeLyricsPopupTab)) {
+            return lyricsBackgroundSettingsContent;
+        }
+        return lyricsLanguageSettingsContent;
+    }
+
+    private void animateLyricsPopupTab(View content) {
+        if (content == null || content.getVisibility() != View.VISIBLE) {
+            return;
+        }
+        content.animate().cancel();
+        content.setAlpha(0f);
+        content.setTranslationX(dp(14));
+        content.animate()
+                .alpha(1f)
+                .translationX(0f)
+                .setDuration(180L)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .start();
+    }
+
     private void switchLyricsPopupTab(String tabId) {
         activeLyricsPopupTab = normalizeLyricsPopupTab(tabId);
         if (lyricsLanguageSettingsContent != null) {
@@ -12012,6 +12064,7 @@ public class BaseLyricsActivity extends Activity implements
                 updateLyricsBackgroundSettingsUi(true);
             }
         }
+        animateLyricsPopupTab(lyricsPopupTabContent());
         boolean lyricsTab = LYRICS_POPUP_TAB_LANGUAGE.equals(activeLyricsPopupTab);
         if (lyricsManualSearchContent != null) {
             // Merged: the provider search lives on the lyrics tab instead of its own tab.
@@ -12223,6 +12276,204 @@ public class BaseLyricsActivity extends Activity implements
         lyricsRepository.searchManualLrclib(currentTrack, title, artist, this);
     }
 
+    private PlatformLyricSource manualLyricSource(String id) {
+        if (manualSearchTransport == null) {
+            manualSearchTransport = PlatformHttpTransport.http();
+        }
+        if ("netease".equals(id)) {
+            return new NeteaseLyricSource(manualSearchTransport);
+        }
+        if ("qq".equals(id)) {
+            return new QqLyricSource(manualSearchTransport);
+        }
+        if ("kugou".equals(id)) {
+            return new KugouLyricSource(manualSearchTransport);
+        }
+        return null;
+    }
+
+    private void addManualSearchSourceChip(LinearLayout row, String id, String text) {
+        TextView chip = languageButton(text, id.equals(manualSearchSource));
+        chip.setTag(id);
+        chip.setOnClickListener(view -> selectManualSearchSource(id));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        if (row.getChildCount() > 0) {
+            params.leftMargin = dp(8);
+        }
+        row.addView(chip, params);
+        manualSearchSourceChips.add(chip);
+    }
+
+    private void selectManualSearchSource(String id) {
+        manualSearchSource = id == null ? MANUAL_SOURCE_LRCLIB : id;
+        for (TextView chip : manualSearchSourceChips) {
+            setSelectableButtonState(chip, manualSearchSource.equals(chip.getTag()), 11f);
+        }
+        if (lyricsManualSearchResultsContainer != null) {
+            lyricsManualSearchResultsContainer.removeAllViews();
+        }
+        setManualLrclibStatus(ui("lyrics.lrclib_search.ready"));
+    }
+
+    /** The search button: LRCLIB keeps its own path, the Chinese catalogues go through the platform sources. */
+    protected void performManualSearch() {
+        if (MANUAL_SOURCE_LRCLIB.equals(manualSearchSource)) {
+            performManualLrclibSearch();
+            return;
+        }
+        performManualPlatformSearch();
+    }
+
+    private void performManualPlatformSearch() {
+        if (manualLrclibSearchInFlight) {
+            return;
+        }
+        populateManualLrclibSearchDefaults(false);
+        String title = textOf(lyricsManualSearchTitleInput);
+        String artist = textOf(lyricsManualSearchArtistInput);
+        if (title.isEmpty()) {
+            setManualLrclibStatus(ui("lyrics.lrclib_search.empty_title"));
+            return;
+        }
+        final PlatformLyricSource source = manualLyricSource(manualSearchSource);
+        if (source == null) {
+            setManualLrclibStatus(ui("spotify.error.repository_unavailable"));
+            return;
+        }
+        final String trackKey = currentTrack == null ? "" : currentTrack.stableKey();
+        final String query = artist.isEmpty() ? title : title + " " + artist;
+        manualLrclibSearchInFlight = true;
+        setManualLrclibStatus(ui("lyrics.lrclib_search.loading"));
+        if (lyricsManualSearchResultsContainer != null) {
+            lyricsManualSearchResultsContainer.removeAllViews();
+        }
+        new Thread(() -> {
+            java.util.List<PlatformRecordingMatcher.Candidate> hits;
+            try {
+                hits = source.search(query, 8);
+            } catch (Exception error) {
+                final String reason = describeTranslationFailure(error);
+                runOnUiThread(() -> {
+                    manualLrclibSearchInFlight = false;
+                    if (isCurrentManualLrclibTrack(trackKey)) {
+                        setManualLrclibStatus(uiFormat("lyrics.lrclib_search.error_format", reason));
+                    }
+                });
+                return;
+            }
+            runOnUiThread(() -> {
+                manualLrclibSearchInFlight = false;
+                if (!isCurrentManualLrclibTrack(trackKey)) {
+                    return;
+                }
+                renderManualPlatformCandidates(source, trackKey, hits);
+            });
+        }, "lyrics-manual-search").start();
+    }
+
+    private void renderManualPlatformCandidates(PlatformLyricSource source, String trackKey,
+            java.util.List<PlatformRecordingMatcher.Candidate> hits) {
+        if (lyricsManualSearchResultsContainer == null) {
+            return;
+        }
+        lyricsManualSearchResultsContainer.removeAllViews();
+        if (hits == null || hits.isEmpty()) {
+            setManualLrclibStatus(ui("lyrics.lrclib_search.no_results"));
+            resizeLyricsMetaMenuPopupForActiveTab(false);
+            return;
+        }
+        setManualLrclibStatus(source.label() + " \u00b7 "
+                + uiFormat("lyrics.lrclib_search.result_count_format", hits.size()));
+        for (PlatformRecordingMatcher.Candidate candidate : hits) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setPadding(dp(11), dp(10), dp(11), dp(10));
+            row.setBackground(roundDrawable(withAlpha(panelPalette.text, 22), dp(10)));
+            row.setClickable(true);
+            TextView name = label(candidate.title, 14f, panelPalette.text, AppFonts.semiBold(this));
+            row.addView(name, matchWrap());
+            String meta = candidate.artist;
+            if (!candidate.album.isEmpty()) {
+                meta = meta.isEmpty() ? candidate.album : meta + " · " + candidate.album;
+            }
+            TextView detail = label(meta, 11.5f, withAlpha(panelPalette.text, 168), AppFonts.regular(this));
+            row.addView(detail, topMargin(matchWrap(), dp(3)));
+            row.setOnClickListener(view -> loadManualPlatformCandidate(source, trackKey, candidate));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            if (lyricsManualSearchResultsContainer.getChildCount() > 0) {
+                params.topMargin = dp(8);
+            }
+            lyricsManualSearchResultsContainer.addView(row, params);
+        }
+        resizeLyricsMetaMenuPopupForActiveTab(false);
+    }
+
+    private void loadManualPlatformCandidate(PlatformLyricSource source, String trackKey,
+            PlatformRecordingMatcher.Candidate candidate) {
+        if (manualLrclibSearchInFlight) {
+            return;
+        }
+        manualLrclibSearchInFlight = true;
+        setManualLrclibStatus(ui("lyrics.lrclib_search.loading"));
+        new Thread(() -> {
+            LyricsResult result = null;
+            String reason = "";
+            try {
+                result = manualResultFromDocument(source.fetch(candidate.id));
+            } catch (Exception error) {
+                reason = describeTranslationFailure(error);
+            }
+            final LyricsResult loaded = result;
+            final String failure = reason;
+            runOnUiThread(() -> {
+                manualLrclibSearchInFlight = false;
+                if (!isCurrentManualLrclibTrack(trackKey)) {
+                    return;
+                }
+                if (loaded == null || loaded.lines.isEmpty()) {
+                    setManualLrclibStatus(uiFormat("lyrics.lrclib_search.error_format",
+                            failure.isEmpty() ? ui("lyrics.lrclib_search.no_results") : failure));
+                    return;
+                }
+                onManualLrclibLyricsLoaded(trackKey, loaded);
+            });
+        }, "lyrics-manual-load").start();
+    }
+
+    /** A platform document as plain timed lines, with each platform translation beside its line. */
+    private static LyricsResult manualResultFromDocument(PlatformLyricSource.PlatformLyricDocument document) {
+        java.util.List<LyricsLine> lines = new java.util.ArrayList<>();
+        java.util.List<PlatformLyricRow> rows = document.originalRows;
+        for (int index = 0; index < rows.size(); index++) {
+            PlatformLyricRow row = rows.get(index);
+            if (!row.hasText()) {
+                continue;
+            }
+            long start = row.startTimeMs;
+            long end = index + 1 < rows.size() ? rows.get(index + 1).startTimeMs : start + 6_000L;
+            lines.add(new LyricsLine(start, Math.max(end, start + 400L), row.text,
+                    java.util.Collections.emptyList(), "", "vocal", java.util.Collections.emptyList(),
+                    "", translationNearRow(document.translationRows, start), ""));
+        }
+        String detail = document.album.isEmpty() ? document.artist : document.album;
+        return new LyricsResult(lines, document.sourceLabel, detail, false);
+    }
+
+    private static String translationNearRow(java.util.List<PlatformLyricRow> rows, long startMs) {
+        for (PlatformLyricRow row : rows) {
+            if (Math.abs(row.startTimeMs - startMs) <= 350L && row.hasText()) {
+                return row.text;
+            }
+        }
+        return "";
+    }
+
     private void renderManualLrclibCandidates(List<LyricsRepository.ManualLrclibCandidate> candidates) {
         if (lyricsManualSearchResultsContainer == null) {
             return;
@@ -12233,7 +12484,8 @@ public class BaseLyricsActivity extends Activity implements
             resizeLyricsMetaMenuPopupForActiveTab(false);
             return;
         }
-        setManualLrclibStatus(uiFormat("lyrics.lrclib_search.result_count_format", candidates.size()));
+        setManualLrclibStatus("LRCLIB \u00b7 "
+                + uiFormat("lyrics.lrclib_search.result_count_format", candidates.size()));
         for (LyricsRepository.ManualLrclibCandidate candidate : candidates) {
             View row = manualLrclibCandidateRow(candidate);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -12488,10 +12740,11 @@ public class BaseLyricsActivity extends Activity implements
     }
 
     private TextView languageButton(String text, boolean selected) {
-        TextView button = SettingsAppearance.button(this, text, 13f);
+        TextView button = SettingsAppearance.button(this, text, 13.5f);
         makeRemoteFocusable(button);
         button.setGravity(Gravity.CENTER);
-        setSelectableButtonState(button, selected, 11f);
+        button.setTextColor(panelPalette.text);
+        setSelectableButtonState(button, selected, 14f);
         return button;
     }
 
@@ -12505,8 +12758,8 @@ public class BaseLyricsActivity extends Activity implements
         // would vanish on the light theme.
         button.setTextColor(selected ? panelPalette.inkText : panelPalette.text);
         button.setBackground(SettingsAppearance.actionBackground(this,
-                selected ? panelPalette.ink : panelPalette.surface3,
-                Math.round(radiusDp), false
+                selected ? panelPalette.ink : panelPalette.surface2,
+                Math.round(Math.max(radiusDp, 14f)), false
         ));
     }
 
@@ -12515,7 +12768,7 @@ public class BaseLyricsActivity extends Activity implements
         makeRemoteFocusable(button);
         button.setGravity(Gravity.CENTER_VERTICAL);
         button.setTextColor(panelPalette.text);
-        button.setBackground(SettingsAppearance.actionBackground(this, panelPalette.surface3, 11, false));
+        button.setBackground(SettingsAppearance.actionBackground(this, panelPalette.surface2, 14, false));
         button.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, SettingsAppearance.chevron(this), null);
         button.setCompoundDrawablePadding(dp(10));
         return button;
@@ -12759,14 +13012,14 @@ public class BaseLyricsActivity extends Activity implements
         row.setOrientation(LinearLayout.HORIZONTAL);
         Button retry = SettingsAppearance.button(this, ui("lyrics_meaning.retry"), 12f);
         retry.setTextColor(panelPalette.text);
-        retry.setBackground(SettingsAppearance.actionBackground(this, panelPalette.surface3, 11, false));
+        retry.setBackground(SettingsAppearance.actionBackground(this, panelPalette.surface2, 14, false));
         makeRemoteFocusable(retry);
         retry.setOnClickListener(view -> requestAiLyrics(true));
         row.addView(retry, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         Button restore = SettingsAppearance.button(this, ui("lyrics_enhance.restore_defaults"), 12f);
         restore.setTextColor(panelPalette.text);
-        restore.setBackground(SettingsAppearance.actionBackground(this, panelPalette.surface3, 11, false));
+        restore.setBackground(SettingsAppearance.actionBackground(this, panelPalette.surface2, 14, false));
         makeRemoteFocusable(restore);
         restore.setOnClickListener(view -> {
             if (platformTranslationSettings != null && currentLyricsKey != null) {
@@ -13046,22 +13299,28 @@ public class BaseLyricsActivity extends Activity implements
         rememberLyricsLanguageSettingsParent();
         detachFromParent(lyricsLanguageSettingsPanel);
 
-        FrameLayout popupContent = new FrameLayout(this);
-        popupContent.setFocusable(true);
-        popupContent.setFocusableInTouchMode(true);
-        popupContent.setOnKeyListener((view, keyCode, event) -> {
-            if (event != null
-                    && event.getAction() == KeyEvent.ACTION_DOWN
-                    && (keyCode == KeyEvent.KEYCODE_ESCAPE || keyCode == KeyEvent.KEYCODE_DEL)) {
-                dismissLyricsMetaMenuPopup();
-                return true;
-            }
-            return false;
-        });
-        popupContent.setPadding(dp(16), dp(10), dp(16), dp(10));
-        popupContent.setBackground(SettingsAppearance.surface(this, SettingsAppearance.SURFACE, 18, false));
-        popupContent.setClipChildren(false);
-        popupContent.setClipToPadding(false);
+        SettingsPalette palette = themePalette();
+        FrameLayout sheetRoot = new FrameLayout(this);
+        sheetRoot.setBackgroundColor(Color.TRANSPARENT);
+        sheetRoot.setClickable(true);
+        sheetRoot.setOnClickListener(view -> dismissLyricsMetaMenuPopup());
+
+        MetaSheetCard card = new MetaSheetCard(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(metaSheetBackground());
+        card.setClickable(true);
+        card.setPadding(dp(16), dp(8), dp(16), dp(18));
+
+        View handle = new View(this);
+        handle.setBackground(roundDrawable(withAlpha(palette.text, 64), dp(2)));
+        LinearLayout.LayoutParams handleParams = new LinearLayout.LayoutParams(dp(36), dp(4));
+        handleParams.gravity = Gravity.CENTER_HORIZONTAL;
+        card.addView(handle, handleParams);
+        installMetaSheetDrag(handle);
+
+        TextView heading = label(ui("tab.current_track"), 15f, palette.text, AppFonts.bold(this));
+        heading.setPadding(dp(2), dp(12), dp(2), 0);
+        card.addView(heading, matchWrap());
 
         lyricsMetaMenuScrollView = new ScrollView(this);
         lyricsMetaMenuScrollView.setFillViewport(true);
@@ -13071,30 +13330,29 @@ public class BaseLyricsActivity extends Activity implements
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         ));
-        popupContent.addView(lyricsMetaMenuScrollView, new FrameLayout.LayoutParams(
+        card.addView(lyricsMetaMenuScrollView, topMargin(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+                dp(320)
+        ), dp(10)));
+
+        sheetRoot.addView(card, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM
         ));
 
-        int width = Math.min(visibleSettingsWindowBounds().width() - dp(16),
-                dp(isLandscapeLayout() ? 480 : 430));
-        int popupTop = lyricsMetaMenuPopupTop(anchor);
-        lyricsMetaMenuPopupWidthPx = Math.max(1, width);
-        int popupHeight = lyricsMetaMenuPopupHeight(lyricsMetaMenuPopupWidthPx, popupTop);
-        lyricsMetaMenuPopupTopPx = popupTop;
+        lyricsMetaMenuPopupWidthPx = Math.max(1, visibleSettingsWindowBounds().width());
+        lyricsMetaMenuPopupTopPx = 0;
         lyricsMetaMenuPopup = new PopupWindow(
-                popupContent,
-                lyricsMetaMenuPopupWidthPx,
-                popupHeight,
+                sheetRoot,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 true
         );
         lyricsMetaMenuPopup.setOutsideTouchable(true);
         lyricsMetaMenuPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NEEDED);
         lyricsMetaMenuPopup.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-        lyricsMetaMenuPopup.setBackgroundDrawable(roundDrawable(SettingsAppearance.SURFACE, dp(18)));
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            lyricsMetaMenuPopup.setElevation(dp(14));
-        }
+        lyricsMetaMenuPopup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         lyricsMetaMenuPopup.setOnDismissListener(() -> {
             restoreLyricsLanguageSettingsPanelFromPopup();
             lyricsMetaMenuScrollView = null;
@@ -13110,8 +13368,192 @@ public class BaseLyricsActivity extends Activity implements
         lyricsLanguageSettingsPanel.setAlpha(1f);
         lyricsLanguageSettingsPanel.setTranslationY(0f);
         updateLyricsLanguageButtonState();
-        lyricsMetaMenuPopup.showAtLocation(rootView, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, popupTop);
+        lyricsMetaMenuPopup.showAtLocation(rootView, Gravity.BOTTOM, 0, 0);
+        resizeMetaSheetBody();
+        card.setTranslationY(dp(28));
+        card.setAlpha(0f);
+        card.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(220L)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .start();
         requestDefaultRemoteFocus(true);
+    }
+
+    /** Top-rounded card, the same shape the meaning sheet uses. */
+    private GradientDrawable metaSheetBackground() {
+        SettingsPalette palette = themePalette();
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(palette.surface);
+        float radius = dp(24);
+        shape.setCornerRadii(new float[]{radius, radius, radius, radius, 0f, 0f, 0f, 0f});
+        return shape;
+    }
+
+    /** Drag the handle down to dismiss; a short pull springs back. */
+    private void installMetaSheetDrag(View handle) {
+        handle.setOnTouchListener(new View.OnTouchListener() {
+            private float startY;
+
+            @Override public boolean onTouch(View view, MotionEvent event) {
+                View card = view.getParent() instanceof View ? (View) view.getParent() : null;
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        startY = event.getRawY();
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        if (card != null) {
+                            card.setTranslationY(Math.max(0f, event.getRawY() - startY));
+                        }
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        if (card == null) {
+                            return true;
+                        }
+                        if (card.getTranslationY() > dp(96)) {
+                            dismissLyricsMetaMenuPopup();
+                        } else {
+                            card.animate().translationY(0f).setDuration(160L).start();
+                        }
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        });
+    }
+
+    /**
+     * The sheet body takes the height its content needs, up to 85% of the screen — the same rule as
+     * the meaning sheet, so switching tabs never leaves a card that hides its own text.
+     */
+    private void resizeMetaSheetBody() {
+        if (lyricsMetaMenuScrollView == null || lyricsLanguageSettingsPanel == null) {
+            return;
+        }
+        int width = Math.max(1, getResources().getDisplayMetrics().widthPixels - dp(32));
+        int exact = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY);
+        int unspecified = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        lyricsLanguageSettingsPanel.measure(exact, unspecified);
+        int content = lyricsLanguageSettingsPanel.getMeasuredHeight();
+        int max = (int) (getResources().getDisplayMetrics().heightPixels * 0.85f) - dp(92);
+        int height = Math.max(dp(240), Math.min(content, Math.max(dp(240), max)));
+        ViewGroup.LayoutParams params = lyricsMetaMenuScrollView.getLayoutParams();
+        if (params.height != height) {
+            params.height = height;
+            lyricsMetaMenuScrollView.setLayoutParams(params);
+        }
+    }
+
+    /** One tab across, clamped at both ends — mirrors the swipe on the meaning sheet. */
+    private void switchLyricsPopupTabBy(int direction) {
+        java.util.List<String> order = new java.util.ArrayList<>();
+        order.add(LYRICS_POPUP_TAB_LANGUAGE);
+        order.add(LYRICS_POPUP_TAB_SYNC);
+        if (!videoBackgroundUnavailable()) {
+            order.add(LYRICS_POPUP_TAB_VIDEO);
+        }
+        order.add(LYRICS_POPUP_TAB_BACKGROUND);
+        int index = order.indexOf(normalizeLyricsPopupTab(activeLyricsPopupTab));
+        int next = Math.max(0, Math.min(order.size() - 1, index + direction));
+        if (next == index) {
+            return;
+        }
+        switchLyricsPopupTab(order.get(next));
+    }
+
+    /** True when a point lands on a text field, where a sideways drag is text selection, not a swipe. */
+    private static boolean pointHitsEditable(View root, float screenX, float screenY) {
+        if (root == null || root.getVisibility() != View.VISIBLE) {
+            return false;
+        }
+        int[] location = new int[2];
+        root.getLocationOnScreen(location);
+        if (screenX < location[0] || screenX > location[0] + root.getWidth()
+                || screenY < location[1] || screenY > location[1] + root.getHeight()) {
+            return false;
+        }
+        if (root instanceof android.widget.EditText) {
+            return true;
+        }
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                if (pointHitsEditable(group.getChildAt(index), screenX, screenY)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Reads the swipe before the panel's own cards and fields do, so any spot on the sheet works. */
+    private final class MetaSheetCard extends LinearLayout {
+        private float downX;
+        private float downY;
+        private float startRawY;
+        private boolean swiped;
+        private boolean dragging;
+
+        MetaSheetCard(android.content.Context context) {
+            super(context);
+        }
+
+        @Override public boolean dispatchTouchEvent(MotionEvent event) {
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                downX = event.getX();
+                downY = event.getY();
+                startRawY = event.getRawY();
+                swiped = false;
+                dragging = false;
+            } else if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
+                float dx = event.getX() - downX;
+                float dy = event.getY() - downY;
+                if (!swiped && !dragging) {
+                    boolean onInput = pointHitsEditable(MetaSheetCard.this, event.getRawX(), event.getRawY());
+                    if (!onInput && Math.abs(dx) > dp(64) && Math.abs(dx) > Math.abs(dy) * 2.2f) {
+                        swiped = true;
+                        MotionEvent cancel = MotionEvent.obtain(event);
+                        cancel.setAction(MotionEvent.ACTION_CANCEL);
+                        super.dispatchTouchEvent(cancel);
+                        cancel.recycle();
+                        switchLyricsPopupTabBy(dx < 0 ? 1 : -1);
+                        return true;
+                    }
+                    // A downward pull anywhere on the sheet closes it, as on the meaning sheet —
+                    // provided the body is already at its top, so ordinary scrolling still works.
+                    boolean bodyAtTop = lyricsMetaMenuScrollView == null
+                            || lyricsMetaMenuScrollView.getScrollY() <= 0;
+                    if (dy > dp(24) && Math.abs(dy) > Math.abs(dx) * 1.3f && bodyAtTop) {
+                        dragging = true;
+                    }
+                }
+                if (dragging) {
+                    setTranslationY(Math.max(0f, event.getRawY() - startRawY));
+                    return true;
+                }
+            } else if (event.getActionMasked() == MotionEvent.ACTION_UP
+                    || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                if (dragging) {
+                    dragging = false;
+                    if (getTranslationY() > dp(96)) {
+                        dismissLyricsMetaMenuPopup();
+                    } else {
+                        animate().translationY(0f).setDuration(160L).start();
+                    }
+                    return true;
+                }
+                if (event.getActionMasked() == MotionEvent.ACTION_CANCEL && getTranslationY() != 0f) {
+                    animate().translationY(0f).setDuration(160L).start();
+                }
+            }
+            if (swiped) {
+                return true;
+            }
+            return super.dispatchTouchEvent(event);
+        }
     }
 
     private int lyricsMetaMenuPopupTop(View anchor) {
@@ -13178,9 +13620,7 @@ public class BaseLyricsActivity extends Activity implements
                 || lyricsMetaMenuPopupWidthPx <= 0) {
             return;
         }
-        int top = lyricsMetaMenuPopupTopPx > 0 ? lyricsMetaMenuPopupTopPx : lyricsMetaMenuPopupTop(null);
-        int height = lyricsMetaMenuPopupHeight(lyricsMetaMenuPopupWidthPx, top);
-        lyricsMetaMenuPopup.update(lyricsMetaMenuPopupWidthPx, height);
+        resizeMetaSheetBody();
         if (scrollToTop && lyricsMetaMenuScrollView != null) {
             lyricsMetaMenuScrollView.post(() -> lyricsMetaMenuScrollView.scrollTo(0, 0));
         }
@@ -20029,7 +20469,7 @@ public class BaseLyricsActivity extends Activity implements
         TextView view = SettingsAppearance.button(this, label, 13.5f);
         makeRemoteFocusable(view);
         view.setTextColor(panelPalette.text);
-        view.setBackground(SettingsAppearance.actionBackground(this, panelPalette.surface3, 11, false));
+        view.setBackground(SettingsAppearance.actionBackground(this, panelPalette.surface2, 14, false));
         return view;
     }
 

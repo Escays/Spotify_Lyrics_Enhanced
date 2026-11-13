@@ -486,6 +486,7 @@ public class BaseLyricsActivity extends Activity implements
     private TextView lyricsManualSearchStatusView;
     private TextView lyricsRegenerateButton;
     private TextView updateStatusView;
+    private LinearLayout networkHealthRows;
     private TextView onboardingStepLabel;
     private TextView onboardingBackButton;
     private TextView onboardingNextButton;
@@ -8294,6 +8295,68 @@ public class BaseLyricsActivity extends Activity implements
         section.addView(buildTypographySettingsList(AiLyricsSettings.VINYL_TYPOGRAPHY_SLOTS), matchWrap());
     }
 
+    /**
+     * Where the module's outside services are reachable from. A preset is a set of defaults, not a
+     * lock: the reader can change any of them afterwards, which is why nothing here sniffs the SIM.
+     */
+    private void buildNetworkRegionSection(LinearLayout page) {
+        LinearLayout section = settingsSection(page, "网络与地区", "决定默认翻译引擎与提示，随时可改", -1);
+        LinearLayout group = settingsGroup(section);
+        addNetworkRegionRow(group, NetworkRegion.CN, "中国大陆",
+                "翻译默认用 Bing，Genius 提示可能需要代理，视频背景默认关闭");
+        addNetworkRegionRow(group, NetworkRegion.GLOBAL, "海外", "保持现状：翻译跟随设置里的引擎链");
+        addNetworkRegionRow(group, NetworkRegion.CUSTOM, "自定义", "只记住你的选择，不改任何默认值");
+
+        networkHealthRows = new LinearLayout(this);
+        networkHealthRows.setOrientation(LinearLayout.VERTICAL);
+        networkHealthRows.setVisibility(View.GONE);
+        group.addView(networkHealthRows, topMargin(matchWrap(), dp(4)));
+        settingsAction(group, "连接体检", "逐个测试网易云、QQ、酷狗、LRCLIB、Genius、Google、GitHub",
+                SettingsKit.ACTION_NORMAL, view -> runNetworkHealthCheck());
+    }
+
+    private void addNetworkRegionRow(LinearLayout group, String id, String title, String subtitle) {
+        boolean selected = id.equals(NetworkRegion.region(this));
+        settingsAction(group, (selected ? "\u2713  " : "") + title, subtitle,
+                SettingsKit.ACTION_NORMAL, view -> {
+                    NetworkRegion.setRegion(this, id);
+                    NetworkRegion.applyPreset(this, lyricsPageSettings);
+                    rebuildSettingsPanelInPlace();
+                    android.widget.Toast.makeText(this,
+                            "已切换：".concat(title), android.widget.Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    private void runNetworkHealthCheck() {
+        if (networkHealthRows == null) {
+            return;
+        }
+        networkHealthRows.setVisibility(View.VISIBLE);
+        networkHealthRows.removeAllViews();
+        networkHealthRows.addView(settingsKit.text("正在检测…", 13f, settingsKit.p.text3, settingsKit.regular), matchWrap());
+        new Thread(() -> {
+            java.util.List<NetworkRegion.Result> results = NetworkRegion.probeAll();
+            runOnUiThread(() -> renderNetworkHealth(results));
+        }, "network-health").start();
+    }
+
+    private void renderNetworkHealth(java.util.List<NetworkRegion.Result> results) {
+        if (networkHealthRows == null) {
+            return;
+        }
+        networkHealthRows.removeAllViews();
+        for (NetworkRegion.Result result : results) {
+            String mark = result.reachable ? "\u2713" : "\u2717";
+            String detail = result.reachable
+                    ? result.latencyMs + " ms"
+                    : "不可达 · 失去 " + result.endpoint.lossWhenDown;
+            int color = result.reachable ? settingsKit.p.ok : settingsKit.p.danger;
+            TextView row = settingsKit.text(mark + "  " + result.endpoint.label + "   " + detail,
+                    13f, color, settingsKit.regular);
+            networkHealthRows.addView(row, topMargin(matchWrap(), dp(3)));
+        }
+    }
+
     private interface IntSetting {
         void set(int value);
     }
@@ -8317,6 +8380,7 @@ public class BaseLyricsActivity extends Activity implements
         LinearLayout page = settingsMenuPage(content, SETTINGS_TAB_SYSTEM);
         boolean embedded = IvLyricsBridge.isEmbedded(this);
         LinearLayout section;
+        buildNetworkRegionSection(page);
         if (!embedded) {
             section = settingsSection(page, ui("section.app_update"), ui("section.app_update_desc"), -1);
             LinearLayout group = settingsGroup(section);

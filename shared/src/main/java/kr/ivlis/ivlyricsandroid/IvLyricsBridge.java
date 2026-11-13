@@ -455,7 +455,7 @@ public final class IvLyricsBridge {
             content.setOrientation(LinearLayout.VERTICAL);
             content.setPadding(dp(8), dp(14), dp(8), dp(14));
             addView(content, new FrameLayout.LayoutParams(-1, -1));
-            title = text("ivLyrics", 13.5f);
+            title = text("Lyriscope", 13.5f);
             title.setTypeface(AppFonts.bold(context));
             title.setPadding(dp(8), 0, dp(8), 0);
             content.addView(title, new LinearLayout.LayoutParams(-1, dp(24)));
@@ -505,7 +505,7 @@ public final class IvLyricsBridge {
                 background.setVisibility(showBackground ? View.VISIBLE : View.GONE);
                 if (showBackground) background.setBackgroundSettings(settings.background);
                 else background.setArtwork(null, "");
-                setContentDescription("ivLyrics, " + state.ui("accessibility.open_lyrics"));
+                setContentDescription("Lyriscope, " + state.ui("accessibility.open_lyrics"));
             }
             if (appliedResult != state.result) {
                 appliedResult = state.result;
@@ -580,7 +580,7 @@ public final class IvLyricsBridge {
                 preview.setKaraokeDisplayGranularity(settings.karaokeDisplayGranularity);
                 preview.setKaraokeBounceEffectEnabled(settings.karaokeBounceEffectEnabled);
                 preview.setLyricTextAlignment(settings.lyricsTextAlignment);
-                setContentDescription("ivLyrics, " + state.ui("accessibility.open_lyrics"));
+                setContentDescription("Lyriscope, " + state.ui("accessibility.open_lyrics"));
             }
             appliedSettings = settings;
             appliedResult = state.result;

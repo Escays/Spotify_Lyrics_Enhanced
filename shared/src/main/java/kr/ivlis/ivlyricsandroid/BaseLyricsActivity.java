@@ -4155,6 +4155,8 @@ public class BaseLyricsActivity extends Activity implements
     private int meaningSheetColor;
     private String meaningSheetColorKey = "";
     private TextView meaningHeaderChip;
+    /** Palette the current-track panel is built with; refreshed whenever it is rebuilt. */
+    private SettingsPalette panelPalette = SettingsPalette.DARK;
     private boolean meaningTranslating;
     private android.animation.ValueAnimator meaningBodyAnimator;
     private boolean meaningTranslationFailed;
@@ -5462,6 +5464,8 @@ public class BaseLyricsActivity extends Activity implements
     }
 
     private LinearLayout buildLyricsLanguageSettingsPanel() {
+        // Rebuilt on a theme change, so the colours are read here rather than patched afterwards.
+        panelPalette = themePalette();
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(14), dp(12), dp(14), dp(12));
@@ -5506,7 +5510,7 @@ public class BaseLyricsActivity extends Activity implements
         lyricsMatchStatusBlock = buildLyricsMatchStatusBlock();
         lyricsLanguageSettingsContent.addView(lyricsMatchStatusBlock, matchWrap());
 
-        selectedLanguageRuleView = label("", 12f, Color.argb(210, 255, 255, 255), AppFonts.semiBold(this));
+        selectedLanguageRuleView = label("", 12f, withAlpha(panelPalette.text, 210), AppFonts.semiBold(this));
         selectedLanguageRuleView.setLineSpacing(dp(2), 1f);
         lyricsLanguageSettingsContent.addView(selectedLanguageRuleView, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -5578,35 +5582,80 @@ public class BaseLyricsActivity extends Activity implements
 
         lyricsManualSearchContent = buildLyricsManualSearchContent();
         panel.addView(lyricsManualSearchContent, topMargin(matchWrap(), dp(10)));
-        SettingsAppearance.styleControls(panel);
+        stylePanelControlsForPalette(panel);
         switchLyricsPopupTab(activeLyricsPopupTab);
         return panel;
     }
 
-    private GradientDrawable lyricsLanguageSettingsPanelBackground(boolean popup) {
-        int color = popup
-                ? SettingsAppearance.SURFACE
-                : Color.argb(38, 255, 255, 255);
+    /** The panel's own control styling: the legacy dark kit would repaint it black on the light theme. */
+    private void stylePanelControlsForPalette(View root) {
+        if (root instanceof android.widget.EditText) {
+            root.setBackground(roundDrawable(panelPalette.surface2, dp(11)));
+            ((android.widget.EditText) root).setTextColor(panelPalette.text);
+            ((android.widget.EditText) root).setHintTextColor(panelPalette.text3);
+            root.setMinimumHeight(dp(48));
+            root.setPadding(dp(12), dp(12), dp(12), dp(12));
+        } else if (root instanceof android.widget.SeekBar) {
+            android.widget.SeekBar slider = (android.widget.SeekBar) root;
+            slider.setProgressTintList(android.content.res.ColorStateList.valueOf(panelPalette.accent));
+            slider.setProgressBackgroundTintList(
+                    android.content.res.ColorStateList.valueOf(panelPalette.surface4));
+            slider.setThumbTintList(android.content.res.ColorStateList.valueOf(panelPalette.accent));
+            slider.setMinimumHeight(dp(48));
+        }
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                stylePanelControlsForPalette(group.getChildAt(index));
+            }
+        }
+    }
+
+    private GradientDrawable lyricsLanguageSettingsPanelBackground(boolean solid) {
+        SettingsPalette palette = themePalette();
+        int color = solid ? palette.surface : withAlpha(palette.text, 38);
         return roundDrawable(color, dp(14));
     }
+
+    /** The palette of the stored theme, available before the settings sheet has been built. */
+    private SettingsPalette themePalette() {
+        if (settingsKit != null) {
+            return settingsKit.p;
+        }
+        return SettingsPalette.forTheme(getSharedPreferences(SETTINGS_UI_PREFS, MODE_PRIVATE)
+                .getString(KEY_SETTINGS_THEME, SettingsPalette.THEME_DARK));
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
+    }
+
+    /** Surface for the panel's current home: a solid card on the settings page, translucent over lyrics. */
+    private void styleCurrentTrackPanel(boolean solid) {
+        if (lyricsLanguageSettingsPanel == null) {
+            return;
+        }
+        lyricsLanguageSettingsPanel.setBackground(lyricsLanguageSettingsPanelBackground(solid));
+    }
+
 
     private LinearLayout buildLyricsSyncSettingsContent() {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
 
-        TextView title = label(ui("lyrics.sync.title"), 14f, Color.WHITE, AppFonts.bold(this));
+        TextView title = label(ui("lyrics.sync.title"), 14f, panelPalette.text, AppFonts.bold(this));
         content.addView(title, topMargin(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         ), dp(18)));
 
-        lyricsSyncOffsetDescriptionView = label("", 11f, Color.argb(168, 255, 255, 255), AppFonts.regular(this));
+        lyricsSyncOffsetDescriptionView = label("", 11f, withAlpha(panelPalette.text, 168), AppFonts.regular(this));
         lyricsSyncOffsetDescriptionView.setLineSpacing(dp(2), 1f);
         content.addView(lyricsSyncOffsetDescriptionView, topMargin(matchWrap(), dp(5)));
 
-        lyricsSyncOffsetValueView = label("", 25f, Color.WHITE, AppFonts.bold(this));
+        lyricsSyncOffsetValueView = label("", 25f, panelPalette.text, AppFonts.bold(this));
         lyricsSyncOffsetValueView.setGravity(Gravity.CENTER);
-        lyricsSyncOffsetValueView.setBackground(roundDrawable(Color.argb(34, 255, 255, 255), dp(14)));
+        lyricsSyncOffsetValueView.setBackground(roundDrawable(withAlpha(panelPalette.text, 34), dp(14)));
         content.addView(lyricsSyncOffsetValueView, topMargin(matchWrap(), dp(12)));
 
         content.addView(buildOffsetButtonRow(-100, -50, -10, this::adjustCurrentTrackSyncOffset), topMargin(matchWrap(), dp(10)));
@@ -5630,19 +5679,19 @@ public class BaseLyricsActivity extends Activity implements
         chooseVideo.setOnClickListener(view -> showVideoSelectionDialog());
         content.addView(chooseVideo, topMargin(matchWrap(), dp(8)));
 
-        TextView title = label(ui("lyrics.video_sync.title"), 14f, Color.WHITE, AppFonts.bold(this));
+        TextView title = label(ui("lyrics.video_sync.title"), 14f, panelPalette.text, AppFonts.bold(this));
         content.addView(title, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         ));
 
-        videoSyncOffsetDescriptionView = label("", 11f, Color.argb(168, 255, 255, 255), AppFonts.regular(this));
+        videoSyncOffsetDescriptionView = label("", 11f, withAlpha(panelPalette.text, 168), AppFonts.regular(this));
         videoSyncOffsetDescriptionView.setLineSpacing(dp(2), 1f);
         content.addView(videoSyncOffsetDescriptionView, topMargin(matchWrap(), dp(5)));
 
-        videoSyncOffsetValueView = label("", 25f, Color.WHITE, AppFonts.bold(this));
+        videoSyncOffsetValueView = label("", 25f, panelPalette.text, AppFonts.bold(this));
         videoSyncOffsetValueView.setGravity(Gravity.CENTER);
-        videoSyncOffsetValueView.setBackground(roundDrawable(Color.argb(34, 255, 255, 255), dp(14)));
+        videoSyncOffsetValueView.setBackground(roundDrawable(withAlpha(panelPalette.text, 34), dp(14)));
         content.addView(videoSyncOffsetValueView, topMargin(matchWrap(), dp(12)));
 
         content.addView(buildOffsetButtonRow(-100, -50, -10, this::adjustCurrentVideoSyncOffset), topMargin(matchWrap(), dp(10)));
@@ -5661,13 +5710,13 @@ public class BaseLyricsActivity extends Activity implements
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
 
-        TextView title = label(ui("lyrics.background.title"), 14f, Color.WHITE, AppFonts.bold(this));
+        TextView title = label(ui("lyrics.background.title"), 14f, panelPalette.text, AppFonts.bold(this));
         content.addView(title, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         ));
 
-        TextView description = label(ui("lyrics.background.desc"), 11f, Color.argb(168, 255, 255, 255), AppFonts.regular(this));
+        TextView description = label(ui("lyrics.background.desc"), 11f, withAlpha(panelPalette.text, 168), AppFonts.regular(this));
         description.setLineSpacing(dp(2), 1f);
         content.addView(description, topMargin(matchWrap(), dp(5)));
 
@@ -5714,7 +5763,7 @@ public class BaseLyricsActivity extends Activity implements
 
         lyricsBackgroundBrightnessSeekBar = new SeekBar(this);
         lyricsBackgroundBrightnessSeekBar.setMax(100);
-        lyricsBackgroundBrightnessValueView = label("", 12f, Color.argb(180, 255, 255, 255), AppFonts.semiBold(this));
+        lyricsBackgroundBrightnessValueView = label("", 12f, withAlpha(panelPalette.text, 180), AppFonts.semiBold(this));
         lyricsBackgroundBrightnessSeekBar.setOnSeekBarChangeListener(new SimpleSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -5747,7 +5796,7 @@ public class BaseLyricsActivity extends Activity implements
 
         lyricsBackgroundBlurSeekBar = new SeekBar(this);
         lyricsBackgroundBlurSeekBar.setMax(100);
-        lyricsBackgroundBlurValueView = label("", 12f, Color.argb(180, 255, 255, 255), AppFonts.semiBold(this));
+        lyricsBackgroundBlurValueView = label("", 12f, withAlpha(panelPalette.text, 180), AppFonts.semiBold(this));
         lyricsBackgroundBlurSeekBar.setOnSeekBarChangeListener(new SimpleSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -5780,7 +5829,7 @@ public class BaseLyricsActivity extends Activity implements
 
         lyricsBackgroundVideoScaleSeekBar = new SeekBar(this);
         lyricsBackgroundVideoScaleSeekBar.setMax(80);
-        lyricsBackgroundVideoScaleValueView = label("", 12f, Color.argb(180, 255, 255, 255), AppFonts.semiBold(this));
+        lyricsBackgroundVideoScaleValueView = label("", 12f, withAlpha(panelPalette.text, 180), AppFonts.semiBold(this));
         lyricsBackgroundVideoScaleSeekBar.setOnSeekBarChangeListener(new SimpleSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -5877,7 +5926,7 @@ public class BaseLyricsActivity extends Activity implements
         TextView importLyrics = languageButton(ui("lyrics.local.import"), false);
         importLyrics.setOnClickListener(view -> chooseLocalLyrics());
         content.addView(importLyrics, topMargin(matchWrap(), dp(8)));
-        TextView localHelp = label(ui("lyrics.local.description"), 11f, Color.argb(168, 255, 255, 255), AppFonts.regular(this));
+        TextView localHelp = label(ui("lyrics.local.description"), 11f, withAlpha(panelPalette.text, 168), AppFonts.regular(this));
         content.addView(localHelp, topMargin(matchWrap(), dp(5)));
         TextView removeLyrics = languageButton(ui("lyrics.local.remove"), false);
         removeLyrics.setOnClickListener(view -> removeLocalLyrics());
@@ -5887,13 +5936,13 @@ public class BaseLyricsActivity extends Activity implements
         chooseProvider.setOnClickListener(view -> showTrackLyricsProviderDialog());
         content.addView(chooseProvider, topMargin(matchWrap(), dp(8)));
 
-        TextView title = label(ui("lyrics.lrclib_search.title"), 14f, Color.WHITE, AppFonts.bold(this));
+        TextView title = label(ui("lyrics.lrclib_search.title"), 14f, panelPalette.text, AppFonts.bold(this));
         content.addView(title, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         ));
 
-        TextView description = label(ui("lyrics.lrclib_search.desc"), 11f, Color.argb(168, 255, 255, 255), AppFonts.regular(this));
+        TextView description = label(ui("lyrics.lrclib_search.desc"), 11f, withAlpha(panelPalette.text, 168), AppFonts.regular(this));
         description.setLineSpacing(dp(2), 1f);
         content.addView(description, topMargin(matchWrap(), dp(5)));
 
@@ -5909,7 +5958,7 @@ public class BaseLyricsActivity extends Activity implements
                 dp(42)
         ), dp(10)));
 
-        lyricsManualSearchStatusView = label("", 11f, Color.argb(170, 255, 255, 255), AppFonts.semiBold(this));
+        lyricsManualSearchStatusView = label("", 11f, withAlpha(panelPalette.text, 170), AppFonts.semiBold(this));
         lyricsManualSearchStatusView.setLineSpacing(dp(2), 1f);
         content.addView(lyricsManualSearchStatusView, topMargin(matchWrap(), dp(9)));
 
@@ -5917,7 +5966,7 @@ public class BaseLyricsActivity extends Activity implements
         lyricsManualSearchResultsContainer.setOrientation(LinearLayout.VERTICAL);
         lyricsManualSearchResultsContainer.setPadding(dp(8), dp(8), dp(8), dp(8));
         lyricsManualSearchResultsContainer.setMinimumHeight(dp(isLandscapeLayout() ? 150 : 180));
-        lyricsManualSearchResultsContainer.setBackground(roundDrawable(Color.argb(22, 255, 255, 255), dp(12)));
+        lyricsManualSearchResultsContainer.setBackground(roundDrawable(withAlpha(panelPalette.text, 22), dp(12)));
         content.addView(lyricsManualSearchResultsContainer, topMargin(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -6380,6 +6429,8 @@ public class BaseLyricsActivity extends Activity implements
         getSharedPreferences(SETTINGS_UI_PREFS, MODE_PRIVATE).edit()
                 .putString(KEY_SETTINGS_THEME, dark ? SettingsPalette.THEME_LIGHT : SettingsPalette.THEME_DARK)
                 .apply();
+        // The current-track panel is its own view tree with its own colours; rebuild it too.
+        rebuildCurrentTrackPanel();
         rebuildSettingsPanelInPlace();
         if (settingsThemeButton != null) {
             settingsThemeButton.post(() -> {
@@ -6388,6 +6439,33 @@ public class BaseLyricsActivity extends Activity implements
                     settingsThemeButton.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_VIEW_FOCUSED);
                 }
             });
+        }
+    }
+
+    /**
+     * Recreates the current-track panel under the new theme, in the slot it already occupied, so the
+     * reader stays on the same page with the same scroll position.
+     */
+    private void rebuildCurrentTrackPanel() {
+        if (lyricsLanguageSettingsPanel == null) {
+            return;
+        }
+        android.view.ViewParent owner = lyricsLanguageSettingsPanel.getParent();
+        ViewGroup parent = owner instanceof ViewGroup ? (ViewGroup) owner : null;
+        int index = parent == null ? -1 : parent.indexOfChild(lyricsLanguageSettingsPanel);
+        ViewGroup.LayoutParams params = lyricsLanguageSettingsPanel.getLayoutParams();
+        boolean visible = lyricsLanguageSettingsPanel.getVisibility() == View.VISIBLE;
+        detachFromParent(lyricsLanguageSettingsPanel);
+        lyricsLanguageSettingsPanel = buildLyricsLanguageSettingsPanel();
+        lyricsLanguageSettingsPanel.setVisibility(visible ? View.VISIBLE : View.GONE);
+        styleCurrentTrackPanel(true);
+        if (parent == null) {
+            return;
+        }
+        if (index >= 0 && index <= parent.getChildCount()) {
+            parent.addView(lyricsLanguageSettingsPanel, index, params);
+        } else {
+            parent.addView(lyricsLanguageSettingsPanel, params);
         }
     }
 
@@ -6812,7 +6890,7 @@ public class BaseLyricsActivity extends Activity implements
         // Keep one set of controls and callbacks: the long-press popup temporarily borrows this panel.
         if (lyricsLanguageSettingsPanel != null) {
             detachFromParent(lyricsLanguageSettingsPanel);
-            lyricsLanguageSettingsPanel.setBackground(lyricsLanguageSettingsPanelBackground(true));
+            styleCurrentTrackPanel(true);
             page.addView(lyricsLanguageSettingsPanel, matchWrap());
         }
     }
@@ -9486,12 +9564,12 @@ public class BaseLyricsActivity extends Activity implements
     private Switch settingSwitch(String title, String subtitle) {
         Switch view = new Switch(this);
         view.setText(SettingsAppearance.switchLabel(this, title, subtitle));
-        view.setTextColor(SettingsAppearance.TEXT);
+        view.setTextColor(panelPalette.text);
         view.setTextSize(15f);
         view.setTypeface(AppFonts.semiBold(this));
         view.setPadding(dp(16), dp(14), dp(16), dp(14));
         view.setMinHeight(dp(56));
-        view.setBackground(SettingsAppearance.surface(this, SettingsAppearance.SURFACE, 18, false));
+        view.setBackground(SettingsAppearance.surface(this, panelPalette.surface, 18, false));
         view.setLineSpacing(dp(2), 1f);
         SettingsAppearance.styleSwitch(view);
         return view;
@@ -9518,13 +9596,15 @@ public class BaseLyricsActivity extends Activity implements
         LinearLayout field = new LinearLayout(this);
         field.setOrientation(LinearLayout.VERTICAL);
         field.setPadding(dp(14), dp(12), dp(14), dp(12));
-        field.setBackground(SettingsAppearance.surface(this, SettingsAppearance.SURFACE, 18, false));
+        // These cards also appear on the themed settings pages, so they follow the stored theme.
+        SettingsPalette settingsColors = themePalette();
+        field.setBackground(roundDrawable(settingsColors.surface, dp(18)));
 
-        TextView label = label(title, 15f, SettingsAppearance.TEXT, AppFonts.semiBold(this));
+        TextView label = label(title, 15f, settingsColors.text, AppFonts.semiBold(this));
         field.addView(label, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         if (subtitle != null && !subtitle.trim().isEmpty()) {
-            TextView helper = label(subtitle, 12.5f, SettingsAppearance.MUTED, AppFonts.regular(this));
+            TextView helper = label(subtitle, 12.5f, settingsColors.text3, AppFonts.regular(this));
             helper.setLineSpacing(dp(2), 1f);
             field.addView(helper, topMargin(matchWrap(), dp(5)));
         }
@@ -9539,13 +9619,15 @@ public class BaseLyricsActivity extends Activity implements
         LinearLayout field = new LinearLayout(this);
         field.setOrientation(LinearLayout.VERTICAL);
         field.setPadding(dp(14), dp(12), dp(14), dp(12));
-        field.setBackground(SettingsAppearance.surface(this, SettingsAppearance.SURFACE, 18, false));
+        // These cards also appear on the themed settings pages, so they follow the stored theme.
+        SettingsPalette settingsColors = themePalette();
+        field.setBackground(roundDrawable(settingsColors.surface, dp(18)));
 
-        TextView label = label(title, 15f, SettingsAppearance.TEXT, AppFonts.semiBold(this));
+        TextView label = label(title, 15f, settingsColors.text, AppFonts.semiBold(this));
         field.addView(label, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         if (subtitle != null && !subtitle.trim().isEmpty()) {
-            TextView helper = label(subtitle, 12.5f, SettingsAppearance.MUTED, AppFonts.regular(this));
+            TextView helper = label(subtitle, 12.5f, settingsColors.text3, AppFonts.regular(this));
             helper.setLineSpacing(dp(2), 1f);
             field.addView(helper, topMargin(matchWrap(), dp(5)));
         }
@@ -10288,14 +10370,15 @@ public class BaseLyricsActivity extends Activity implements
     private EditText settingEditText(String hint, boolean multiLine, boolean secret) {
         EditText input = new EditText(this);
         input.setHint(hint);
-        input.setHintTextColor(SettingsAppearance.MUTED);
-        input.setTextColor(SettingsAppearance.TEXT);
+        SettingsPalette settingsColors = themePalette();
+        input.setHintTextColor(settingsColors.text3);
+        input.setTextColor(settingsColors.text);
         input.setTextSize(13f);
         input.setTypeface(AppFonts.regular(this));
         input.setSingleLine(!multiLine);
         input.setMinHeight(dp(multiLine ? 72 : 42));
         input.setPadding(dp(12), 0, dp(12), 0);
-        input.setBackground(SettingsAppearance.surface(this, SettingsAppearance.CONTROL, 11, true));
+        input.setBackground(roundDrawable(settingsColors.surface2, dp(11)));
         int type = InputType.TYPE_CLASS_TEXT;
         if (multiLine) {
             type |= InputType.TYPE_TEXT_FLAG_MULTI_LINE;
@@ -11890,6 +11973,7 @@ public class BaseLyricsActivity extends Activity implements
         }
         TextView button = SettingsAppearance.button(this, text, 14f);
         button.setMaxWidth(dp(200));
+        button.setTextColor(panelPalette.text);
         makeRemoteFocusable(button);
         button.setTag(tabId);
         button.setGravity(Gravity.CENTER);
@@ -12417,9 +12501,11 @@ public class BaseLyricsActivity extends Activity implements
 
     private void setSelectableButtonState(TextView button, boolean selected, float radiusDp) {
         button.setSelected(selected);
-        button.setTextColor(selected ? Color.rgb(12, 13, 17) : Color.WHITE);
+        // The selected chip inverts against the panel instead of drawing a near-white pill, which
+        // would vanish on the light theme.
+        button.setTextColor(selected ? panelPalette.inkText : panelPalette.text);
         button.setBackground(SettingsAppearance.actionBackground(this,
-                selected ? SettingsAppearance.TEXT : SettingsAppearance.CONTROL,
+                selected ? panelPalette.ink : panelPalette.surface3,
                 Math.round(radiusDp), false
         ));
     }
@@ -12428,7 +12514,8 @@ public class BaseLyricsActivity extends Activity implements
         TextView button = SettingsAppearance.button(this, text, 14.5f);
         makeRemoteFocusable(button);
         button.setGravity(Gravity.CENTER_VERTICAL);
-        button.setBackground(SettingsAppearance.actionBackground(this, SettingsAppearance.CONTROL, 11, false));
+        button.setTextColor(panelPalette.text);
+        button.setBackground(SettingsAppearance.actionBackground(this, panelPalette.surface3, 11, false));
         button.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, SettingsAppearance.chevron(this), null);
         button.setCompoundDrawablePadding(dp(10));
         return button;
@@ -12663,19 +12750,23 @@ public class BaseLyricsActivity extends Activity implements
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(2), 0, dp(2), dp(8));
         TextView header = label(ui("lyrics_enhance.match_status"), 12f,
-                Color.argb(150, 255, 255, 255), AppFonts.bold(this));
+                withAlpha(panelPalette.text, 150), AppFonts.bold(this));
         box.addView(header);
-        lyricsMatchStatusText = label("", 12f, Color.argb(215, 255, 255, 255), AppFonts.regular(this));
+        lyricsMatchStatusText = label("", 12f, withAlpha(panelPalette.text, 215), AppFonts.regular(this));
         lyricsMatchStatusText.setLineSpacing(dp(2), 1f);
         box.addView(lyricsMatchStatusText, topMargin(matchWrap(), dp(4)));
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         Button retry = SettingsAppearance.button(this, ui("lyrics_meaning.retry"), 12f);
+        retry.setTextColor(panelPalette.text);
+        retry.setBackground(SettingsAppearance.actionBackground(this, panelPalette.surface3, 11, false));
         makeRemoteFocusable(retry);
         retry.setOnClickListener(view -> requestAiLyrics(true));
         row.addView(retry, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         Button restore = SettingsAppearance.button(this, ui("lyrics_enhance.restore_defaults"), 12f);
+        restore.setTextColor(panelPalette.text);
+        restore.setBackground(SettingsAppearance.actionBackground(this, panelPalette.surface3, 11, false));
         makeRemoteFocusable(restore);
         restore.setOnClickListener(view -> {
             if (platformTranslationSettings != null && currentLyricsKey != null) {
@@ -13014,7 +13105,7 @@ public class BaseLyricsActivity extends Activity implements
 
         lyricsLanguageSettingsVisible = true;
         lyricsLanguageSettingsPanel.animate().cancel();
-        lyricsLanguageSettingsPanel.setBackground(lyricsLanguageSettingsPanelBackground(true));
+        styleCurrentTrackPanel(true);
         lyricsLanguageSettingsPanel.setVisibility(View.VISIBLE);
         lyricsLanguageSettingsPanel.setAlpha(1f);
         lyricsLanguageSettingsPanel.setTranslationY(0f);
@@ -13138,14 +13229,14 @@ public class BaseLyricsActivity extends Activity implements
         lyricsLanguageSettingsPanel.setVisibility(View.GONE);
         lyricsLanguageSettingsPanel.setAlpha(1f);
         lyricsLanguageSettingsPanel.setTranslationY(0f);
-        lyricsLanguageSettingsPanel.setBackground(lyricsLanguageSettingsPanelBackground(false));
+        styleCurrentTrackPanel(false);
         lyricsLanguageSettingsVisible = false;
         lyricsLanguageSettingsOriginalParent = null;
         lyricsLanguageSettingsOriginalLayoutParams = null;
         lyricsLanguageSettingsOriginalIndex = -1;
         updateLyricsLanguageButtonState();
         if (lyricsLanguageSettingsPanel.getParent() == settingsMenuPages.get(SETTINGS_TAB_CURRENT_TRACK)) {
-            lyricsLanguageSettingsPanel.setBackground(lyricsLanguageSettingsPanelBackground(true));
+            styleCurrentTrackPanel(true);
             updateCurrentTrackSettingsMenu();
         }
     }
@@ -19936,9 +20027,9 @@ public class BaseLyricsActivity extends Activity implements
 
     private TextView debugButton(String label) {
         TextView view = SettingsAppearance.button(this, label, 13.5f);
-        view.setTag(SettingsAppearance.SECONDARY_ACTION);
         makeRemoteFocusable(view);
-        SettingsAppearance.styleControls(view);
+        view.setTextColor(panelPalette.text);
+        view.setBackground(SettingsAppearance.actionBackground(this, panelPalette.surface3, 11, false));
         return view;
     }
 

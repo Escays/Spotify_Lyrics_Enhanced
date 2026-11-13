@@ -8333,7 +8333,7 @@ public class BaseLyricsActivity extends Activity implements
 
     private void addNetworkRegionRow(LinearLayout group, String id, String title, String subtitle) {
         boolean selected = id.equals(NetworkRegion.region(this));
-        settingsAction(group, (selected ? "\u2713  " : "") + title, subtitle,
+        Button row = settingsAction(group, (selected ? "\u2713  " : "") + title, subtitle,
                 SettingsKit.ACTION_NORMAL, view -> {
                     NetworkRegion.setRegion(this, id);
                     NetworkRegion.applyPreset(this, lyricsPageSettings);
@@ -8341,6 +8341,10 @@ public class BaseLyricsActivity extends Activity implements
                     android.widget.Toast.makeText(this,
                             "已切换：".concat(title), android.widget.Toast.LENGTH_SHORT).show();
                 });
+        if (selected) {
+            // The active preset is the one coloured element; everything else keeps the row style.
+            row.setTextColor(settingsKit.p.accent);
+        }
     }
 
     private void runNetworkHealthCheck() {
@@ -8366,14 +8370,18 @@ public class BaseLyricsActivity extends Activity implements
             String detail = result.reachable
                     ? result.latencyMs + " ms"
                     : "不可达 · 失去 " + result.endpoint.lossWhenDown;
-            int color = result.reachable ? settingsKit.p.ok : settingsKit.p.danger;
-            TextView row = settingsKit.text(mark + "  " + result.endpoint.label + "   " + detail,
-                    13f, color, settingsKit.regular);
+            int markColor = result.reachable ? settingsKit.p.accent : settingsKit.p.danger;
+            android.text.SpannableString line = new android.text.SpannableString(
+                    mark + "  " + result.endpoint.label + "   " + detail);
+            // Same type as every other row; only the mark carries the state colour.
+            line.setSpan(new android.text.style.ForegroundColorSpan(markColor), 0, mark.length(),
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            TextView row = settingsKit.text(line, 13.5f, settingsKit.p.text2, settingsKit.regular);
             networkHealthRows.addView(row, topMargin(matchWrap(), dp(3)));
             if (!result.reachable && "google".equals(result.endpoint.id)) {
                 // The one failure with a one-tap answer: the other keyless engine still works.
-                TextView fix = settingsKit.text("   改用 Bing 翻译 ›", 13f,
-                        settingsKit.p.danger, settingsKit.regular);
+                TextView fix = settingsKit.text("   改用 Bing 翻译 ›", 13.5f,
+                        settingsKit.p.accent, settingsKit.regular);
                 fix.setOnClickListener(view -> {
                     lyricsPageSettings.setMeaningTranslationEngine(KeylessTranslationProviders.BING_ID);
                     songMeaningTranslation = null;
@@ -12271,10 +12279,11 @@ public class BaseLyricsActivity extends Activity implements
                 continue;
             }
             boolean selected = selectedTag != null && selectedTag.equals(child.getTag());
-            // The card is a darkened cover colour, so the ink stays white; only weight and a soft
-            // pill change, exactly like the two tabs on the bulb sheet.
-            button.setTextColor(selected ? 0xFFFFFFFF : withAlpha(0xFFFFFFFF, 120));
-            button.setBackground(selected ? roundDrawable(withAlpha(0xFFFFFFFF, 38), dp(14)) : null);
+            // Ink comes from the palette the panel was built with: white over the artwork card,
+            // near-black in the light theme — hardcoding white made the tabs vanish there.
+            int ink = panelPalette.text;
+            button.setTextColor(selected ? ink : withAlpha(ink, 120));
+            button.setBackground(selected ? roundDrawable(withAlpha(ink, 38), dp(14)) : null);
         }
     }
 

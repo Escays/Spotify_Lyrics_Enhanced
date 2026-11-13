@@ -104,33 +104,59 @@ final class NetworkRegion {
         return list;
     }
 
-    /** Blocking: call from a worker thread and hand the list back to the UI. */
+    /**
+     * Blocking, but all endpoints in flight at once: nine serial three-second timeouts would make a
+     * bad network look like a frozen screen for half a minute.
+     */
     static List<Result> probeAll() {
-        List<Result> results = new ArrayList<>();
-        for (Endpoint endpoint : endpoints()) {
-            long started = System.currentTimeMillis();
-            boolean ok;
-            String error = "";
-            HttpURLConnection connection = null;
-            try {
-                connection = (HttpURLConnection) new URL(endpoint.url).openConnection();
-                connection.setConnectTimeout(TIMEOUT_MS);
-                connection.setReadTimeout(TIMEOUT_MS);
-                connection.setInstanceFollowRedirects(true);
-                connection.setRequestMethod("HEAD");
-                connection.setRequestProperty("User-Agent", "Mozilla/5.0");
-                int code = connection.getResponseCode();
-                ok = code > 0 && code < 500;
-            } catch (IOException failure) {
-                ok = false;
-                error = failure.getClass().getSimpleName();
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-            }
-            results.add(new Result(endpoint, ok, System.currentTimeMillis() - started, error));
+        List<Endpoint> endpoints = endpoints();
+        Result[] results = new Result[endpoints.size()];
+        java.util.concurrent.ExecutorService pool =
+                java.util.concurrent.Executors.newFixedThreadPool(Math.min(9, endpoints.size()));
+        List<java.util.concurrent.Future<?>> pending = new ArrayList<>();
+        for (int index = 0; index < endpoints.size(); index++) {
+            final int slot = index;
+            final Endpoint endpoint = endpoints.get(index);
+            pending.add(pool.submit(() -> results[slot] = probeOne(endpoint)));
         }
-        return results;
+        for (java.util.concurrent.Future<?> future : pending) {
+            try {
+                future.get(TIMEOUT_MS + 1_500L, java.util.concurrent.TimeUnit.MILLISECONDS);
+            } catch (Exception ignored) {
+                // A straggler stays null and is reported as unreachable below.
+            }
+        }
+        pool.shutdownNow();
+        List<Result> collected = new ArrayList<>();
+        for (int index = 0; index < results.length; index++) {
+            collected.add(results[index] != null ? results[index]
+                    : new Result(endpoints.get(index), false, TIMEOUT_MS, "timeout"));
+        }
+        return collected;
+    }
+
+    private static Result probeOne(Endpoint endpoint) {
+        long started = System.currentTimeMillis();
+        boolean ok;
+        String error = "";
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(endpoint.url).openConnection();
+            connection.setConnectTimeout(TIMEOUT_MS);
+            connection.setReadTimeout(TIMEOUT_MS);
+            connection.setInstanceFollowRedirects(true);
+            connection.setRequestMethod("HEAD");
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+            int code = connection.getResponseCode();
+            ok = code > 0 && code < 500;
+        } catch (IOException failure) {
+            ok = false;
+            error = failure.getClass().getSimpleName();
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+        return new Result(endpoint, ok, System.currentTimeMillis() - started, error);
     }
 }

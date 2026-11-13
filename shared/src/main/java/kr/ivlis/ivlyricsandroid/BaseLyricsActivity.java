@@ -484,7 +484,6 @@ public class BaseLyricsActivity extends Activity implements
     private EditText lyricsManualSearchArtistInput;
     private TextView spotifySetupStatusView;
     private TextView lyricsManualSearchStatusView;
-    private TextView culturalAnnotationRegenerateButton;
     private TextView lyricsRegenerateButton;
     private TextView updateStatusView;
     private TextView onboardingStepLabel;
@@ -4758,6 +4757,27 @@ public class BaseLyricsActivity extends Activity implements
                 addMeaningNoteCard(annotation, false, true);
             }
         }
+        addMeaningNotesFooter();
+    }
+
+    /** The regenerate action sits with the notes it produces, not on the language page. */
+    private void addMeaningNotesFooter() {
+        if (lyricsCulturalAnnotationsLoading) {
+            meaningContainer.addView(panelText(ui("loading.cultural_annotations"), 12f,
+                    Color.argb(170, 255, 255, 255)), topMargin(matchWrap(), dp(18)));
+            return;
+        }
+        int count = songMeaning.placedAnnotations.size() + songMeaning.unplacedAnnotations.size();
+        TextView action = label(ui("lyrics_meaning.regenerate_notes") + "  \u00b7  " + count, 13f,
+                Color.argb(228, 255, 255, 255), AppFonts.semiBold(this));
+        action.setGravity(Gravity.CENTER);
+        action.setPadding(dp(12), dp(9), dp(12), dp(9));
+        action.setBackground(roundDrawable(Color.argb(38, 255, 255, 255), dp(14)));
+        action.setOnClickListener(view -> {
+            requestCulturalAnnotations(true);
+            showSavedToast(ui("loading.cultural_annotations"));
+        });
+        meaningContainer.addView(action, topMargin(matchWrap(), dp(18)));
     }
 
     private void addMeaningNoteCard(SongAnnotation annotation, boolean focused, boolean unplaced) {
@@ -5567,21 +5587,6 @@ public class BaseLyricsActivity extends Activity implements
         LinearLayout.LayoutParams pronunciationParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         pronunciationParams.leftMargin = dp(4);
         switchRow.addView(languagePronunciationSwitch, pronunciationParams);
-
-        culturalAnnotationRegenerateButton = debugButton(
-                ui("tmi.regenerate") + " · " + ui("loading.cultural_annotations")
-        );
-        culturalAnnotationRegenerateButton.setOnClickListener(view -> {
-            requestCulturalAnnotations(true);
-            showSavedToast(ui("loading.cultural_annotations"));
-        });
-        lyricsLanguageSettingsContent.addView(
-                culturalAnnotationRegenerateButton,
-                topMargin(new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        dp(42)
-                ), dp(10))
-        );
 
         lyricsRegenerateButton = languageButton(ui("lyrics.regenerate_supplements"), false);
         lyricsRegenerateButton.setOnClickListener(view -> requestAiLyrics(true));
@@ -11215,11 +11220,6 @@ public class BaseLyricsActivity extends Activity implements
         rebuildPreviewModeButtons(snapshot.previewItems);
         updateSourceLanguageSelect();
         populateSelectedLanguageRule(snapshot);
-        if (culturalAnnotationRegenerateButton != null) {
-            culturalAnnotationRegenerateButton.setVisibility(
-                    snapshot.culturalAnnotationsEnabled ? View.VISIBLE : View.GONE
-            );
-        }
         updateLyricsRegenerateActions();
     }
 
@@ -11233,13 +11233,6 @@ public class BaseLyricsActivity extends Activity implements
             lyricsRegenerateButton.setText(busy ? ui("status.ai_generating") : ui("lyrics.regenerate_supplements"));
             lyricsRegenerateButton.setAlpha(lyricsRegenerateButton.isEnabled() ? 1f : 0.5f);
             lyricsRegenerateButton.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        }
-        if (culturalAnnotationRegenerateButton != null) {
-            culturalAnnotationRegenerateButton.setEnabled(hasLyrics && !lyricsCulturalAnnotationsLoading && !busy);
-            culturalAnnotationRegenerateButton.setText(lyricsCulturalAnnotationsLoading
-                    ? ui("loading.cultural_annotations")
-                    : ui("tmi.regenerate") + " · " + ui("loading.cultural_annotations"));
-            culturalAnnotationRegenerateButton.setAlpha(culturalAnnotationRegenerateButton.isEnabled() ? 1f : 0.5f);
         }
     }
 

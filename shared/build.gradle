@@ -39,4 +39,11 @@ androidComponents {
 
 dependencies {
     testImplementation "junit:junit:4.13.2"
+    // AndroidX Palette: the same swatch selection the reference app uses, so a cover gives the
+    // same colour in both.
+    implementation("androidx.palette:palette:1.0.0") {
+        // The module pins androidx.annotation strictly; Palette only needs its annotations, which are
+        // compile-time only.
+        exclude group: "androidx.annotation", module: "annotation"
+    }
 }

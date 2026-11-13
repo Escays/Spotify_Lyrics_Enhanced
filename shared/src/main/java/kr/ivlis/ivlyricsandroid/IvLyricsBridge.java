@@ -39,7 +39,7 @@ import java.util.Map;
 public final class IvLyricsBridge {
     public static final String EXTRA_EMBEDDED_MODE = "kr.ivlis.ivlyricsandroid.EMBEDDED_MODE";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
-    private static final String STANDALONE_PACKAGE = "kr.ivlis.ivlyricsandroid";
+    private static final String STANDALONE_PACKAGE = "dev.lyriscope.app";
     private static Context application;
     private static Engine engine;
     private static boolean wordSegmenterInitialized;
@@ -455,7 +455,7 @@ public final class IvLyricsBridge {
             content.setOrientation(LinearLayout.VERTICAL);
             content.setPadding(dp(8), dp(14), dp(8), dp(14));
             addView(content, new FrameLayout.LayoutParams(-1, -1));
-            title = text("ivLyrics", 13.5f);
+            title = text("Lyriscope", 13.5f);
             title.setTypeface(AppFonts.bold(context));
             title.setPadding(dp(8), 0, dp(8), 0);
             content.addView(title, new LinearLayout.LayoutParams(-1, dp(24)));
@@ -505,7 +505,7 @@ public final class IvLyricsBridge {
                 background.setVisibility(showBackground ? View.VISIBLE : View.GONE);
                 if (showBackground) background.setBackgroundSettings(settings.background);
                 else background.setArtwork(null, "");
-                setContentDescription("ivLyrics, " + state.ui("accessibility.open_lyrics"));
+                setContentDescription("Lyriscope, " + state.ui("accessibility.open_lyrics"));
             }
             if (appliedResult != state.result) {
                 appliedResult = state.result;
@@ -580,7 +580,7 @@ public final class IvLyricsBridge {
                 preview.setKaraokeDisplayGranularity(settings.karaokeDisplayGranularity);
                 preview.setKaraokeBounceEffectEnabled(settings.karaokeBounceEffectEnabled);
                 preview.setLyricTextAlignment(settings.lyricsTextAlignment);
-                setContentDescription("ivLyrics, " + state.ui("accessibility.open_lyrics"));
+                setContentDescription("Lyriscope, " + state.ui("accessibility.open_lyrics"));
             }
             appliedSettings = settings;
             appliedResult = state.result;
@@ -656,11 +656,6 @@ public final class IvLyricsBridge {
         final FuriganaRepository furigana;
         final SharedPreferences uiPreferences;
         final SharedPreferences providerPreferences;
-        final AudioManager audioManager;
-        final AudioDeviceCallback audioCallback = new AudioDeviceCallback() {
-            @Override public void onAudioDevicesAdded(AudioDeviceInfo[] devices) { updateBluetoothOffset(); }
-            @Override public void onAudioDevicesRemoved(AudioDeviceInfo[] devices) { updateBluetoothOffset(); }
-        };
         final SpotifyDjLyricsTimeline timeline = new SpotifyDjLyricsTimeline();
         TrackSnapshot track;
         LyricsResult base;
@@ -673,7 +668,6 @@ public final class IvLyricsBridge {
         String key = "";
         long generation;
         long djOffset;
-        int bluetoothOffset;
         boolean loading;
         boolean requestInFlight;
         boolean pronunciationLoading;
@@ -684,7 +678,6 @@ public final class IvLyricsBridge {
 
         private void reloadSettings() {
             if (released) return;
-            updateBluetoothOffset();
             if (!settingsDataReloadPending) {
                 renderCards();
                 return;
@@ -715,9 +708,6 @@ public final class IvLyricsBridge {
             furigana = new FuriganaRepository(context);
             uiPreferences = context.getSharedPreferences(AiLyricsSettings.PREFS_NAME, Context.MODE_PRIVATE);
             providerPreferences = context.getSharedPreferences("lyrics_provider_settings", Context.MODE_PRIVATE);
-            audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            if (audioManager != null) audioManager.registerAudioDeviceCallback(audioCallback, MAIN);
-            updateBluetoothOffset();
             uiPreferences.registerOnSharedPreferenceChangeListener(this);
             providerPreferences.registerOnSharedPreferenceChangeListener(this);
             result = LyricsResult.empty(ui("status.waiting_current_track"));
@@ -909,14 +899,13 @@ public final class IvLyricsBridge {
         }
         long position() {
             if (track == null) return 0;
-            long value = track.positionNow() + djOffset + settings.globalSyncOffsetMs() + settings.trackSyncOffsetMs(key) + bluetoothOffset;
+            long value = track.positionNow() + djOffset + settings.trackSyncOffsetMs(key);
             return Math.max(0, track.durationMs > 0 ? Math.min(track.durationMs + djOffset, value) : value);
         }
         /** {@link #position()} at a Choreographer frame time, without rounding. */
         double positionAtFrame(long frameTimeNanos) {
             if (track == null) return 0d;
-            double value = track.positionAtFrame(frameTimeNanos) + djOffset + settings.globalSyncOffsetMs()
-                    + settings.trackSyncOffsetMs(key) + bluetoothOffset;
+            double value = track.positionAtFrame(frameTimeNanos) + djOffset +                     + settings.trackSyncOffsetMs(key);
             return Math.max(0d, track.durationMs > 0 ? Math.min(track.durationMs + djOffset, value) : value);
         }
         String ui(String message) { return AppI18n.t(settings.snapshot().uiLang, message); }
@@ -942,7 +931,6 @@ public final class IvLyricsBridge {
             NowPlayingService.unregister(this);
             uiPreferences.unregisterOnSharedPreferenceChangeListener(this);
             providerPreferences.unregisterOnSharedPreferenceChangeListener(this);
-            if (audioManager != null) audioManager.unregisterAudioDeviceCallback(audioCallback);
             repository.shutdown();
             ai.shutdown();
             furigana.shutdown();
@@ -959,36 +947,6 @@ public final class IvLyricsBridge {
             String detected = LyricsLanguageDetector.detect(text.toString());
             // Missing or undetectable lyrics still need a locale for repeated surface updates.
             return detected == null ? "auto" : detected;
-        }
-
-        void updateBluetoothOffset() {
-            bluetoothOffset = 0;
-            if (audioManager == null || released) return;
-            AudioDeviceInfo selected = null;
-            try {
-                for (AudioDeviceInfo device : audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) {
-                    if (device == null || !device.isSink()) continue;
-                    int type = device.getType();
-                    boolean a2dp = type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP;
-                    boolean ble = Build.VERSION.SDK_INT >= 31 && (type == AudioDeviceInfo.TYPE_BLE_HEADSET || type == AudioDeviceInfo.TYPE_BLE_SPEAKER);
-                    boolean hearingAid = Build.VERSION.SDK_INT >= 28 && type == AudioDeviceInfo.TYPE_HEARING_AID;
-                    if (!a2dp && !ble && !hearingAid && type != AudioDeviceInfo.TYPE_BLUETOOTH_SCO) continue;
-                    if (selected == null) selected = device;
-                    if (a2dp || ble) { selected = device; break; }
-                }
-            } catch (RuntimeException ignored) { return; }
-            if (selected == null) return;
-            String name = selected.getProductName() == null ? "" : selected.getProductName().toString().trim();
-            int type = selected.getType();
-            if (name.isEmpty()) {
-                if (type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP) name = "Bluetooth A2DP";
-                else if (type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO) name = "Bluetooth SCO";
-                else if (Build.VERSION.SDK_INT >= 31 && type == AudioDeviceInfo.TYPE_BLE_HEADSET) name = "BLE headset";
-                else if (Build.VERSION.SDK_INT >= 31 && type == AudioDeviceInfo.TYPE_BLE_SPEAKER) name = "BLE speaker";
-                else name = "Hearing aid";
-            }
-            String deviceKey = "type:" + type + "|name:" + name.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
-            bluetoothOffset = settings.bluetoothSyncOffsetMs(deviceKey);
         }
 
         private final class AiCallback implements AiLyricsRepository.Callback {

@@ -3,6 +3,8 @@ package kr.ivlis.ivlyricsandroid;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
+import android.graphics.DashPathEffect;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
@@ -99,6 +101,7 @@ public final class LyricsView extends View {
     private final float[] loadingSkeletonShaderWidths = new float[LOADING_SKELETON_WIDTH_FACTORS.length];
     private final Paint emptyIconPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint edgeFadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint annotationUnderlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final PorterDuffXfermode bottomEdgeFadeXfermode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
     private final Path emptyIconPath = new Path();
     private final RectF edgeFadeBounds = new RectF();
@@ -178,6 +181,44 @@ public final class LyricsView extends View {
     private boolean pronunciationLoading;
     private boolean translationLoading;
     private List<CulturalAnnotation> culturalAnnotations = Collections.emptyList();
+    /** Attribution shown after the last line, so it scrolls with the lyrics instead of sitting fixed. */
+    private String footerText = "";
+    private static final int FOOTER_TEXT_COLOR = 0x8affffff;
+    /** Lines that carry an external annotation; these are drawn with a dashed underline. */
+    private Set<LyricsLine> annotatedLines = Collections.emptySet();
+    private OnAnnotationLongPressListener annotationLongPressListener;
+    private boolean annotationLongPressFired;
+    private Runnable annotationLongPressRunnable;
+
+    /**
+     * The pending long press. Created on first use: the body reads fields declared later in the
+     * class, which a field initializer may not reference yet.
+     */
+    private Runnable annotationLongPressRunnable() {
+        if (annotationLongPressRunnable == null) {
+            annotationLongPressRunnable = () -> {
+                LyricsLine line = pressedAnnotationLine();
+                if (line == null) {
+                    return;
+                }
+                annotationLongPressFired = true;
+                pressedTarget = null;
+                performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                annotationLongPressListener.onAnnotationLongPress(line);
+            };
+        }
+        return annotationLongPressRunnable;
+    }
+
+    /** The annotated line under the finger, or null when the press is not on one. */
+    private LyricsLine pressedAnnotationLine() {
+        if (annotationLongPressListener == null || pressedTarget == null) {
+            return null;
+        }
+        LyricsLine line = pressedTarget.line;
+        return line != null && annotatedLines.contains(line) ? line : null;
+    }
+
     private final Map<Integer, LineRenderInput> lineRenderInputs = new HashMap<>();
     private String culturalAnnotationFontFamily = AiLyricsSettings.CULTURAL_FONT_PRETENDARD;
     private int culturalAnnotationFontSize = 14;
@@ -712,6 +753,41 @@ public final class LyricsView extends View {
         postInvalidateOnAnimation();
     }
 
+    /** Marks the lyric lines that have an external annotation; the set is compared by identity. */
+    void setAnnotatedLines(Set<LyricsLine> lines) {
+        Set<LyricsLine> next = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        if (lines != null) {
+            for (LyricsLine line : lines) {
+                if (line != null) {
+                    next.add(line);
+                }
+            }
+        }
+        if (next.size() == annotatedLines.size() && next.containsAll(annotatedLines)) {
+            return;
+        }
+        annotatedLines = next;
+        invalidate();
+    }
+
+    /** Source attribution drawn after the last lyric line; empty removes it. */
+    void setFooterText(String text) {
+        String next = text == null ? "" : text.trim();
+        if (next.equals(footerText)) {
+            return;
+        }
+        footerText = next;
+        invalidateDisplayLineCache();
+        invalidate();
+    }
+
+    void setOnAnnotationLongPressListener(OnAnnotationLongPressListener listener) {
+        annotationLongPressListener = listener;
+    }
+
+    interface OnAnnotationLongPressListener {
+        void onAnnotationLongPress(LyricsLine line);
+    }
     void setOnSeekListener(OnSeekListener seekListener) {
         this.seekListener = seekListener;
     }
@@ -1008,6 +1084,9 @@ public final class LyricsView extends View {
                 continue;
             }
             drawGroups(canvas, layout.groups, baselineCenter, fadeAlpha);
+            if (layout.displayLine.line != null && annotatedLines.contains(layout.displayLine.line)) {
+                drawAnnotationUnderline(canvas, layout, baselineCenter, fadeAlpha);
+            }
         }
         drawExitingInterlude(canvas, layouts);
         applyBottomEdgeFade(canvas);
@@ -1129,6 +1208,11 @@ public final class LyricsView extends View {
                     pressedTargetSnapshot.set(target);
                     pressedTarget = pressedTargetSnapshot;
                 }
+                annotationLongPressFired = false;
+                removeCallbacks(annotationLongPressRunnable());
+                if (target != null && annotationLongPressListener != null) {
+                    postDelayed(annotationLongPressRunnable(), ViewConfiguration.getLongPressTimeout());
+                }
                 return true;
             }
             case MotionEvent.ACTION_MOVE: {
@@ -1138,6 +1222,7 @@ public final class LyricsView extends View {
                 float y = event.getY();
                 float totalDy = y - touchStartY;
                 if (!draggingLyrics && Math.abs(totalDy) > touchSlop) {
+                    removeCallbacks(annotationLongPressRunnable());
                     draggingLyrics = true;
                     manualScrollActive = true;
                     manualCenterIndex = animatedCenterIndex;
@@ -1159,8 +1244,15 @@ public final class LyricsView extends View {
                 return true;
             }
             case MotionEvent.ACTION_UP: {
+                removeCallbacks(annotationLongPressRunnable());
                 if (velocityTracker != null) {
                     velocityTracker.addMovement(event);
+                }
+                if (annotationLongPressFired) {
+                    annotationLongPressFired = false;
+                    pressedTarget = null;
+                    recycleVelocityTracker();
+                    return true;
                 }
                 if (draggingLyrics) {
                     draggingLyrics = false;
@@ -1184,6 +1276,8 @@ public final class LyricsView extends View {
                 return super.onTouchEvent(event);
             }
             case MotionEvent.ACTION_CANCEL:
+                removeCallbacks(annotationLongPressRunnable());
+                annotationLongPressFired = false;
                 pressedTarget = null;
                 draggingLyrics = false;
                 recycleVelocityTracker();
@@ -1797,6 +1891,17 @@ public final class LyricsView extends View {
         }
         if (displayLine.isInterlude()) {
             return Collections.singletonList(buildInterludeGroup(displayLine.interludeInfo, highlighted, distance));
+        }
+        if (displayLine.isFooter()) {
+            return Collections.singletonList(buildSupplementGroup(
+                    displayLine.footerText,
+                    FOOTER_TEXT_COLOR,
+                    displayLine.displayIndex,
+                    "footer",
+                    0,
+                    null,
+                    null
+            ));
         }
 
         int lineIndex = displayLine.sourceIndex;
@@ -2466,6 +2571,7 @@ public final class LyricsView extends View {
                 layout.active,
                 layout.displayLine.displayIndex + 1
         );
+        target.line = layout.displayLine.line;
         hitTargetCount++;
     }
 
@@ -2769,6 +2875,97 @@ public final class LyricsView extends View {
         return previous.height * 0.5f + blockGap + next.height * 0.5f;
     }
 
+    /**
+     * Dashed underline beneath a line that carries an external annotation. The underline spans the
+     * original lyric text only, so the translated row below it stays unmarked.
+     */
+    /**
+     * Width of the row up to its last visible glyph. A row's measured width includes trailing spaces
+     * and padding, which made the annotation dashes run past the words they belong to.
+     */
+    private float visibleRowWidth(TextRow row) {
+        if (row == null) {
+            return 0f;
+        }
+        java.util.List<TextSegment> segments = row.segments;
+        if (segments == null || segments.isEmpty()) {
+            return row.width;
+        }
+        int lastVisible = -1;
+        for (int index = 0; index < segments.size(); index++) {
+            TextSegment segment = segments.get(index);
+            if (segment != null && segment.text != null && !segment.text.trim().isEmpty()) {
+                lastVisible = index;
+            }
+        }
+        if (lastVisible < 0) {
+            return 0f;
+        }
+        float width = 0f;
+        for (int index = 0; index <= lastVisible; index++) {
+            TextSegment segment = segments.get(index);
+            width += segment == null ? 0f : segment.width;
+        }
+        TextSegment last = segments.get(lastVisible);
+        if (last != null && last.text != null && !last.text.isEmpty()) {
+            int end = last.text.length();
+            while (end > 0 && Character.isWhitespace(last.text.charAt(end - 1))) {
+                end--;
+            }
+            int trimmed = last.text.length() - end;
+            if (trimmed > 0) {
+                width -= last.width * trimmed / (float) last.text.length();
+            }
+        }
+        return Math.max(0f, width);
+    }
+
+    private void drawAnnotationUnderline(Canvas canvas, LineLayout layout, float baselineCenter, float fadeAlpha) {
+        List<DrawGroup> groups = layout.groups;
+        if (groups == null || groups.isEmpty()) {
+            return;
+        }
+        annotationUnderlinePaint.setShader(null);
+        annotationUnderlinePaint.setStyle(Paint.Style.STROKE);
+        // The reference draws round dots: a near-zero dash, a gap of 2.5x the dot, and a round cap.
+        float dot = sp(2f);
+        annotationUnderlinePaint.setStrokeWidth(dot);
+        annotationUnderlinePaint.setStrokeCap(Paint.Cap.ROUND);
+        annotationUnderlinePaint.setPathEffect(new DashPathEffect(new float[]{0.01f, dot * 2.5f}, 0f));
+        annotationUnderlinePaint.setColor(Color.WHITE);
+        annotationUnderlinePaint.setAlpha(Math.round(140f * Math.max(0f, Math.min(1f, fadeAlpha))));
+        // Walk the same layout the renderer used, but only underline the lyric itself: a translation or
+        // pronunciation group sits below it and must neither carry the dashes nor push them down.
+        float top = baselineCenter - groupsHeight(groups) * 0.5f;
+        for (int groupIndex = 0; groupIndex < groups.size(); groupIndex++) {
+            DrawGroup group = groups.get(groupIndex);
+            if (group.isInterlude()) {
+                top += group.height();
+                if (groupIndex + 1 < groups.size()) {
+                    top += sp(PART_GAP_SP);
+                }
+                continue;
+            }
+            float rowTop = top;
+            for (TextRow row : group.rows) {
+                float baseline = rowTop + group.baselineOffset(row);
+                if (!group.supplement && row != null && row.text != null && !row.text.trim().isEmpty()) {
+                    float visibleWidth = visibleRowWidth(row);
+                    if (visibleWidth > 0f) {
+                        float rowLeft = alignedRowLeft(row);
+                        float underline = baseline + sp(5f);
+                        canvas.drawLine(rowLeft, underline, rowLeft + visibleWidth, underline,
+                                annotationUnderlinePaint);
+                    }
+                }
+                rowTop += group.rowHeight(row);
+            }
+            top = rowTop;
+            if (groupIndex + 1 < groups.size()) {
+                top += gapBetweenGroups(groups, groupIndex, groupIndex + 1);
+            }
+        }
+    }
     private void drawTextRow(Canvas canvas, TextRow row, float baseline, DrawGroup group, int rowIndex, float fadeAlpha) {
         float left = alignedRowLeft(row);
         int canvasSave = canvas.save();
@@ -4270,6 +4467,11 @@ public final class LyricsView extends View {
             LyricsLine line = lines.get(0);
             displayLines.add(DisplayLine.real(line, 0, 0, interludeInfoForLine(line, 0, lineCount)));
         }
+        if (!footerText.isEmpty()) {
+            // The attribution is a synthetic trailing entry: it scrolls with the lyrics, has no
+            // timing, and gets no tap target.
+            displayLines.add(DisplayLine.footer(footerText, displayLines.size()));
+        }
         remapDisplayCenter(cachedDisplayLines, displayLines);
         cachedDisplayLines = displayLines;
         displayLineCacheStartMs = cacheStartMs;
@@ -4682,6 +4884,9 @@ public final class LyricsView extends View {
             return LineVisualState.INACTIVE;
         }
         DisplayLine displayLine = displayLines.get(index);
+        if (displayLine.isFooter()) {
+            return LineVisualState.INACTIVE;
+        }
         if (!displayLine.isTimed()) {
             return index == findActiveDisplayIndex(displayLines)
                     ? LineVisualState.ACTIVE
@@ -5421,6 +5626,8 @@ public final class LyricsView extends View {
         final int sourceIndex;
         final int displayIndex;
         final InterludeInfo interludeInfo;
+        /** Set on the synthetic last entry that carries the lyric/translation attribution. */
+        final String footerText;
         // LyricsLine and VocalPart copy their lists and expose final values.
         // Display rows are replaced on every result/display-list invalidation;
         // only source-derived metadata is retained, never visual frame state.
@@ -5429,18 +5636,28 @@ public final class LyricsView extends View {
         RowReflow reflow;
 
         static DisplayLine real(LyricsLine line, int sourceIndex, int displayIndex, InterludeInfo interludeInfo) {
-            return new DisplayLine(line, sourceIndex, displayIndex, interludeInfo);
+            return new DisplayLine(line, sourceIndex, displayIndex, interludeInfo, "");
         }
 
         static DisplayLine virtual(int sourceIndex, int displayIndex, InterludeInfo interludeInfo) {
-            return new DisplayLine(null, sourceIndex, displayIndex, interludeInfo);
+            return new DisplayLine(null, sourceIndex, displayIndex, interludeInfo, "");
         }
 
-        DisplayLine(LyricsLine line, int sourceIndex, int displayIndex, InterludeInfo interludeInfo) {
+        static DisplayLine footer(String text, int displayIndex) {
+            return new DisplayLine(null, -1, displayIndex, InterludeInfo.none(), text);
+        }
+
+        DisplayLine(LyricsLine line, int sourceIndex, int displayIndex, InterludeInfo interludeInfo,
+                String footerText) {
             this.line = line;
             this.sourceIndex = sourceIndex;
             this.displayIndex = displayIndex;
             this.interludeInfo = interludeInfo == null ? InterludeInfo.none() : interludeInfo;
+            this.footerText = footerText == null ? "" : footerText;
+        }
+
+        boolean isFooter() {
+            return !footerText.isEmpty();
         }
 
         boolean isInterlude() {
@@ -5743,12 +5960,15 @@ public final class LyricsView extends View {
         float bottom;
         float centerY;
         long seekTimeMs;
+        /** The lyric line this row belongs to; null for an interlude row. */
+        LyricsLine line;
         String label = "";
         boolean active;
         int virtualId;
 
         void set(LineHitTarget source) {
             set(source.top, source.bottom, source.centerY, source.seekTimeMs, source.label, source.active, source.virtualId);
+            this.line = source.line;
         }
 
         void set(float top, float bottom, float centerY, long seekTimeMs, String label, boolean active, int virtualId) {

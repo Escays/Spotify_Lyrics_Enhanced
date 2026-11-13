@@ -69,10 +69,8 @@ final class AiLyricsSettings implements SharedPreferences.OnSharedPreferenceChan
     static final String KEY_PIP_ORIENTATION = "pip_orientation";
     static final String KEY_PIP_LYRICS_TEXT_ALIGNMENT = "pip_lyrics_text_alignment";
     static final String KEY_PIP_LYRICS_SIZE_PERCENT = "pip_lyrics_size_percent";
-    static final String KEY_GLOBAL_SYNC_OFFSET = "global_sync_offset_ms";
     static final String KEY_TRACK_SYNC_OFFSETS = "track_sync_offsets_v1";
     static final String KEY_TRACK_VIDEO_SYNC_OFFSETS = "track_video_sync_offsets_v1";
-    static final String KEY_BLUETOOTH_SYNC_OFFSETS = "bluetooth_sync_offsets_v1";
     static final String KEY_SPOTIFY_CLIENT_ID = "spotify_client_id";
     static final String KEY_SPOTIFY_CLIENT_SECRET = "spotify_client_secret";
     static final String KEY_METADATA_TRANSLATION_ENABLED = "metadata_translation_enabled";
@@ -175,7 +173,7 @@ final class AiLyricsSettings implements SharedPreferences.OnSharedPreferenceChan
             KEY_BACKGROUND_SOLID_COLOR, KEY_BACKGROUND_VIDEO_SCALE, KEY_LANDSCAPE_AUTO_HIDE_CONTROLS,
             KEY_LANDSCAPE_CENTER_NO_LYRICS, KEY_KEEP_SCREEN_ON, KEY_PIP_SHOW_ARTWORK,
             KEY_PIP_ORIENTATION, KEY_PIP_LYRICS_TEXT_ALIGNMENT, KEY_PIP_LYRICS_SIZE_PERCENT,
-            KEY_GLOBAL_SYNC_OFFSET, KEY_METADATA_TRANSLATION_ENABLED, KEY_JAPANESE_FURIGANA_ENABLED,
+            KEY_METADATA_TRANSLATION_ENABLED, KEY_JAPANESE_FURIGANA_ENABLED,
             KEY_CULTURAL_ANNOTATIONS_ENABLED, KEY_CULTURAL_ANNOTATIONS_FONT_FAMILY,
             KEY_CULTURAL_ANNOTATIONS_FONT_SIZE, KEY_CULTURAL_ANNOTATIONS_FONT_WEIGHT,
             KEY_CULTURAL_ANNOTATIONS_OPACITY, KEY_CULTURAL_ANNOTATIONS_VINYL_FONT_FAMILY,
@@ -264,7 +262,7 @@ final class AiLyricsSettings implements SharedPreferences.OnSharedPreferenceChan
     static final List<BackgroundMode> BACKGROUND_MODES = Collections.unmodifiableList(Arrays.asList(
             new BackgroundMode(BACKGROUND_MODE_GRADIENT, "앨범 커버", "현재 앨범 커버를 크게 블러 처리해 배경으로 사용합니다."),
             new BackgroundMode(BACKGROUND_MODE_BLUR_GRADIENT, "블러 그라데이션", "앨범 색상을 추출해 움직이는 블러 그라데이션을 만듭니다."),
-            new BackgroundMode(BACKGROUND_MODE_VIDEO, "영상", "ivLyrics YouTube 영상 정보를 불러와 실제 영상을 배경으로 재생합니다."),
+            new BackgroundMode(BACKGROUND_MODE_VIDEO, "영상", "Lyriscope YouTube 영상 정보를 불러와 실제 영상을 배경으로 재생합니다."),
             new BackgroundMode(BACKGROUND_MODE_SOLID, "단색", "사용자 지정 단색 배경을 사용합니다.")
     ));
     static final List<TypographySlot> TYPOGRAPHY_SLOTS = Collections.unmodifiableList(Arrays.asList(
@@ -1058,21 +1056,6 @@ final class AiLyricsSettings implements SharedPreferences.OnSharedPreferenceChan
         cachedSnapshot = null;
     }
 
-    int globalSyncOffsetMs() {
-        return clampInt(prefs.getInt(KEY_GLOBAL_SYNC_OFFSET, 0), -10000, 10000);
-    }
-
-    void setGlobalSyncOffsetMs(int offsetMs) {
-        int safeOffset = clampInt(offsetMs, -10000, 10000);
-        SharedPreferences.Editor editor = prefs.edit();
-        if (safeOffset == 0) {
-            editor.remove(KEY_GLOBAL_SYNC_OFFSET);
-        } else {
-            editor.putInt(KEY_GLOBAL_SYNC_OFFSET, safeOffset);
-        }
-        editor.apply();
-    }
-
     int trackSyncOffsetMs(String trackKey) {
         return trackOffsetMs(KEY_TRACK_SYNC_OFFSETS, trackKey);
     }
@@ -1087,14 +1070,6 @@ final class AiLyricsSettings implements SharedPreferences.OnSharedPreferenceChan
 
     void setTrackVideoSyncOffsetMs(String trackKey, int offsetMs) {
         setTrackOffsetMs(KEY_TRACK_VIDEO_SYNC_OFFSETS, trackKey, offsetMs);
-    }
-
-    int bluetoothSyncOffsetMs(String deviceKey) {
-        return trackOffsetMs(KEY_BLUETOOTH_SYNC_OFFSETS, deviceKey);
-    }
-
-    void setBluetoothSyncOffsetMs(String deviceKey, int offsetMs) {
-        setTrackOffsetMs(KEY_BLUETOOTH_SYNC_OFFSETS, deviceKey, offsetMs);
     }
 
     private synchronized int trackOffsetMs(String prefsKey, String trackKey) {

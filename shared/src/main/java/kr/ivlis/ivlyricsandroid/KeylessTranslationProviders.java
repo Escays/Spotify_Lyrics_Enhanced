@@ -102,6 +102,25 @@ final class KeylessTranslationProviders {
             List<String> texts,
             String targetLanguage
     ) throws Exception {
+        try {
+            return translateOnProvider(providerId, texts, targetLanguage);
+        } catch (Exception failure) {
+            // Both keyless endpoints rate-limit per address. When the chosen one refuses — Google answers
+            // 429 after a burst — the other one still answers, and the caller can say which one did.
+            String alternative = BING_ID.equals(providerId) ? GOOGLE_ID : BING_ID;
+            try {
+                return translateOnProvider(alternative, texts, targetLanguage);
+            } catch (Exception ignored) {
+                throw failure;
+            }
+        }
+    }
+
+    private static Result translateOnProvider(
+            String providerId,
+            List<String> texts,
+            String targetLanguage
+    ) throws Exception {
         if (BING_ID.equals(providerId)) {
             return new Result(
                     translateBatched(texts, targetLanguage, 2_800, KeylessTranslationProviders::translateBingText),
@@ -257,12 +276,19 @@ final class KeylessTranslationProviders {
                 "dt", "t",
                 "q", text
         ));
-        HttpResponse response = request(
-                GOOGLE_ENDPOINT,
-                "POST",
-                Map.of("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8"),
-                body
+        // The keyless endpoint throttles anonymous callers; a browser identity and a page referer keep
+        // it from answering 429 to a request that is exactly what translate.google.com sends.
+        Map<String, String> headers = Map.of(
+                "Content-Type", "application/x-www-form-urlencoded;charset=UTF-8",
+                "User-Agent", USER_AGENT,
+                "Referer", "https://translate.google.com/"
         );
+        HttpResponse response = request(GOOGLE_ENDPOINT, "POST", headers, body);
+        if (response.status == 429) {
+            // One quiet retry: the burst that triggered the limit is over by the time this returns.
+            Thread.sleep(1_200L);
+            response = request(GOOGLE_ENDPOINT, "POST", headers, body);
+        }
         if (response.status < 200 || response.status >= 300) {
             throw new HttpStatusException(response.status, GOOGLE_LABEL, "Google Translate request failed");
         }

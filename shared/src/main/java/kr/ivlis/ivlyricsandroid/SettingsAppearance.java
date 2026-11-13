@@ -28,18 +28,18 @@ import android.widget.TextView;
 
 /** Native settings tokens shared by the standalone app and Spotify host. */
 final class SettingsAppearance {
-    static final int BACKGROUND = 0xFF0D0D11;
-    static final int SURFACE = 0xFF151519;
-    static final int CONTROL = 0xFF1B1B21;
-    static final int BORDER = 0x12FFFFFF;
-    static final int BORDER_STRONG = 0x24FFFFFF;
-    static final int TEXT = 0xFFF1F0F4;
-    static final int SECONDARY = 0xFF8F8E98;
-    static final int MUTED = 0xFFA3A2AD;
-    static final int ACCENT = 0xFFFF6B4A;
-    static final int ACCENT_SOFT = 0x29FF6B4A;
-    static final int MINT = 0xFF5FCE9B;
-    static final int MINT_SOFT = 0x295FCE9B;
+    static final int BACKGROUND = 0xFF000000;
+    static final int SURFACE = 0xFF0E0E10;
+    static final int CONTROL = 0xFF1A1A1D;
+    static final int BORDER = 0x0FFFFFFF;
+    static final int BORDER_STRONG = 0x1AFFFFFF;
+    static final int TEXT = 0xFFFFFFFF;
+    static final int SECONDARY = 0xFF8A8A93;
+    static final int MUTED = 0xFFB6B6BE;
+    static final int ACCENT = 0xFF3482FF;
+    static final int ACCENT_SOFT = 0x243482FF;
+    static final int MINT = 0xFF32D74B;
+    static final int MINT_SOFT = 0x2932D74B;
     static final String SECTION_TITLE = "settings-section-title";
     static final String SECTION_NOTE = "settings-section-note";
     static final String ROW_LIST = "settings-row-list";
@@ -56,7 +56,9 @@ final class SettingsAppearance {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(color);
         drawable.setCornerRadius(dp(context, radius));
-        drawable.setStroke(dp(context, 1), strong ? BORDER_STRONG : BORDER);
+        if (strong) {
+            drawable.setStroke(dp(context, 1), BORDER_STRONG);
+        }
         return drawable;
     }
 

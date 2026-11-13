@@ -2,56 +2,61 @@ package dev.ivlyrics.spotify;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.ColorFilter;
-import android.graphics.Paint;
-import android.graphics.PixelFormat;
-import android.graphics.Rect;
-import android.graphics.drawable.Drawable;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.view.Gravity;
-import android.view.View;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.function.Function;
 
-/** Compact native-player controls, owned and packaged only by the Spotify module. */
+/**
+ * The sing-along control, drawn as the same pill as the translation toggle beside it: same corner
+ * radius, padding, type scale and idle background. It used to be a round microphone button that also
+ * hid itself after three seconds, which read as a different kind of control and looked like the
+ * feature kept disappearing.
+ *
+ * <p>Owned and packaged only by the Spotify module.</p>
+ */
 final class SpotifyKaraokeToolbar extends FrameLayout {
     private static final int ACCENT = 0xff1ed760;
-    private static final long IDLE_HIDE_MS = 3000L;
+    private static final int PILL_BG = 0x22ffffff;
+    private static final int ACTIVE_BG = 0x331ed760;
+
     private final SpotifyKaraokeController controller;
     /** Looks up sing_along.* text in the app's UI language. */
     private final Function<String, String> text;
-    private final ImageButton microphone;
-    private final ProgressBar progress;
+    private final TextView pill;
     private SpotifyKaraokeController.State state = SpotifyKaraokeController.State.OFF;
     private boolean available;
-    private boolean controlVisible;
     private String reason = "WAITING";
     private String lastError = "";
-    private final Runnable hideWhenIdle = () -> animate().alpha(0f).setDuration(180L)
-            .withEndAction(() -> setVisibility(INVISIBLE)).start();
+    private Runnable onLongPress;
 
     SpotifyKaraokeToolbar(Context context, SpotifyKaraokeController controller, Function<String, String> text) {
         super(context);
         this.controller = controller;
         this.text = text;
         setTag("ivLyricsKaraokeToolbar");
-        microphone = button();
-        microphone.setTag("ivLyricsKaraokeToggle");
-        addView(microphone, new FrameLayout.LayoutParams(dp(44), dp(44)));
-        progress = new ProgressBar(context, null, android.R.attr.progressBarStyleSmall);
-        progress.setIndeterminateTintList(ColorStateList.valueOf(ACCENT));
-        progress.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        progress.setClickable(false);
-        addView(progress, new FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER));
-        microphone.setOnClickListener(view -> {
+        pill = new TextView(context);
+        pill.setTag("ivLyricsKaraokeToggle");
+        pill.setTextSize(11f);
+        pill.setTypeface(pill.getTypeface(), Typeface.BOLD);
+        pill.setTextColor(0xe8ffffff);
+        pill.setPadding(dp(10), dp(5), dp(10), dp(5));
+        pill.setGravity(Gravity.CENTER);
+        pill.setSingleLine(true);
+        pill.setIncludeFontPadding(true);
+        pill.setBackground(ripple(PILL_BG));
+        pill.setText(text.apply("sing_along.button"));
+        addView(pill, new FrameLayout.LayoutParams(
+                LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
+        pill.setOnClickListener(view -> {
+            if (!controller.visible()) {
+                return;
+            }
             if (!available && state != SpotifyKaraokeController.State.LOW
                     && state != SpotifyKaraokeController.State.HIGH
                     && state != SpotifyKaraokeController.State.LOADING
@@ -61,67 +66,66 @@ final class SpotifyKaraokeToolbar extends FrameLayout {
             }
             controller.cycle();
         });
+        pill.setOnLongClickListener(view -> {
+            if (onLongPress == null) {
+                return false;
+            }
+            onLongPress.run();
+            return true;
+        });
         render(state, false, "WAITING");
+    }
+
+    /** Long press opens the per-song settings, the same sheet the title uses. */
+    void setOnLongPressListener(Runnable action) {
+        onLongPress = action;
     }
 
     void render(SpotifyKaraokeController.State next, boolean canEnable, String detail) {
         state = next;
         available = canEnable;
         reason = detail;
-        boolean wasVisible = controlVisible;
-        controlVisible = controller.visible();
-        if (!controlVisible) {
-            removeCallbacks(hideWhenIdle);
-            animate().cancel();
+        if (!controller.visible()) {
+            // No sing-along for this track or account: gone, without leaving a gap in the row.
             setVisibility(GONE);
-        } else if (!wasVisible) {
-            revealTemporarily();
+            return;
         }
-        boolean enabled = next == SpotifyKaraokeController.State.LOW || next == SpotifyKaraokeController.State.HIGH;
-        boolean waiting = next == SpotifyKaraokeController.State.LOADING || next == SpotifyKaraokeController.State.STOPPING;
-        microphone.setImageDrawable(new Icon(next == SpotifyKaraokeController.State.LOW ? 1
-                : next == SpotifyKaraokeController.State.HIGH ? 2 : 0));
-        microphone.setImageAlpha(waiting ? 0 : 255);
-        microphone.setColorFilter(enabled ? ACCENT : Color.WHITE);
-        microphone.setAlpha(canEnable || enabled || waiting ? 1f : .42f);
-        microphone.setSelected(enabled);
-        microphone.setEnabled(next != SpotifyKaraokeController.State.STOPPING);
-        progress.setVisibility(waiting ? VISIBLE : GONE);
+        setVisibility(VISIBLE);
+        boolean enabled = next == SpotifyKaraokeController.State.LOW
+                || next == SpotifyKaraokeController.State.HIGH;
+        boolean waiting = next == SpotifyKaraokeController.State.LOADING
+                || next == SpotifyKaraokeController.State.STOPPING;
+        pill.setTextColor(enabled ? ACCENT : 0xe8ffffff);
+        pill.setBackground(ripple(enabled ? ACTIVE_BG : PILL_BG));
+        pill.setAlpha(waiting ? 0.6f : (canEnable || enabled ? 1f : 0.45f));
+        pill.setEnabled(next != SpotifyKaraokeController.State.STOPPING);
         String label = next == SpotifyKaraokeController.State.LOW ? "sing_along.state_low"
                 : next == SpotifyKaraokeController.State.HIGH ? "sing_along.state_high"
                 : next == SpotifyKaraokeController.State.LOADING ? "sing_along.cancel"
                 : next == SpotifyKaraokeController.State.STOPPING ? "sing_along.stopping"
                 : "sing_along.state_off";
-        String description = text.apply(label);
+        String description = text.apply("sing_along.button") + " - " + text.apply(label);
         if (!canEnable && !enabled && !waiting && detail != null && !detail.isEmpty()) {
             description += ": " + reasonText(detail);
         }
-        microphone.setContentDescription(description);
-        microphone.setTooltipText(description);
+        pill.setContentDescription(description);
+        pill.setTooltipText(description);
         if (next == SpotifyKaraokeController.State.ERROR && !detail.equals(lastError)) {
             lastError = detail;
             Toast.makeText(getContext(), reasonText(detail), Toast.LENGTH_LONG).show();
-        } else if (next != SpotifyKaraokeController.State.ERROR) lastError = "";
+        } else if (next != SpotifyKaraokeController.State.ERROR) {
+            lastError = "";
+        }
     }
 
+    /**
+     * The pill is persistent now, so this only re-asserts visibility. Kept because the page calls it
+     * on resume and on touch.
+     */
     void revealTemporarily() {
-        if (!controlVisible) return;
-        removeCallbacks(hideWhenIdle);
-        animate().cancel();
-        setAlpha(1f);
-        setVisibility(VISIBLE);
-        postDelayed(hideWhenIdle, IDLE_HIDE_MS);
-    }
-
-    @Override protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
-        revealTemporarily();
-    }
-
-    @Override protected void onDetachedFromWindow() {
-        removeCallbacks(hideWhenIdle);
-        animate().cancel();
-        super.onDetachedFromWindow();
+        if (controller.visible() && getVisibility() != VISIBLE) {
+            setVisibility(VISIBLE);
+        }
     }
 
     private String reasonText(String value) {
@@ -143,59 +147,17 @@ final class SpotifyKaraokeToolbar extends FrameLayout {
         return text.apply(key);
     }
 
-    private ImageButton button() {
-        ImageButton button = new ImageButton(getContext());
-        button.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        button.setPadding(dp(10), dp(10), dp(10), dp(10));
-        button.setImageDrawable(new Icon(0));
+    private RippleDrawable ripple(int color) {
         GradientDrawable fill = new GradientDrawable();
-        fill.setColor(0x0cffffff);
-        fill.setCornerRadius(dp(22));
+        fill.setColor(color);
+        fill.setCornerRadius(dp(11));
         GradientDrawable mask = new GradientDrawable();
-        mask.setColor(Color.WHITE);
-        mask.setCornerRadius(dp(22));
-        button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x24ffffff), fill, mask));
-        button.setFocusable(true);
-        return button;
+        mask.setColor(0xffffffff);
+        mask.setCornerRadius(dp(11));
+        return new RippleDrawable(ColorStateList.valueOf(0x24ffffff), fill, mask);
     }
 
-    private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
-
-    private static final class Icon extends Drawable {
-        final int level;
-        final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        Icon(int level) {
-            this.level = level;
-            paint.setColor(Color.WHITE);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(1.9f);
-            paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setStrokeJoin(Paint.Join.ROUND);
-        }
-        @Override public void draw(Canvas canvas) {
-            Rect bounds = getBounds();
-            int save = canvas.save();
-            canvas.translate(bounds.left, bounds.top);
-            canvas.scale(bounds.width() / 24f, bounds.height() / 24f);
-            int mic = canvas.save();
-            canvas.translate(2.16f, 0);
-            canvas.scale(.82f, .82f);
-            canvas.drawRoundRect(8, 2, 16, 15, 4, 4, paint);
-            canvas.drawArc(5, 7, 19, 19, 0, 180, false, paint);
-            canvas.drawLine(12, 19, 12, 22, paint);
-            canvas.drawLine(9, 22, 15, 22, paint);
-            canvas.restoreToCount(mic);
-            paint.setStyle(Paint.Style.FILL);
-            if (level == 1) canvas.drawCircle(12, 22, 1.2f, paint);
-            if (level == 2) {
-                canvas.drawCircle(9.5f, 22, 1.2f, paint);
-                canvas.drawCircle(14.5f, 22, 1.2f, paint);
-            }
-            paint.setStyle(Paint.Style.STROKE);
-            canvas.restoreToCount(save);
-        }
-        @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); invalidateSelf(); }
-        @Override public void setColorFilter(ColorFilter filter) { paint.setColorFilter(filter); invalidateSelf(); }
-        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 }

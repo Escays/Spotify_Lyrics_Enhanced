@@ -83,14 +83,23 @@ def ndk_directory(sdk):
     raise SystemExit(f"Local AI needs the Android NDK: sdkmanager \"ndk;{NDK_VERSION}\"")
 
 
+def executable_in(directory, name):
+    """The tool inside an SDK package directory; Windows adds an .exe suffix."""
+    for candidate in (directory / name, directory / f"{name}.exe", directory / f"{name}.bat"):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
 def cmake_tools(sdk):
     directories = [sdk / "cmake" / CMAKE_VERSION / "bin"]
     if (sdk / "cmake").is_dir():
         directories += [path / "bin" for path in sorted((sdk / "cmake").glob("*"), key=version_key, reverse=True)]
     for directory in directories:
-        if (directory / "cmake").is_file():
-            ninja = directory / "ninja"
-            return str(directory / "cmake"), str(ninja) if ninja.is_file() else shutil.which("ninja")
+        cmake = executable_in(directory, "cmake")
+        if cmake is not None:
+            ninja = executable_in(directory, "ninja")
+            return str(cmake), str(ninja) if ninja is not None else shutil.which("ninja")
     cmake = shutil.which("cmake")
     if not cmake:
         raise SystemExit(f"Local AI needs CMake: sdkmanager \"cmake;{CMAKE_VERSION}\"")
@@ -147,7 +156,8 @@ def main():
     if not wrapper.is_file():
         raise RuntimeError("CMake did not produce libivlyrics_localai.so")
 
-    strip = next(iter(sorted((ndk / "toolchains/llvm/prebuilt").glob("*/bin/llvm-strip"))), None)
+    # Windows ships the same binary as llvm-strip.exe.
+    strip = next(iter(sorted((ndk / "toolchains/llvm/prebuilt").glob("*/bin/llvm-strip*"))), None)
     if strip is None:
         raise SystemExit(f"llvm-strip not found in {ndk}")
     root = assets / "localai"

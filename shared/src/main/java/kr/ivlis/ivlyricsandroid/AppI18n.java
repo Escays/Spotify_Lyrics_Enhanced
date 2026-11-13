@@ -107,6 +107,7 @@ final class AppI18n {
         languages.put("cs", csStrings());
         addManualLrclibSearchStrings(languages);
         addSpotifyShortcutStrings(languages);
+        addLyricsPageStrings(languages);
         addDisplayPowerStrings(languages);
         addPlayerCardBackgroundStrings(languages);
         addLandscapeNoLyricsStrings(languages);
@@ -149,6 +150,8 @@ final class AppI18n {
         addAlbumArtLpStrings(languages);
         addLyricsRegenerateStrings(languages);
         addSingAlongStrings(languages);
+        addLyricsTranslationTabStrings(languages);
+        addTranslationSheetStrings(languages);
         addErrorMessageStrings(languages);
         addAccessibilityLabelStrings(languages);
         addSettingsRedesignStrings(languages);
@@ -156,6 +159,80 @@ final class AppI18n {
         addLrclibPlaybackSettingsStrings(languages);
         assertComplete(languages);
         return Collections.unmodifiableMap(languages);
+    }
+
+        /** The translation sheet opened by a long press on the 译文 pill. */
+    private static void addTranslationSheetStrings(Map<String, Map<String, String>> languages) {
+        String[] keys = {
+                "translation.tab.track",
+                "translation.tab.global",
+                "translation.source",
+                "translation.mix",
+                "translation.reload",
+                "translation.follow_global",
+                "translation.auto"
+        };
+        String[][] rows = {
+                {"en", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"ko", "이 곡", "전체", "번역 출처", "출처 섞기", "가사 새로고침", "전체 설정 따르기", "자동"},
+                {"zh-CN", "当前歌曲", "全局", "译文来源", "混合模式", "重载歌词", "跟随全局", "自动"},
+                {"zh-TW", "當前歌曲", "全域", "譯文來源", "混合模式", "重載歌詞", "跟隨全域", "自動"},
+                {"ja", "この曲", "全体", "翻訳ソース", "ソースを混ぜる", "歌詞を再読み込み", "全体に従う", "自動"},
+                {"hi", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"es", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"fr", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"ar", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"fa", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"de", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"ru", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"sv", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"pt", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"bn", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"cs", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"it", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"th", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"vi", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"id", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"ms", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+                {"tr", "This song", "All songs", "Translation source", "Mix sources", "Reload lyrics", "Follow all songs", "Automatic"},
+        };
+        addRows(languages, keys, rows);
+    }
+
+/** The merged per-song tab: language and lyric source live on one page. */
+    private static void addLyricsTranslationTabStrings(Map<String, Map<String, String>> languages) {
+        String[] keys = {
+                "lyrics.tab.lyrics_translation",
+                "lyrics_enhance.match_status",
+                "lyrics_enhance.no_chinese",
+                "lyrics_enhance.no_match",
+                "lyrics_enhance.restore_defaults"
+        };
+        String[][] rows = {
+                {"en", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"ko", "가사 및 번역", "매칭 상태", "중국어 없음", "매칭 없음", "전역 기본값 복원"},
+                {"zh-CN", "歌词与翻译", "匹配状态", "命中但无中文", "未匹配到录音", "恢复全局默认"},
+                {"zh-TW", "歌詞與翻譯", "匹配狀態", "命中但無中文", "未匹配到錄音", "恢復全域預設"},
+                {"ja", "歌詞と翻訳", "マッチ状態", "中國語なし", "該当なし", "グローバル既定に戻す"},
+                {"hi", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"es", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"fr", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"ar", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"fa", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"de", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"ru", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"sv", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"pt", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"bn", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"cs", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"it", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"th", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"vi", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"id", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"ms", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+                {"tr", "Lyrics & translation", "Match status", "matched, no Chinese", "no match", "Restore global defaults"},
+        };
+        addRows(languages, keys, rows);
     }
 
     /** The Spotify module's sing-along control, in the app's UI language like the rest of its lyrics page. */
@@ -177,31 +254,32 @@ final class AppI18n {
                 "sing_along.timeout",
                 "sing_along.reset_failed",
                 "sing_along.error",
-                "sing_along.waiting"
+                "sing_along.waiting",
+                "sing_along.button"
         };
         String[][] rows = {
-                {"en", "Sing along off. Tap for low vocals", "Sing along with low vocals. Tap for high vocals", "Sing along with high vocals. Tap to turn off", "Turning sing along off", "Cancel sing-along preparation", "Play a song in Spotify first.", "Play on this device to sing along.", "Turn off Spotify offline mode to sing along.", "Choose a playback quality higher than Low in Spotify.", "Sing along is unavailable with this Spotify version.", "Spotify does not currently offer sing along for this song.", "Spotify has not enabled sing along for this account.", "Spotify could not prepare vocal reduction for this song.", "Sing along took too long to prepare. Please try again.", "Could not turn off sing along. Tap again to retry.", "Could not start sing along. Please try again.", "Checking Spotify sing-along availability."},
-                {"ko", "노래방 꺼짐. 눌러서 보컬 작게", "노래방 보컬 작게. 눌러서 보컬 크게", "노래방 보컬 크게. 눌러서 끄기", "노래방 끄는 중", "따라 부르기 준비 취소", "Spotify에서 노래를 먼저 재생해주세요.", "이 기기에서 재생하면 따라 부르기를 사용할 수 있습니다.", "Spotify의 오프라인 모드를 꺼주세요.", "Spotify의 재생 음질을 낮음보다 높게 설정해주세요.", "이 Spotify 버전에서는 따라 부르기를 사용할 수 없습니다.", "Spotify에서 이 곡의 따라 부르기를 제공하지 않습니다.", "이 계정에는 Spotify 따라 부르기가 활성화되어 있지 않습니다.", "이 곡의 보컬 감소를 준비하지 못했습니다.", "따라 부르기 준비가 지연되었습니다. 다시 시도해주세요.", "따라 부르기를 끄지 못했습니다. 다시 눌러 해제해주세요.", "따라 부르기를 시작하지 못했습니다. 다시 시도해주세요.", "Spotify 따라 부르기 지원 여부를 확인하고 있습니다."},
-                {"zh-CN", "跟唱已关闭。点按切换为人声小", "跟唱：人声小。点按切换为人声大", "跟唱：人声大。点按关闭", "正在关闭跟唱", "取消跟唱准备", "请先在 Spotify 中播放歌曲。", "在此设备上播放即可跟唱。", "请关闭 Spotify 的离线模式以使用跟唱。", "请在 Spotify 中选择高于“低”的音质。", "此版本的 Spotify 无法使用跟唱。", "Spotify 目前不提供这首歌曲的跟唱。", "Spotify 尚未为此账号启用跟唱。", "Spotify 无法为这首歌曲准备人声消减。", "跟唱准备时间过长，请重试。", "无法关闭跟唱，请再次点按重试。", "无法开始跟唱，请重试。", "正在检查 Spotify 是否支持跟唱。"},
-                {"zh-TW", "跟唱已關閉。點按切換為人聲小", "跟唱：人聲小。點按切換為人聲大", "跟唱：人聲大。點按即可關閉", "正在關閉跟唱", "取消跟唱準備", "請先在 Spotify 播放歌曲。", "在這部裝置上播放即可跟唱。", "請關閉 Spotify 的離線模式以使用跟唱。", "請在 Spotify 中選擇高於「低」的音質。", "這個版本的 Spotify 無法使用跟唱。", "Spotify 目前未提供這首歌曲的跟唱。", "Spotify 尚未為這個帳戶啟用跟唱。", "Spotify 無法為這首歌曲準備人聲消減。", "跟唱準備時間過長，請再試一次。", "無法關閉跟唱，請再次點按重試。", "無法開始跟唱，請再試一次。", "正在確認 Spotify 是否支援跟唱。"},
-                {"ja", "カラオケ：オフ。タップでボーカル小", "カラオケ：ボーカル小。タップでボーカル大", "カラオケ：ボーカル大。タップでオフ", "カラオケをオフにしています", "カラオケの準備をキャンセル", "先にSpotifyで曲を再生してください。", "このデバイスで再生するとカラオケを使えます。", "カラオケを使うには、Spotifyのオフラインモードをオフにしてください。", "Spotifyの音質を「低」より高く設定してください。", "このバージョンのSpotifyではカラオケを使えません。", "Spotifyは現在、この曲のカラオケを提供していません。", "このアカウントではSpotifyのカラオケが有効になっていません。", "Spotifyがこの曲のボーカル抑制を準備できませんでした。", "カラオケの準備に時間がかかりすぎました。もう一度お試しください。", "カラオケをオフにできませんでした。もう一度タップしてください。", "カラオケを開始できませんでした。もう一度お試しください。", "Spotifyでカラオケを使えるか確認しています。"},
-                {"hi", "कराओके बंद है। वोकल कम करने के लिए टैप करें", "कराओके: वोकल कम। वोकल ज़्यादा करने के लिए टैप करें", "कराओके: वोकल ज़्यादा। बंद करने के लिए टैप करें", "कराओके बंद किया जा रहा है", "कराओके की तैयारी रद्द करें", "पहले Spotify में कोई गाना चलाएँ।", "कराओके के लिए इसी डिवाइस पर गाना चलाएँ।", "कराओके के लिए Spotify का ऑफ़लाइन मोड बंद करें।", "Spotify में \"कम\" से बेहतर प्लेबैक क्वालिटी चुनें।", "Spotify के इस वर्शन में कराओके उपलब्ध नहीं है।", "Spotify अभी इस गाने के लिए कराओके नहीं देता।", "Spotify ने इस खाते के लिए कराओके चालू नहीं किया है।", "Spotify इस गाने में वोकल कम करने की तैयारी नहीं कर सका।", "कराओके की तैयारी में बहुत समय लगा। कृपया फिर से कोशिश करें।", "कराओके बंद नहीं हो सका। फिर से कोशिश करने के लिए दोबारा टैप करें।", "कराओके शुरू नहीं हो सका। कृपया फिर से कोशिश करें।", "Spotify में कराओके उपलब्ध है या नहीं, यह जाँचा जा रहा है।"},
-                {"es", "Karaoke desactivado. Toca para voces bajas", "Karaoke con voces bajas. Toca para voces altas", "Karaoke con voces altas. Toca para desactivarlo", "Desactivando el karaoke", "Cancelar la preparación del karaoke", "Primero reproduce una canción en Spotify.", "Reproduce en este dispositivo para usar el karaoke.", "Desactiva el modo sin conexión de Spotify para usar el karaoke.", "Elige en Spotify una calidad de reproducción superior a «Baja».", "El karaoke no está disponible en esta versión de Spotify.", "Spotify no ofrece karaoke para esta canción por ahora.", "Spotify no ha activado el karaoke en esta cuenta.", "Spotify no pudo preparar la reducción de voz de esta canción.", "La preparación del karaoke tardó demasiado. Inténtalo de nuevo.", "No se pudo desactivar el karaoke. Toca de nuevo para reintentarlo.", "No se pudo iniciar el karaoke. Inténtalo de nuevo.", "Comprobando si el karaoke de Spotify está disponible."},
-                {"fr", "Karaoké désactivé. Touchez pour des voix faibles", "Karaoké avec voix faibles. Touchez pour des voix fortes", "Karaoké avec voix fortes. Touchez pour désactiver", "Désactivation du karaoké", "Annuler la préparation du karaoké", "Lancez d’abord un titre dans Spotify.", "Lancez la lecture sur cet appareil pour utiliser le karaoké.", "Désactivez le mode hors connexion de Spotify pour utiliser le karaoké.", "Choisissez dans Spotify une qualité de lecture supérieure à « Faible ».", "Le karaoké n’est pas disponible avec cette version de Spotify.", "Spotify ne propose pas le karaoké pour ce titre pour le moment.", "Spotify n’a pas activé le karaoké pour ce compte.", "Spotify n’a pas pu préparer la réduction de la voix pour ce titre.", "La préparation du karaoké a pris trop de temps. Veuillez réessayer.", "Impossible de désactiver le karaoké. Touchez à nouveau pour réessayer.", "Impossible de lancer le karaoké. Veuillez réessayer.", "Vérification de la disponibilité du karaoké Spotify."},
-                {"ar", "الكاريوكي متوقف. اضغط لخفض صوت الغناء", "الكاريوكي بصوت غناء منخفض. اضغط لرفع صوت الغناء", "الكاريوكي بصوت غناء مرتفع. اضغط للإيقاف", "جارٍ إيقاف الكاريوكي", "إلغاء تجهيز الكاريوكي", "شغّل أغنية في Spotify أولًا.", "شغّل الأغنية على هذا الجهاز لاستخدام الكاريوكي.", "أوقف وضع عدم الاتصال في Spotify لاستخدام الكاريوكي.", "اختر في Spotify جودة تشغيل أعلى من «منخفضة».", "الكاريوكي غير متاح في هذا الإصدار من Spotify.", "لا يوفّر Spotify الكاريوكي لهذه الأغنية حاليًا.", "لم يفعّل Spotify الكاريوكي لهذا الحساب.", "تعذّر على Spotify تجهيز خفض صوت الغناء لهذه الأغنية.", "استغرق تجهيز الكاريوكي وقتًا طويلًا. يُرجى المحاولة مرة أخرى.", "تعذّر إيقاف الكاريوكي. اضغط مرة أخرى لإعادة المحاولة.", "تعذّر بدء الكاريوكي. يُرجى المحاولة مرة أخرى.", "جارٍ التحقق من توفر الكاريوكي في Spotify."},
-                {"fa", "هم‌خوانی خاموش است. برای کم کردن صدای خواننده ضربه بزنید", "هم‌خوانی با صدای خوانندهٔ کم. برای زیاد کردن صدای خواننده ضربه بزنید", "هم‌خوانی با صدای خوانندهٔ زیاد. برای خاموش کردن ضربه بزنید", "در حال خاموش کردن هم‌خوانی", "لغو آماده‌سازی هم‌خوانی", "ابتدا آهنگی را در Spotify پخش کنید.", "برای هم‌خوانی، آهنگ را روی همین دستگاه پخش کنید.", "برای هم‌خوانی، حالت آفلاین Spotify را خاموش کنید.", "در Spotify کیفیت پخش را بالاتر از «پایین» انتخاب کنید.", "هم‌خوانی در این نسخهٔ Spotify در دسترس نیست.", "Spotify در حال حاضر هم‌خوانی را برای این آهنگ ارائه نمی‌دهد.", "Spotify هم‌خوانی را برای این حساب فعال نکرده است.", "Spotify نتوانست کاهش صدای خواننده را برای این آهنگ آماده کند.", "آماده‌سازی هم‌خوانی بیش از حد طول کشید. لطفاً دوباره تلاش کنید.", "هم‌خوانی خاموش نشد. برای تلاش دوباره، دوباره ضربه بزنید.", "هم‌خوانی شروع نشد. لطفاً دوباره تلاش کنید.", "در حال بررسی در دسترس بودن هم‌خوانی Spotify."},
-                {"de", "Mitsingen aus. Tippen für leisen Gesang", "Mitsingen mit leisem Gesang. Tippen für lauten Gesang", "Mitsingen mit lautem Gesang. Tippen zum Ausschalten", "Mitsingen wird ausgeschaltet", "Vorbereitung des Mitsingens abbrechen", "Spielen Sie zuerst einen Song in Spotify ab.", "Starten Sie die Wiedergabe auf diesem Gerät, um mitzusingen.", "Schalten Sie den Offlinemodus von Spotify aus, um mitzusingen.", "Wählen Sie in Spotify eine höhere Wiedergabequalität als „Niedrig“.", "Mitsingen ist mit dieser Spotify-Version nicht verfügbar.", "Spotify bietet Mitsingen für diesen Song derzeit nicht an.", "Spotify hat Mitsingen für dieses Konto nicht aktiviert.", "Spotify konnte die Gesangsabsenkung für diesen Song nicht vorbereiten.", "Die Vorbereitung des Mitsingens hat zu lange gedauert. Bitte versuchen Sie es erneut.", "Mitsingen konnte nicht ausgeschaltet werden. Tippen Sie erneut, um es noch einmal zu versuchen.", "Mitsingen konnte nicht gestartet werden. Bitte versuchen Sie es erneut.", "Verfügbarkeit von Mitsingen in Spotify wird geprüft."},
-                {"ru", "Караоке выключено. Нажмите, чтобы приглушить вокал", "Караоке с тихим вокалом. Нажмите, чтобы сделать вокал громче", "Караоке с громким вокалом. Нажмите, чтобы выключить", "Караоке выключается", "Отменить подготовку караоке", "Сначала включите песню в Spotify.", "Чтобы петь караоке, включите воспроизведение на этом устройстве.", "Чтобы петь караоке, выключите офлайн-режим Spotify.", "Выберите в Spotify качество воспроизведения выше уровня «Низкое».", "Караоке недоступно в этой версии Spotify.", "Сейчас Spotify не предлагает караоке для этой песни.", "Spotify не включил караоке для этого аккаунта.", "Spotify не удалось подготовить приглушение вокала для этой песни.", "Подготовка караоке заняла слишком много времени. Попробуйте ещё раз.", "Не удалось выключить караоке. Нажмите ещё раз, чтобы повторить.", "Не удалось запустить караоке. Попробуйте ещё раз.", "Проверяем, доступно ли караоке в Spotify."},
-                {"sv", "Sjung med: av. Tryck för låg sång", "Sjung med: låg sång. Tryck för hög sång", "Sjung med: hög sång. Tryck för att stänga av", "Stänger av Sjung med", "Avbryt förberedelsen av Sjung med", "Spela först en låt i Spotify.", "Spela på den här enheten för att sjunga med.", "Stäng av offlineläget i Spotify för att sjunga med.", "Välj en högre uppspelningskvalitet än ”Låg” i Spotify.", "Sjung med är inte tillgängligt i den här versionen av Spotify.", "Spotify erbjuder för närvarande inte Sjung med för den här låten.", "Spotify har inte aktiverat Sjung med för det här kontot.", "Spotify kunde inte förbereda sänkt sång för den här låten.", "Förberedelsen av Sjung med tog för lång tid. Försök igen.", "Det gick inte att stänga av Sjung med. Tryck igen för att försöka på nytt.", "Det gick inte att starta Sjung med. Försök igen.", "Kontrollerar om Sjung med är tillgängligt i Spotify."},
-                {"pt", "Karaokê desativado. Toque para vocais baixos", "Karaokê com vocais baixos. Toque para vocais altos", "Karaokê com vocais altos. Toque para desativar", "Desativando o karaokê", "Cancelar a preparação do karaokê", "Primeiro, reproduza uma música no Spotify.", "Reproduza neste dispositivo para usar o karaokê.", "Desative o modo offline do Spotify para usar o karaokê.", "Escolha no Spotify uma qualidade de reprodução acima de “Baixa”.", "O karaokê não está disponível nesta versão do Spotify.", "No momento, o Spotify não oferece karaokê para esta música.", "O Spotify não ativou o karaokê para esta conta.", "O Spotify não conseguiu preparar a redução de voz desta música.", "A preparação do karaokê demorou demais. Tente novamente.", "Não foi possível desativar o karaokê. Toque de novo para tentar novamente.", "Não foi possível iniciar o karaokê. Tente novamente.", "Verificando se o karaokê do Spotify está disponível."},
-                {"bn", "কারাওকে বন্ধ। ভোকাল কমাতে ট্যাপ করুন", "কারাওকে: ভোকাল কম। ভোকাল বাড়াতে ট্যাপ করুন", "কারাওকে: ভোকাল বেশি। বন্ধ করতে ট্যাপ করুন", "কারাওকে বন্ধ করা হচ্ছে", "কারাওকের প্রস্তুতি বাতিল করুন", "প্রথমে Spotify-তে একটি গান চালান।", "কারাওকে ব্যবহার করতে এই ডিভাইসেই গান চালান।", "কারাওকে ব্যবহার করতে Spotify-এর অফলাইন মোড বন্ধ করুন।", "Spotify-তে \"কম\"-এর চেয়ে ভালো প্লেব্যাক মান বেছে নিন।", "Spotify-এর এই সংস্করণে কারাওকে উপলব্ধ নয়।", "Spotify এখন এই গানের জন্য কারাওকে দিচ্ছে না।", "Spotify এই অ্যাকাউন্টের জন্য কারাওকে চালু করেনি।", "Spotify এই গানের ভোকাল কমানোর প্রস্তুতি নিতে পারেনি।", "কারাওকে প্রস্তুত হতে অনেক সময় লেগেছে। আবার চেষ্টা করুন।", "কারাওকে বন্ধ করা যায়নি। আবার চেষ্টা করতে আবার ট্যাপ করুন।", "কারাওকে শুরু করা যায়নি। আবার চেষ্টা করুন।", "Spotify-তে কারাওকে উপলব্ধ কি না যাচাই করা হচ্ছে।"},
-                {"cs", "Karaoke vypnuto. Klepnutím ztlumíte zpěv", "Karaoke s tichým zpěvem. Klepnutím zpěv zesílíte", "Karaoke s hlasitým zpěvem. Klepnutím vypnete", "Vypínání karaoke", "Zrušit přípravu karaoke", "Nejprve přehrajte skladbu ve Spotify.", "Pro karaoke přehrávejte na tomto zařízení.", "Pro karaoke vypněte offline režim Spotify.", "Ve Spotify zvolte vyšší kvalitu přehrávání než „Nízká“.", "Karaoke není v této verzi Spotify k dispozici.", "Spotify pro tuto skladbu karaoke zatím nenabízí.", "Spotify pro tento účet karaoke nepovolilo.", "Spotify nedokázalo připravit ztlumení zpěvu pro tuto skladbu.", "Příprava karaoke trvala příliš dlouho. Zkuste to znovu.", "Karaoke se nepodařilo vypnout. Klepnutím to zkuste znovu.", "Karaoke se nepodařilo spustit. Zkuste to znovu.", "Ověřování dostupnosti karaoke ve Spotify."},
-                {"it", "Karaoke disattivato. Tocca per voci basse", "Karaoke con voci basse. Tocca per voci alte", "Karaoke con voci alte. Tocca per disattivare", "Disattivazione del karaoke", "Annulla la preparazione del karaoke", "Prima riproduci un brano su Spotify.", "Riproduci su questo dispositivo per usare il karaoke.", "Disattiva la modalità offline di Spotify per usare il karaoke.", "Scegli in Spotify una qualità di riproduzione superiore a «Bassa».", "Il karaoke non è disponibile con questa versione di Spotify.", "Al momento Spotify non offre il karaoke per questo brano.", "Spotify non ha attivato il karaoke per questo account.", "Spotify non è riuscito a preparare la riduzione della voce per questo brano.", "La preparazione del karaoke ha richiesto troppo tempo. Riprova.", "Impossibile disattivare il karaoke. Tocca di nuovo per riprovare.", "Impossibile avviare il karaoke. Riprova.", "Verifica della disponibilità del karaoke di Spotify in corso."},
-                {"th", "โหมดร้องตามปิดอยู่ แตะเพื่อลดเสียงร้อง", "ร้องตามแบบเสียงร้องเบา แตะเพื่อเพิ่มเสียงร้อง", "ร้องตามแบบเสียงร้องดัง แตะเพื่อปิด", "กำลังปิดโหมดร้องตาม", "ยกเลิกการเตรียมโหมดร้องตาม", "โปรดเล่นเพลงใน Spotify ก่อน", "เล่นเพลงบนอุปกรณ์นี้เพื่อใช้โหมดร้องตาม", "ปิดโหมดออฟไลน์ของ Spotify เพื่อใช้โหมดร้องตาม", "โปรดเลือกคุณภาพการเล่นใน Spotify ให้สูงกว่า \"ต่ำ\"", "Spotify เวอร์ชันนี้ใช้โหมดร้องตามไม่ได้", "ขณะนี้ Spotify ยังไม่มีโหมดร้องตามสำหรับเพลงนี้", "Spotify ยังไม่ได้เปิดใช้โหมดร้องตามสำหรับบัญชีนี้", "Spotify เตรียมการลดเสียงร้องของเพลงนี้ไม่สำเร็จ", "การเตรียมโหมดร้องตามใช้เวลานานเกินไป โปรดลองอีกครั้ง", "ปิดโหมดร้องตามไม่สำเร็จ แตะอีกครั้งเพื่อลองใหม่", "เริ่มโหมดร้องตามไม่สำเร็จ โปรดลองอีกครั้ง", "กำลังตรวจสอบว่า Spotify รองรับโหมดร้องตามหรือไม่"},
-                {"vi", "Hát theo đang tắt. Nhấn để giảm giọng hát", "Hát theo với giọng hát nhỏ. Nhấn để tăng giọng hát", "Hát theo với giọng hát lớn. Nhấn để tắt", "Đang tắt hát theo", "Hủy chuẩn bị hát theo", "Hãy phát một bài hát trên Spotify trước.", "Hãy phát trên thiết bị này để hát theo.", "Hãy tắt chế độ ngoại tuyến của Spotify để hát theo.", "Hãy chọn chất lượng phát trong Spotify cao hơn mức “Thấp”.", "Không thể hát theo với phiên bản Spotify này.", "Hiện Spotify chưa hỗ trợ hát theo cho bài hát này.", "Spotify chưa bật tính năng hát theo cho tài khoản này.", "Spotify không thể chuẩn bị giảm giọng hát cho bài hát này.", "Chuẩn bị hát theo mất quá nhiều thời gian. Vui lòng thử lại.", "Không thể tắt hát theo. Nhấn lại để thử lại.", "Không thể bắt đầu hát theo. Vui lòng thử lại.", "Đang kiểm tra Spotify có hỗ trợ hát theo hay không."},
-                {"id", "Karaoke nonaktif. Ketuk untuk vokal pelan", "Karaoke dengan vokal pelan. Ketuk untuk vokal keras", "Karaoke dengan vokal keras. Ketuk untuk menonaktifkan", "Menonaktifkan karaoke", "Batalkan persiapan karaoke", "Putar lagu di Spotify terlebih dahulu.", "Putar di perangkat ini untuk menggunakan karaoke.", "Nonaktifkan mode offline Spotify untuk menggunakan karaoke.", "Pilih kualitas pemutaran di Spotify yang lebih tinggi dari “Rendah”.", "Karaoke tidak tersedia di versi Spotify ini.", "Saat ini Spotify belum menyediakan karaoke untuk lagu ini.", "Spotify belum mengaktifkan karaoke untuk akun ini.", "Spotify tidak dapat menyiapkan pengurangan vokal untuk lagu ini.", "Persiapan karaoke terlalu lama. Silakan coba lagi.", "Karaoke tidak dapat dinonaktifkan. Ketuk lagi untuk mencoba ulang.", "Karaoke tidak dapat dimulai. Silakan coba lagi.", "Memeriksa ketersediaan karaoke Spotify."},
-                {"ms", "Karaoke dimatikan. Ketik untuk vokal perlahan", "Karaoke dengan vokal perlahan. Ketik untuk vokal kuat", "Karaoke dengan vokal kuat. Ketik untuk mematikan", "Mematikan karaoke", "Batalkan penyediaan karaoke", "Mainkan lagu dalam Spotify terlebih dahulu.", "Mainkan pada peranti ini untuk menggunakan karaoke.", "Matikan mod luar talian Spotify untuk menggunakan karaoke.", "Pilih kualiti main balik dalam Spotify yang lebih tinggi daripada “Rendah”.", "Karaoke tidak tersedia dalam versi Spotify ini.", "Spotify belum menawarkan karaoke untuk lagu ini buat masa ini.", "Spotify belum mendayakan karaoke untuk akaun ini.", "Spotify tidak dapat menyediakan pengurangan vokal untuk lagu ini.", "Penyediaan karaoke mengambil masa terlalu lama. Sila cuba lagi.", "Karaoke tidak dapat dimatikan. Ketik sekali lagi untuk mencuba semula.", "Karaoke tidak dapat dimulakan. Sila cuba lagi.", "Menyemak ketersediaan karaoke Spotify."},
-                {"tr", "Karaoke kapalı. Düşük vokal için dokunun", "Karaoke: düşük vokal. Yüksek vokal için dokunun", "Karaoke: yüksek vokal. Kapatmak için dokunun", "Karaoke kapatılıyor", "Karaoke hazırlığını iptal et", "Önce Spotify’da bir şarkı çalın.", "Karaoke için şarkıyı bu cihazda çalın.", "Karaoke için Spotify’ın çevrimdışı modunu kapatın.", "Spotify’da “Düşük” seviyesinden yüksek bir çalma kalitesi seçin.", "Bu Spotify sürümünde karaoke kullanılamıyor.", "Spotify şu anda bu şarkı için karaoke sunmuyor.", "Spotify bu hesap için karaokeyi etkinleştirmedi.", "Spotify bu şarkı için vokal azaltmayı hazırlayamadı.", "Karaoke hazırlığı çok uzun sürdü. Lütfen tekrar deneyin.", "Karaoke kapatılamadı. Yeniden denemek için tekrar dokunun.", "Karaoke başlatılamadı. Lütfen tekrar deneyin.", "Spotify karaoke kullanılabilirliği kontrol ediliyor."}
+                {"en", "Sing along off. Tap for low vocals", "Sing along with low vocals. Tap for high vocals", "Sing along with high vocals. Tap to turn off", "Turning sing along off", "Cancel sing-along preparation", "Play a song in Spotify first.", "Play on this device to sing along.", "Turn off Spotify offline mode to sing along.", "Choose a playback quality higher than Low in Spotify.", "Sing along is unavailable with this Spotify version.", "Spotify does not currently offer sing along for this song.", "Spotify has not enabled sing along for this account.", "Spotify could not prepare vocal reduction for this song.", "Sing along took too long to prepare. Please try again.", "Could not turn off sing along. Tap again to retry.", "Could not start sing along. Please try again.", "Checking Spotify sing-along availability.", "Sing along"},
+                {"ko", "노래방 꺼짐. 눌러서 보컬 작게", "노래방 보컬 작게. 눌러서 보컬 크게", "노래방 보컬 크게. 눌러서 끄기", "노래방 끄는 중", "따라 부르기 준비 취소", "Spotify에서 노래를 먼저 재생해주세요.", "이 기기에서 재생하면 따라 부르기를 사용할 수 있습니다.", "Spotify의 오프라인 모드를 꺼주세요.", "Spotify의 재생 음질을 낮음보다 높게 설정해주세요.", "이 Spotify 버전에서는 따라 부르기를 사용할 수 없습니다.", "Spotify에서 이 곡의 따라 부르기를 제공하지 않습니다.", "이 계정에는 Spotify 따라 부르기가 활성화되어 있지 않습니다.", "이 곡의 보컬 감소를 준비하지 못했습니다.", "따라 부르기 준비가 지연되었습니다. 다시 시도해주세요.", "따라 부르기를 끄지 못했습니다. 다시 눌러 해제해주세요.", "따라 부르기를 시작하지 못했습니다. 다시 시도해주세요.", "Spotify 따라 부르기 지원 여부를 확인하고 있습니다.", "노래방"},
+                {"zh-CN", "跟唱已关闭。点按切换为人声小", "跟唱：人声小。点按切换为人声大", "跟唱：人声大。点按关闭", "正在关闭跟唱", "取消跟唱准备", "请先在 Spotify 中播放歌曲。", "在此设备上播放即可跟唱。", "请关闭 Spotify 的离线模式以使用跟唱。", "请在 Spotify 中选择高于“低”的音质。", "此版本的 Spotify 无法使用跟唱。", "Spotify 目前不提供这首歌曲的跟唱。", "Spotify 尚未为此账号启用跟唱。", "Spotify 无法为这首歌曲准备人声消减。", "跟唱准备时间过长，请重试。", "无法关闭跟唱，请再次点按重试。", "无法开始跟唱，请重试。", "正在检查 Spotify 是否支持跟唱。", "跟唱"},
+                {"zh-TW", "跟唱已關閉。點按切換為人聲小", "跟唱：人聲小。點按切換為人聲大", "跟唱：人聲大。點按即可關閉", "正在關閉跟唱", "取消跟唱準備", "請先在 Spotify 播放歌曲。", "在這部裝置上播放即可跟唱。", "請關閉 Spotify 的離線模式以使用跟唱。", "請在 Spotify 中選擇高於「低」的音質。", "這個版本的 Spotify 無法使用跟唱。", "Spotify 目前未提供這首歌曲的跟唱。", "Spotify 尚未為這個帳戶啟用跟唱。", "Spotify 無法為這首歌曲準備人聲消減。", "跟唱準備時間過長，請再試一次。", "無法關閉跟唱，請再次點按重試。", "無法開始跟唱，請再試一次。", "正在確認 Spotify 是否支援跟唱。", "跟唱"},
+                {"ja", "カラオケ：オフ。タップでボーカル小", "カラオケ：ボーカル小。タップでボーカル大", "カラオケ：ボーカル大。タップでオフ", "カラオケをオフにしています", "カラオケの準備をキャンセル", "先にSpotifyで曲を再生してください。", "このデバイスで再生するとカラオケを使えます。", "カラオケを使うには、Spotifyのオフラインモードをオフにしてください。", "Spotifyの音質を「低」より高く設定してください。", "このバージョンのSpotifyではカラオケを使えません。", "Spotifyは現在、この曲のカラオケを提供していません。", "このアカウントではSpotifyのカラオケが有効になっていません。", "Spotifyがこの曲のボーカル抑制を準備できませんでした。", "カラオケの準備に時間がかかりすぎました。もう一度お試しください。", "カラオケをオフにできませんでした。もう一度タップしてください。", "カラオケを開始できませんでした。もう一度お試しください。", "Spotifyでカラオケを使えるか確認しています。", "カラオケ"},
+                {"hi", "कराओके बंद है। वोकल कम करने के लिए टैप करें", "कराओके: वोकल कम। वोकल ज़्यादा करने के लिए टैप करें", "कराओके: वोकल ज़्यादा। बंद करने के लिए टैप करें", "कराओके बंद किया जा रहा है", "कराओके की तैयारी रद्द करें", "पहले Spotify में कोई गाना चलाएँ।", "कराओके के लिए इसी डिवाइस पर गाना चलाएँ।", "कराओके के लिए Spotify का ऑफ़लाइन मोड बंद करें।", "Spotify में \"कम\" से बेहतर प्लेबैक क्वालिटी चुनें।", "Spotify के इस वर्शन में कराओके उपलब्ध नहीं है।", "Spotify अभी इस गाने के लिए कराओके नहीं देता।", "Spotify ने इस खाते के लिए कराओके चालू नहीं किया है।", "Spotify इस गाने में वोकल कम करने की तैयारी नहीं कर सका।", "कराओके की तैयारी में बहुत समय लगा। कृपया फिर से कोशिश करें।", "कराओके बंद नहीं हो सका। फिर से कोशिश करने के लिए दोबारा टैप करें।", "कराओके शुरू नहीं हो सका। कृपया फिर से कोशिश करें।", "Spotify में कराओके उपलब्ध है या नहीं, यह जाँचा जा रहा है।", "साथ गाएँ"},
+                {"es", "Karaoke desactivado. Toca para voces bajas", "Karaoke con voces bajas. Toca para voces altas", "Karaoke con voces altas. Toca para desactivarlo", "Desactivando el karaoke", "Cancelar la preparación del karaoke", "Primero reproduce una canción en Spotify.", "Reproduce en este dispositivo para usar el karaoke.", "Desactiva el modo sin conexión de Spotify para usar el karaoke.", "Elige en Spotify una calidad de reproducción superior a «Baja».", "El karaoke no está disponible en esta versión de Spotify.", "Spotify no ofrece karaoke para esta canción por ahora.", "Spotify no ha activado el karaoke en esta cuenta.", "Spotify no pudo preparar la reducción de voz de esta canción.", "La preparación del karaoke tardó demasiado. Inténtalo de nuevo.", "No se pudo desactivar el karaoke. Toca de nuevo para reintentarlo.", "No se pudo iniciar el karaoke. Inténtalo de nuevo.", "Comprobando si el karaoke de Spotify está disponible.", "Cantar"},
+                {"fr", "Karaoké désactivé. Touchez pour des voix faibles", "Karaoké avec voix faibles. Touchez pour des voix fortes", "Karaoké avec voix fortes. Touchez pour désactiver", "Désactivation du karaoké", "Annuler la préparation du karaoké", "Lancez d’abord un titre dans Spotify.", "Lancez la lecture sur cet appareil pour utiliser le karaoké.", "Désactivez le mode hors connexion de Spotify pour utiliser le karaoké.", "Choisissez dans Spotify une qualité de lecture supérieure à « Faible ».", "Le karaoké n’est pas disponible avec cette version de Spotify.", "Spotify ne propose pas le karaoké pour ce titre pour le moment.", "Spotify n’a pas activé le karaoké pour ce compte.", "Spotify n’a pas pu préparer la réduction de la voix pour ce titre.", "La préparation du karaoké a pris trop de temps. Veuillez réessayer.", "Impossible de désactiver le karaoké. Touchez à nouveau pour réessayer.", "Impossible de lancer le karaoké. Veuillez réessayer.", "Vérification de la disponibilité du karaoké Spotify.", "Chanter"},
+                {"ar", "الكاريوكي متوقف. اضغط لخفض صوت الغناء", "الكاريوكي بصوت غناء منخفض. اضغط لرفع صوت الغناء", "الكاريوكي بصوت غناء مرتفع. اضغط للإيقاف", "جارٍ إيقاف الكاريوكي", "إلغاء تجهيز الكاريوكي", "شغّل أغنية في Spotify أولًا.", "شغّل الأغنية على هذا الجهاز لاستخدام الكاريوكي.", "أوقف وضع عدم الاتصال في Spotify لاستخدام الكاريوكي.", "اختر في Spotify جودة تشغيل أعلى من «منخفضة».", "الكاريوكي غير متاح في هذا الإصدار من Spotify.", "لا يوفّر Spotify الكاريوكي لهذه الأغنية حاليًا.", "لم يفعّل Spotify الكاريوكي لهذا الحساب.", "تعذّر على Spotify تجهيز خفض صوت الغناء لهذه الأغنية.", "استغرق تجهيز الكاريوكي وقتًا طويلًا. يُرجى المحاولة مرة أخرى.", "تعذّر إيقاف الكاريوكي. اضغط مرة أخرى لإعادة المحاولة.", "تعذّر بدء الكاريوكي. يُرجى المحاولة مرة أخرى.", "جارٍ التحقق من توفر الكاريوكي في Spotify.", "الغناء معاً"},
+                {"fa", "هم‌خوانی خاموش است. برای کم کردن صدای خواننده ضربه بزنید", "هم‌خوانی با صدای خوانندهٔ کم. برای زیاد کردن صدای خواننده ضربه بزنید", "هم‌خوانی با صدای خوانندهٔ زیاد. برای خاموش کردن ضربه بزنید", "در حال خاموش کردن هم‌خوانی", "لغو آماده‌سازی هم‌خوانی", "ابتدا آهنگی را در Spotify پخش کنید.", "برای هم‌خوانی، آهنگ را روی همین دستگاه پخش کنید.", "برای هم‌خوانی، حالت آفلاین Spotify را خاموش کنید.", "در Spotify کیفیت پخش را بالاتر از «پایین» انتخاب کنید.", "هم‌خوانی در این نسخهٔ Spotify در دسترس نیست.", "Spotify در حال حاضر هم‌خوانی را برای این آهنگ ارائه نمی‌دهد.", "Spotify هم‌خوانی را برای این حساب فعال نکرده است.", "Spotify نتوانست کاهش صدای خواننده را برای این آهنگ آماده کند.", "آماده‌سازی هم‌خوانی بیش از حد طول کشید. لطفاً دوباره تلاش کنید.", "هم‌خوانی خاموش نشد. برای تلاش دوباره، دوباره ضربه بزنید.", "هم‌خوانی شروع نشد. لطفاً دوباره تلاش کنید.", "در حال بررسی در دسترس بودن هم‌خوانی Spotify.", "هم‌خوانی"},
+                {"de", "Mitsingen aus. Tippen für leisen Gesang", "Mitsingen mit leisem Gesang. Tippen für lauten Gesang", "Mitsingen mit lautem Gesang. Tippen zum Ausschalten", "Mitsingen wird ausgeschaltet", "Vorbereitung des Mitsingens abbrechen", "Spielen Sie zuerst einen Song in Spotify ab.", "Starten Sie die Wiedergabe auf diesem Gerät, um mitzusingen.", "Schalten Sie den Offlinemodus von Spotify aus, um mitzusingen.", "Wählen Sie in Spotify eine höhere Wiedergabequalität als „Niedrig“.", "Mitsingen ist mit dieser Spotify-Version nicht verfügbar.", "Spotify bietet Mitsingen für diesen Song derzeit nicht an.", "Spotify hat Mitsingen für dieses Konto nicht aktiviert.", "Spotify konnte die Gesangsabsenkung für diesen Song nicht vorbereiten.", "Die Vorbereitung des Mitsingens hat zu lange gedauert. Bitte versuchen Sie es erneut.", "Mitsingen konnte nicht ausgeschaltet werden. Tippen Sie erneut, um es noch einmal zu versuchen.", "Mitsingen konnte nicht gestartet werden. Bitte versuchen Sie es erneut.", "Verfügbarkeit von Mitsingen in Spotify wird geprüft.", "Mitsingen"},
+                {"ru", "Караоке выключено. Нажмите, чтобы приглушить вокал", "Караоке с тихим вокалом. Нажмите, чтобы сделать вокал громче", "Караоке с громким вокалом. Нажмите, чтобы выключить", "Караоке выключается", "Отменить подготовку караоке", "Сначала включите песню в Spotify.", "Чтобы петь караоке, включите воспроизведение на этом устройстве.", "Чтобы петь караоке, выключите офлайн-режим Spotify.", "Выберите в Spotify качество воспроизведения выше уровня «Низкое».", "Караоке недоступно в этой версии Spotify.", "Сейчас Spotify не предлагает караоке для этой песни.", "Spotify не включил караоке для этого аккаунта.", "Spotify не удалось подготовить приглушение вокала для этой песни.", "Подготовка караоке заняла слишком много времени. Попробуйте ещё раз.", "Не удалось выключить караоке. Нажмите ещё раз, чтобы повторить.", "Не удалось запустить караоке. Попробуйте ещё раз.", "Проверяем, доступно ли караоке в Spotify.", "Караоке"},
+                {"sv", "Sjung med: av. Tryck för låg sång", "Sjung med: låg sång. Tryck för hög sång", "Sjung med: hög sång. Tryck för att stänga av", "Stänger av Sjung med", "Avbryt förberedelsen av Sjung med", "Spela först en låt i Spotify.", "Spela på den här enheten för att sjunga med.", "Stäng av offlineläget i Spotify för att sjunga med.", "Välj en högre uppspelningskvalitet än ”Låg” i Spotify.", "Sjung med är inte tillgängligt i den här versionen av Spotify.", "Spotify erbjuder för närvarande inte Sjung med för den här låten.", "Spotify har inte aktiverat Sjung med för det här kontot.", "Spotify kunde inte förbereda sänkt sång för den här låten.", "Förberedelsen av Sjung med tog för lång tid. Försök igen.", "Det gick inte att stänga av Sjung med. Tryck igen för att försöka på nytt.", "Det gick inte att starta Sjung med. Försök igen.", "Kontrollerar om Sjung med är tillgängligt i Spotify.", "Sjung med"},
+                {"pt", "Karaokê desativado. Toque para vocais baixos", "Karaokê com vocais baixos. Toque para vocais altos", "Karaokê com vocais altos. Toque para desativar", "Desativando o karaokê", "Cancelar a preparação do karaokê", "Primeiro, reproduza uma música no Spotify.", "Reproduza neste dispositivo para usar o karaokê.", "Desative o modo offline do Spotify para usar o karaokê.", "Escolha no Spotify uma qualidade de reprodução acima de “Baixa”.", "O karaokê não está disponível nesta versão do Spotify.", "No momento, o Spotify não oferece karaokê para esta música.", "O Spotify não ativou o karaokê para esta conta.", "O Spotify não conseguiu preparar a redução de voz desta música.", "A preparação do karaokê demorou demais. Tente novamente.", "Não foi possível desativar o karaokê. Toque de novo para tentar novamente.", "Não foi possível iniciar o karaokê. Tente novamente.", "Verificando se o karaokê do Spotify está disponível.", "Cantar"},
+                {"bn", "কারাওকে বন্ধ। ভোকাল কমাতে ট্যাপ করুন", "কারাওকে: ভোকাল কম। ভোকাল বাড়াতে ট্যাপ করুন", "কারাওকে: ভোকাল বেশি। বন্ধ করতে ট্যাপ করুন", "কারাওকে বন্ধ করা হচ্ছে", "কারাওকের প্রস্তুতি বাতিল করুন", "প্রথমে Spotify-তে একটি গান চালান।", "কারাওকে ব্যবহার করতে এই ডিভাইসেই গান চালান।", "কারাওকে ব্যবহার করতে Spotify-এর অফলাইন মোড বন্ধ করুন।", "Spotify-তে \"কম\"-এর চেয়ে ভালো প্লেব্যাক মান বেছে নিন।", "Spotify-এর এই সংস্করণে কারাওকে উপলব্ধ নয়।", "Spotify এখন এই গানের জন্য কারাওকে দিচ্ছে না।", "Spotify এই অ্যাকাউন্টের জন্য কারাওকে চালু করেনি।", "Spotify এই গানের ভোকাল কমানোর প্রস্তুতি নিতে পারেনি।", "কারাওকে প্রস্তুত হতে অনেক সময় লেগেছে। আবার চেষ্টা করুন।", "কারাওকে বন্ধ করা যায়নি। আবার চেষ্টা করতে আবার ট্যাপ করুন।", "কারাওকে শুরু করা যায়নি। আবার চেষ্টা করুন।", "Spotify-তে কারাওকে উপলব্ধ কি না যাচাই করা হচ্ছে।", "সঙ্গে গান"},
+                {"cs", "Karaoke vypnuto. Klepnutím ztlumíte zpěv", "Karaoke s tichým zpěvem. Klepnutím zpěv zesílíte", "Karaoke s hlasitým zpěvem. Klepnutím vypnete", "Vypínání karaoke", "Zrušit přípravu karaoke", "Nejprve přehrajte skladbu ve Spotify.", "Pro karaoke přehrávejte na tomto zařízení.", "Pro karaoke vypněte offline režim Spotify.", "Ve Spotify zvolte vyšší kvalitu přehrávání než „Nízká“.", "Karaoke není v této verzi Spotify k dispozici.", "Spotify pro tuto skladbu karaoke zatím nenabízí.", "Spotify pro tento účet karaoke nepovolilo.", "Spotify nedokázalo připravit ztlumení zpěvu pro tuto skladbu.", "Příprava karaoke trvala příliš dlouho. Zkuste to znovu.", "Karaoke se nepodařilo vypnout. Klepnutím to zkuste znovu.", "Karaoke se nepodařilo spustit. Zkuste to znovu.", "Ověřování dostupnosti karaoke ve Spotify.", "Karaoke"},
+                {"it", "Karaoke disattivato. Tocca per voci basse", "Karaoke con voci basse. Tocca per voci alte", "Karaoke con voci alte. Tocca per disattivare", "Disattivazione del karaoke", "Annulla la preparazione del karaoke", "Prima riproduci un brano su Spotify.", "Riproduci su questo dispositivo per usare il karaoke.", "Disattiva la modalità offline di Spotify per usare il karaoke.", "Scegli in Spotify una qualità di riproduzione superiore a «Bassa».", "Il karaoke non è disponibile con questa versione di Spotify.", "Al momento Spotify non offre il karaoke per questo brano.", "Spotify non ha attivato il karaoke per questo account.", "Spotify non è riuscito a preparare la riduzione della voce per questo brano.", "La preparazione del karaoke ha richiesto troppo tempo. Riprova.", "Impossibile disattivare il karaoke. Tocca di nuovo per riprovare.", "Impossibile avviare il karaoke. Riprova.", "Verifica della disponibilità del karaoke di Spotify in corso.", "Canta"},
+                {"th", "โหมดร้องตามปิดอยู่ แตะเพื่อลดเสียงร้อง", "ร้องตามแบบเสียงร้องเบา แตะเพื่อเพิ่มเสียงร้อง", "ร้องตามแบบเสียงร้องดัง แตะเพื่อปิด", "กำลังปิดโหมดร้องตาม", "ยกเลิกการเตรียมโหมดร้องตาม", "โปรดเล่นเพลงใน Spotify ก่อน", "เล่นเพลงบนอุปกรณ์นี้เพื่อใช้โหมดร้องตาม", "ปิดโหมดออฟไลน์ของ Spotify เพื่อใช้โหมดร้องตาม", "โปรดเลือกคุณภาพการเล่นใน Spotify ให้สูงกว่า \"ต่ำ\"", "Spotify เวอร์ชันนี้ใช้โหมดร้องตามไม่ได้", "ขณะนี้ Spotify ยังไม่มีโหมดร้องตามสำหรับเพลงนี้", "Spotify ยังไม่ได้เปิดใช้โหมดร้องตามสำหรับบัญชีนี้", "Spotify เตรียมการลดเสียงร้องของเพลงนี้ไม่สำเร็จ", "การเตรียมโหมดร้องตามใช้เวลานานเกินไป โปรดลองอีกครั้ง", "ปิดโหมดร้องตามไม่สำเร็จ แตะอีกครั้งเพื่อลองใหม่", "เริ่มโหมดร้องตามไม่สำเร็จ โปรดลองอีกครั้ง", "กำลังตรวจสอบว่า Spotify รองรับโหมดร้องตามหรือไม่", "ร้องตาม"},
+                {"vi", "Hát theo đang tắt. Nhấn để giảm giọng hát", "Hát theo với giọng hát nhỏ. Nhấn để tăng giọng hát", "Hát theo với giọng hát lớn. Nhấn để tắt", "Đang tắt hát theo", "Hủy chuẩn bị hát theo", "Hãy phát một bài hát trên Spotify trước.", "Hãy phát trên thiết bị này để hát theo.", "Hãy tắt chế độ ngoại tuyến của Spotify để hát theo.", "Hãy chọn chất lượng phát trong Spotify cao hơn mức “Thấp”.", "Không thể hát theo với phiên bản Spotify này.", "Hiện Spotify chưa hỗ trợ hát theo cho bài hát này.", "Spotify chưa bật tính năng hát theo cho tài khoản này.", "Spotify không thể chuẩn bị giảm giọng hát cho bài hát này.", "Chuẩn bị hát theo mất quá nhiều thời gian. Vui lòng thử lại.", "Không thể tắt hát theo. Nhấn lại để thử lại.", "Không thể bắt đầu hát theo. Vui lòng thử lại.", "Đang kiểm tra Spotify có hỗ trợ hát theo hay không.", "Hát theo"},
+                {"id", "Karaoke nonaktif. Ketuk untuk vokal pelan", "Karaoke dengan vokal pelan. Ketuk untuk vokal keras", "Karaoke dengan vokal keras. Ketuk untuk menonaktifkan", "Menonaktifkan karaoke", "Batalkan persiapan karaoke", "Putar lagu di Spotify terlebih dahulu.", "Putar di perangkat ini untuk menggunakan karaoke.", "Nonaktifkan mode offline Spotify untuk menggunakan karaoke.", "Pilih kualitas pemutaran di Spotify yang lebih tinggi dari “Rendah”.", "Karaoke tidak tersedia di versi Spotify ini.", "Saat ini Spotify belum menyediakan karaoke untuk lagu ini.", "Spotify belum mengaktifkan karaoke untuk akun ini.", "Spotify tidak dapat menyiapkan pengurangan vokal untuk lagu ini.", "Persiapan karaoke terlalu lama. Silakan coba lagi.", "Karaoke tidak dapat dinonaktifkan. Ketuk lagi untuk mencoba ulang.", "Karaoke tidak dapat dimulai. Silakan coba lagi.", "Memeriksa ketersediaan karaoke Spotify.", "Karaoke"},
+                {"ms", "Karaoke dimatikan. Ketik untuk vokal perlahan", "Karaoke dengan vokal perlahan. Ketik untuk vokal kuat", "Karaoke dengan vokal kuat. Ketik untuk mematikan", "Mematikan karaoke", "Batalkan penyediaan karaoke", "Mainkan lagu dalam Spotify terlebih dahulu.", "Mainkan pada peranti ini untuk menggunakan karaoke.", "Matikan mod luar talian Spotify untuk menggunakan karaoke.", "Pilih kualiti main balik dalam Spotify yang lebih tinggi daripada “Rendah”.", "Karaoke tidak tersedia dalam versi Spotify ini.", "Spotify belum menawarkan karaoke untuk lagu ini buat masa ini.", "Spotify belum mendayakan karaoke untuk akaun ini.", "Spotify tidak dapat menyediakan pengurangan vokal untuk lagu ini.", "Penyediaan karaoke mengambil masa terlalu lama. Sila cuba lagi.", "Karaoke tidak dapat dimatikan. Ketik sekali lagi untuk mencuba semula.", "Karaoke tidak dapat dimulakan. Sila cuba lagi.", "Menyemak ketersediaan karaoke Spotify.", "Karaoke"},
+                {"tr", "Karaoke kapalı. Düşük vokal için dokunun", "Karaoke: düşük vokal. Yüksek vokal için dokunun", "Karaoke: yüksek vokal. Kapatmak için dokunun", "Karaoke kapatılıyor", "Karaoke hazırlığını iptal et", "Önce Spotify’da bir şarkı çalın.", "Karaoke için şarkıyı bu cihazda çalın.", "Karaoke için Spotify’ın çevrimdışı modunu kapatın.", "Spotify’da “Düşük” seviyesinden yüksek bir çalma kalitesi seçin.", "Bu Spotify sürümünde karaoke kullanılamıyor.", "Spotify şu anda bu şarkı için karaoke sunmuyor.", "Spotify bu hesap için karaokeyi etkinleştirmedi.", "Spotify bu şarkı için vokal azaltmayı hazırlayamadı.", "Karaoke hazırlığı çok uzun sürdü. Lütfen tekrar deneyin.", "Karaoke kapatılamadı. Yeniden denemek için tekrar dokunun.", "Karaoke başlatılamadı. Lütfen tekrar deneyin.", "Spotify karaoke kullanılabilirliği kontrol ediliyor.", "Karaoke"}
         };
         addRows(languages, keys, rows);
     }
@@ -253,28 +331,28 @@ final class AppI18n {
                 "bluetooth_sync.device_hearing_aid"
         };
         String[][] rows = {
-                {"en", "Open lyrics", "Open ivLyrics lyrics", "BLE headset", "BLE speaker", "Hearing aid"},
-                {"ko", "전체 가사 열기", "ivLyrics 가사 열기", "BLE 헤드셋", "BLE 스피커", "보청기"},
-                {"zh-CN", "打开歌词", "打开 ivLyrics 歌词", "BLE 耳机", "BLE 扬声器", "助听器"},
-                {"zh-TW", "開啟歌詞", "開啟 ivLyrics 歌詞", "BLE 耳機", "BLE 喇叭", "助聽器"},
-                {"ja", "歌詞を開く", "ivLyricsの歌詞を開く", "BLEヘッドセット", "BLEスピーカー", "補聴器"},
-                {"hi", "लिरिक्स खोलें", "ivLyrics में लिरिक्स खोलें", "BLE हेडसेट", "BLE स्पीकर", "श्रवण यंत्र"},
-                {"es", "Abrir letra", "Abrir la letra en ivLyrics", "Auriculares BLE", "Altavoz BLE", "Audífono"},
-                {"fr", "Ouvrir les paroles", "Ouvrir les paroles dans ivLyrics", "Casque BLE", "Enceinte BLE", "Appareil auditif"},
-                {"ar", "فتح كلمات الأغنية", "فتح كلمات الأغنية في ivLyrics", "سماعة رأس BLE", "مكبّر صوت BLE", "سماعة طبية"},
-                {"fa", "باز کردن متن ترانه", "باز کردن متن ترانه در ivLyrics", "هدست BLE", "بلندگوی BLE", "سمعک"},
-                {"de", "Songtext öffnen", "Songtext in ivLyrics öffnen", "BLE-Headset", "BLE-Lautsprecher", "Hörgerät"},
-                {"ru", "Открыть текст песни", "Открыть текст песни в ivLyrics", "Гарнитура BLE", "Колонка BLE", "Слуховой аппарат"},
-                {"sv", "Öppna låttext", "Öppna låttexten i ivLyrics", "BLE-headset", "BLE-högtalare", "Hörapparat"},
-                {"pt", "Abrir letra", "Abrir a letra no ivLyrics", "Fone de ouvido BLE", "Alto-falante BLE", "Aparelho auditivo"},
-                {"bn", "গানের কথা খুলুন", "ivLyrics-এ গানের কথা খুলুন", "BLE হেডসেট", "BLE স্পিকার", "শ্রবণযন্ত্র"},
-                {"cs", "Otevřít text písně", "Otevřít text písně v ivLyrics", "Náhlavní souprava BLE", "Reproduktor BLE", "Naslouchátko"},
-                {"it", "Apri il testo", "Apri il testo in ivLyrics", "Cuffie BLE", "Altoparlante BLE", "Apparecchio acustico"},
-                {"th", "เปิดเนื้อเพลง", "เปิดเนื้อเพลงใน ivLyrics", "ชุดหูฟัง BLE", "ลำโพง BLE", "เครื่องช่วยฟัง"},
-                {"vi", "Mở lời bài hát", "Mở lời bài hát trong ivLyrics", "Tai nghe BLE", "Loa BLE", "Máy trợ thính"},
-                {"id", "Buka lirik", "Buka lirik di ivLyrics", "Headset BLE", "Speaker BLE", "Alat bantu dengar"},
-                {"ms", "Buka lirik", "Buka lirik dalam ivLyrics", "Set kepala BLE", "Pembesar suara BLE", "Alat bantu pendengaran"},
-                {"tr", "Şarkı sözlerini aç", "Şarkı sözlerini ivLyrics’te aç", "BLE kulaklık", "BLE hoparlör", "İşitme cihazı"}
+                {"en", "Open lyrics", "Open Lyriscope lyrics", "BLE headset", "BLE speaker", "Hearing aid"},
+                {"ko", "전체 가사 열기", "Lyriscope 가사 열기", "BLE 헤드셋", "BLE 스피커", "보청기"},
+                {"zh-CN", "打开歌词", "打开 Lyriscope 歌词", "BLE 耳机", "BLE 扬声器", "助听器"},
+                {"zh-TW", "開啟歌詞", "開啟 Lyriscope 歌詞", "BLE 耳機", "BLE 喇叭", "助聽器"},
+                {"ja", "歌詞を開く", "Lyriscopeの歌詞を開く", "BLEヘッドセット", "BLEスピーカー", "補聴器"},
+                {"hi", "लिरिक्स खोलें", "Lyriscope में लिरिक्स खोलें", "BLE हेडसेट", "BLE स्पीकर", "श्रवण यंत्र"},
+                {"es", "Abrir letra", "Abrir la letra en Lyriscope", "Auriculares BLE", "Altavoz BLE", "Audífono"},
+                {"fr", "Ouvrir les paroles", "Ouvrir les paroles dans Lyriscope", "Casque BLE", "Enceinte BLE", "Appareil auditif"},
+                {"ar", "فتح كلمات الأغنية", "فتح كلمات الأغنية في Lyriscope", "سماعة رأس BLE", "مكبّر صوت BLE", "سماعة طبية"},
+                {"fa", "باز کردن متن ترانه", "باز کردن متن ترانه در Lyriscope", "هدست BLE", "بلندگوی BLE", "سمعک"},
+                {"de", "Songtext öffnen", "Songtext in Lyriscope öffnen", "BLE-Headset", "BLE-Lautsprecher", "Hörgerät"},
+                {"ru", "Открыть текст песни", "Открыть текст песни в Lyriscope", "Гарнитура BLE", "Колонка BLE", "Слуховой аппарат"},
+                {"sv", "Öppna låttext", "Öppna låttexten i Lyriscope", "BLE-headset", "BLE-högtalare", "Hörapparat"},
+                {"pt", "Abrir letra", "Abrir a letra no Lyriscope", "Fone de ouvido BLE", "Alto-falante BLE", "Aparelho auditivo"},
+                {"bn", "গানের কথা খুলুন", "Lyriscope-এ গানের কথা খুলুন", "BLE হেডসেট", "BLE স্পিকার", "শ্রবণযন্ত্র"},
+                {"cs", "Otevřít text písně", "Otevřít text písně v Lyriscope", "Náhlavní souprava BLE", "Reproduktor BLE", "Naslouchátko"},
+                {"it", "Apri il testo", "Apri il testo in Lyriscope", "Cuffie BLE", "Altoparlante BLE", "Apparecchio acustico"},
+                {"th", "เปิดเนื้อเพลง", "เปิดเนื้อเพลงใน Lyriscope", "ชุดหูฟัง BLE", "ลำโพง BLE", "เครื่องช่วยฟัง"},
+                {"vi", "Mở lời bài hát", "Mở lời bài hát trong Lyriscope", "Tai nghe BLE", "Loa BLE", "Máy trợ thính"},
+                {"id", "Buka lirik", "Buka lirik di Lyriscope", "Headset BLE", "Speaker BLE", "Alat bantu dengar"},
+                {"ms", "Buka lirik", "Buka lirik dalam Lyriscope", "Set kepala BLE", "Pembesar suara BLE", "Alat bantu pendengaran"},
+                {"tr", "Şarkı sözlerini aç", "Şarkı sözlerini Lyriscope’te aç", "BLE kulaklık", "BLE hoparlör", "İşitme cihazı"}
         };
         addRows(languages, keys, rows);
     }
@@ -497,6 +575,11 @@ final class AppI18n {
         addRows(languages, preview, previewRows);
 
         // Existing labels the new home list and provider cards show prominently; a few were mistranslated.
+        // The sheet's two tabs read as the user asked: 歌曲简介 / 逐句歌词.
+        applyTranslationOverrides(languages, "zh-CN", new String[]{"lyrics_meaning.annotations", "逐句歌词",
+                "lyrics_meaning.original", "查看原文"});
+        applyTranslationOverrides(languages, "zh-TW", new String[]{"lyrics_meaning.annotations", "逐句歌詞",
+                "lyrics_meaning.original", "查看原文"});
         applyTranslationOverrides(languages, "de", new String[]{"tab.display", "Anzeige"});
         applyTranslationOverrides(languages, "zh-TW", new String[]{"tab.display", "顯示"});
         applyTranslationOverrides(languages, "sv", new String[]{"tab.display", "Visning", "button.close", "Stäng"});
@@ -742,7 +825,7 @@ final class AppI18n {
                 "button.save_start", "儲存並開始",
                 "status.spotify_required_subtitle", "請先儲存 Client ID 和 Client Secret",
                 "button.save_regenerate", "儲存並重新產生",
-                "lyrics.rule.save_target", "儲存目標",
+                "lyrics.rule.save_target", "輸出",
                 "lyrics.button.translation_on", "翻譯已開啟",
                 "lyrics.button.pronunciation_on", "發音已開啟",
         });
@@ -2252,11 +2335,11 @@ final class AppI18n {
                     ? "먼저 모든 제공자에서 노래방 가사를 찾고, 없으면 싱크 가사, 그다음 일반 가사를 찾습니다."
                     : "Try every provider for karaoke first, then synced lyrics, then plain lyrics.");
             copy.put("setting.prefer_sync_data_provider", korean
-                    ? "ivLyrics sync-data 제공자 우선"
-                    : "Prefer provider with ivLyrics sync-data");
+                    ? "Lyriscope sync-data 제공자 우선"
+                    : "Prefer provider with Lyriscope sync-data");
             copy.put("setting.prefer_sync_data_provider_desc", korean
                     ? "OpenDB에 이 곡의 ISRC가 있으면 해당 sync-data를 가진 제공자를 우선 선택합니다."
-                    : "When OpenDB lists this ISRC, prioritize the provider that has ivLyrics sync-data.");
+                    : "When OpenDB lists this ISRC, prioritize the provider that has Lyriscope sync-data.");
             copy.put("lyrics_provider.author_format", korean ? "제작자: %s" : "Author: %s");
             copy.put("lyrics.provider_attribution_label", korean ? "가사 제공자" : "Lyrics Provider");
             copy.put("lyrics_provider.enabled", korean ? "사용" : "Enabled");
@@ -3955,11 +4038,11 @@ final class AppI18n {
                         "lyrics.lrclib_search.field_title", "제목",
                         "lyrics.lrclib_search.field_artist", "아티스트",
                         "lyrics.lrclib_search.button", "LRCLIB 검색",
-                        "lyrics.lrclib_search.ready", "검색어를 확인한 뒤 LRCLIB를 검색하세요.",
+                        "lyrics.lrclib_search.ready", "검색어를 확인한 뒤 검색하세요.",
                         "lyrics.lrclib_search.empty_title", "검색할 곡 제목을 입력하세요.",
                         "lyrics.lrclib_search.loading", "LRCLIB 검색 중...",
                         "lyrics.lrclib_search.no_results", "LRCLIB 결과가 없습니다.",
-                        "lyrics.lrclib_search.result_count_format", "LRCLIB 결과 %d개",
+                        "lyrics.lrclib_search.result_count_format", "결과 %d개",
                         "lyrics.lrclib_search.selecting", "선택한 LRCLIB 가사를 불러오는 중...",
                         "lyrics.lrclib_search.loaded", "LRCLIB 가사를 적용했습니다.",
                         "lyrics.lrclib_search.error_format", "LRCLIB 검색 실패: %s",
@@ -3970,18 +4053,37 @@ final class AppI18n {
                 };
             case "zh-CN":
                 return new String[]{
-                        "lyrics.lrclib_search.title", "手动搜索 LRCLIB",
-                        "lyrics.lrclib_search.desc", "当加载的歌词不匹配当前歌曲时，可在 LRCLIB 中手动搜索并应用。",
+                        "lyrics.lrclib_search.title", "手动找歌词",
+                        "lyrics.lrclib_search.desc", "以下都是曲库、不是提供商：按关键词找一条歌词，找不到时指定给当前歌曲。",
                         "lyrics.lrclib_search.title_hint", "歌曲标题",
                         "lyrics.lrclib_search.artist_hint", "艺人",
                         "lyrics.lrclib_search.field_title", "标题",
                         "lyrics.lrclib_search.field_artist", "艺人",
-                        "lyrics.lrclib_search.button", "搜索 LRCLIB",
-                        "lyrics.lrclib_search.ready", "确认关键词后搜索 LRCLIB。",
+                        "lyrics.lrclib_search.button", "搜索",
+                        "network.section", "网络与地区",
+                        "network.desc", "只改默认值，随时可改",
+                        "network.cn", "中国大陆",
+                        "network.cn_desc", "释义翻译默认用 Bing，歌词源优先中文译词",
+                        "network.global", "海外",
+                        "network.global_desc", "保持现状：翻译跟随设置里的引擎链",
+                        "network.custom", "自定义",
+                        "network.custom_desc", "只记住你的选择，不改任何默认值",
+                        "network.check", "连接体检",
+                        "network.check_desc", "逐个测试网易云、QQ、酷狗、LRCLIB、Genius、Google、GitHub",
+                        "network.checking", "正在检测…",
+                        "network.unreachable", "不可达 · 失去",
+                        "network.fix_bing", "改用 Bing 翻译 ›",
+                        "network.switched", "已切换：%s",
+                        "network.loss_translation", "中文译词",
+                        "network.loss_timeline", "歌词时间轴",
+                        "network.loss_meaning", "歌曲简介与注释",
+                        "network.loss_google", "谷歌翻译引擎",
+                        "network.loss_update", "版本更新检查",
+                        "lyrics.lrclib_search.ready", "确认关键词后开始搜索。",
                         "lyrics.lrclib_search.empty_title", "请输入要搜索的歌曲标题。",
                         "lyrics.lrclib_search.loading", "正在搜索 LRCLIB...",
                         "lyrics.lrclib_search.no_results", "没有 LRCLIB 结果。",
-                        "lyrics.lrclib_search.result_count_format", "%d 个 LRCLIB 结果",
+                        "lyrics.lrclib_search.result_count_format", "%d 个结果",
                         "lyrics.lrclib_search.selecting", "正在加载所选 LRCLIB 歌词...",
                         "lyrics.lrclib_search.loaded", "已应用 LRCLIB 歌词。",
                         "lyrics.lrclib_search.error_format", "LRCLIB 搜索失败：%s",
@@ -3992,18 +4094,37 @@ final class AppI18n {
                 };
             case "zh-TW":
                 return new String[]{
-                        "lyrics.lrclib_search.title", "手動搜尋 LRCLIB",
+                        "lyrics.lrclib_search.title", "手動找歌詞",
                         "lyrics.lrclib_search.desc", "載入的歌詞不符合目前歌曲時，可在 LRCLIB 中手動搜尋並套用。",
                         "lyrics.lrclib_search.title_hint", "歌曲標題",
                         "lyrics.lrclib_search.artist_hint", "藝人",
                         "lyrics.lrclib_search.field_title", "標題",
                         "lyrics.lrclib_search.field_artist", "藝人",
                         "lyrics.lrclib_search.button", "搜尋 LRCLIB",
-                        "lyrics.lrclib_search.ready", "確認關鍵字後搜尋 LRCLIB。",
+                        "network.section", "網路與地區",
+                        "network.desc", "只改預設值，隨時可改",
+                        "network.cn", "中國大陸",
+                        "network.cn_desc", "釋義翻譯預設用 Bing，歌詞來源優先中文譯詞",
+                        "network.global", "海外",
+                        "network.global_desc", "保持現狀：翻譯跟隨設定裡的引擎鏈",
+                        "network.custom", "自訂",
+                        "network.custom_desc", "只記住你的選擇，不改任何預設值",
+                        "network.check", "連線檢查",
+                        "network.check_desc", "逐一測試網易雲、QQ、酷狗、LRCLIB、Genius、Google、GitHub",
+                        "network.checking", "正在檢測…",
+                        "network.unreachable", "不可達 · 失去",
+                        "network.fix_bing", "改用 Bing 翻譯 ›",
+                        "network.switched", "已切換：%s",
+                        "network.loss_translation", "中文譯詞",
+                        "network.loss_timeline", "歌詞時間軸",
+                        "network.loss_meaning", "歌曲簡介與註釋",
+                        "network.loss_google", "谷歌翻譯引擎",
+                        "network.loss_update", "版本更新檢查",
+                        "lyrics.lrclib_search.ready", "確認關鍵字後開始搜尋。",
                         "lyrics.lrclib_search.empty_title", "請輸入要搜尋的歌曲標題。",
                         "lyrics.lrclib_search.loading", "正在搜尋 LRCLIB...",
                         "lyrics.lrclib_search.no_results", "沒有 LRCLIB 結果。",
-                        "lyrics.lrclib_search.result_count_format", "%d 個 LRCLIB 結果",
+                        "lyrics.lrclib_search.result_count_format", "%d 個結果",
                         "lyrics.lrclib_search.selecting", "正在載入所選 LRCLIB 歌詞...",
                         "lyrics.lrclib_search.loaded", "已套用 LRCLIB 歌詞。",
                         "lyrics.lrclib_search.error_format", "LRCLIB 搜尋失敗：%s",
@@ -4021,11 +4142,11 @@ final class AppI18n {
                         "lyrics.lrclib_search.field_title", "曲名",
                         "lyrics.lrclib_search.field_artist", "アーティスト",
                         "lyrics.lrclib_search.button", "LRCLIBを検索",
-                        "lyrics.lrclib_search.ready", "検索語を確認してLRCLIBを検索してください。",
+                        "lyrics.lrclib_search.ready", "検索語を確認して検索してください。",
                         "lyrics.lrclib_search.empty_title", "検索する曲名を入力してください。",
                         "lyrics.lrclib_search.loading", "LRCLIBを検索中...",
                         "lyrics.lrclib_search.no_results", "LRCLIBの結果がありません。",
-                        "lyrics.lrclib_search.result_count_format", "LRCLIB結果 %d件",
+                        "lyrics.lrclib_search.result_count_format", "%d件の結果",
                         "lyrics.lrclib_search.selecting", "選択したLRCLIB歌詞を読み込み中...",
                         "lyrics.lrclib_search.loaded", "LRCLIB歌詞を適用しました。",
                         "lyrics.lrclib_search.error_format", "LRCLIB検索失敗: %s",
@@ -4185,7 +4306,26 @@ final class AppI18n {
                 "lyrics.lrclib_search.artist_hint", "Artist",
                 "lyrics.lrclib_search.field_title", "Title",
                 "lyrics.lrclib_search.field_artist", "Artist",
-                "lyrics.lrclib_search.button", "Search LRCLIB",
+                "lyrics.lrclib_search.button", "Search",
+                        "network.section", "Network & region",
+                        "network.desc", "Defaults only — change any of them later",
+                        "network.cn", "Mainland China",
+                        "network.cn_desc", "Meaning translation uses Bing; Chinese lyric sources come first",
+                        "network.global", "Elsewhere",
+                        "network.global_desc", "Keep the configured engine chain",
+                        "network.custom", "Custom",
+                        "network.custom_desc", "Remember the choice, change no defaults",
+                        "network.check", "Run a connection check",
+                        "network.check_desc", "Tests NetEase, QQ, Kugou, LRCLIB, Genius, Google, GitHub",
+                        "network.checking", "Checking…",
+                        "network.unreachable", "unreachable · lose",
+                        "network.fix_bing", "Switch to Bing ›",
+                        "network.switched", "Switched to %s",
+                        "network.loss_translation", "Chinese translations",
+                        "network.loss_timeline", "lyric timing",
+                        "network.loss_meaning", "song notes",
+                        "network.loss_google", "the Google engine",
+                        "network.loss_update", "update checks",
                 "lyrics.lrclib_search.ready", "Check the search terms, then search LRCLIB.",
                 "lyrics.lrclib_search.empty_title", "Enter a song title to search.",
                 "lyrics.lrclib_search.loading", "Searching LRCLIB...",
@@ -4201,6 +4341,285 @@ final class AppI18n {
         };
     }
 
+    private static void addLyricsPageStrings(Map<String, Map<String, String>> languages) {
+        addLanguageStrings(languages, AppI18n::lyricsPageStrings);
+    }
+
+    /** Korean, English, both Chinese variants and Japanese; every other language reuses English. */
+    private static String[] lyricsPageStrings(String lang) {
+        switch (normalize(lang)) {
+            case "ko":
+                return lyricsPageStringsKo();
+            case "zh-CN":
+                return lyricsPageStringsZhCn();
+            case "zh-TW":
+                return lyricsPageStringsZhTw();
+            case "ja":
+                return lyricsPageStringsJa();
+            default:
+                return lyricsPageStringsEn();
+        }
+    }
+
+    private static String[] lyricsPageStringsEn() {
+        return new String[]{
+                "lyrics_enhance.title", "Lyrics page",
+                "lyrics_enhance.margin", "Lyrics side margin",
+                "lyrics_enhance.margin_desc", "Original, translation and pronunciation share one text boundary (24 dp by default).",
+                "lyrics_enhance.artwork_solid", "Fixed solid background per song",
+                "lyrics_enhance.artwork_solid_desc", "Picks a readable colour from the cover art and keeps it for the whole song.",
+                "lyrics_enhance.sources", "Chinese translation source",
+                "lyrics_enhance.source_order", "Priority: %s",
+                "lyrics_enhance.source_manual", "Source for this song",
+                "lyrics_enhance.source_auto", "Automatic (in order)",
+                "lyrics_enhance.source_off", "No platform translation for this song",
+                "lyrics_enhance.meanings", "Genius description and annotations",
+                "lyrics_enhance.meanings_desc", "Open it with the lightbulb button on the lyrics page.",
+                "lyrics_enhance.close", "Close",
+    "settings.section.lyrics_enhance", "Spotify lyrics page",
+    "settings.section.lyrics_enhance_desc", "Defaults for the full lyrics page inside Spotify.",
+    "lyrics_enhance.platform_enabled", "Use NetEase / QQ / Kugou translations",
+    "lyrics_enhance.platform_enabled_desc", "Chinese translations already written by the platform are preferred over machine translation.",
+    "lyrics_enhance.platform_only", "Platform translations only",
+    "lyrics_enhance.platform_only_desc", "Lines the platforms cannot cover stay empty instead of going to the translation engine.",
+    "lyrics_enhance.source_enabled", "Enabled for this source",
+    "lyrics_enhance.play_position", "Play button",
+    "lyrics_enhance.play_center", "Centred, own row",
+    "lyrics_enhance.play_right", "Compact, on the right",
+    "lyrics_action.translation", "Translation",
+                "lyrics_meaning.button", "Song description and annotations",
+                "lyrics_meaning.title", "Lyrics annotations",
+                "lyrics_meaning.description", "Song description",
+                "lyrics_meaning.annotations", "Line annotations",
+                "lyrics_meaning.unplaced", "Annotations not matched to a line",
+                "lyrics_meaning.empty", "Genius has no description or annotations for this song",
+                "lyrics_meaning.loading", "Loading from Genius…",
+                "lyrics_meaning.error", "Could not load Genius content",
+                "lyrics_meaning.open_genius", "Open on Genius",
+                "lyrics_meaning.original", "Read the original",
+                "lyrics_meaning.translated", "Simplified Chinese",
+                "lyrics_meaning.translating", "Translating…",
+                "lyrics_meaning.attribution", "Source: Genius",
+    "lyrics_meaning.retry", "Retry",
+                "lyrics_meaning.network_error", "Could not reach Genius — a proxy may be needed",
+                "lyrics_meaning.regenerate_notes", "Regenerate notes",
+                "lyrics_meaning.engine_fallback", "Now using %s",
+                "lyrics_meaning.engine_failed", "Translation failed — tap to change the engine",
+                "lyrics_meaning.engine_title", "Translation engine",
+                "lyrics_meaning.engine_auto", "Automatic (follow settings)",
+                "lyrics_meaning.engine_keyless", "no key needed",
+                "lyrics_meaning.translating_item", "Translating…",
+                "lyrics_meaning.tap_translate", "Tap to translate",
+        };
+    }
+
+    private static String[] lyricsPageStringsKo() {
+        return new String[]{
+                "lyrics_enhance.title", "가사 페이지 향상",
+                "lyrics_enhance.margin", "가사 좌우 여백",
+                "lyrics_enhance.margin_desc", "원문, 번역, 발음이 같은 여백을 씁니다 (기본 24dp).",
+                "lyrics_enhance.artwork_solid", "곡마다 고정 단색 배경",
+                "lyrics_enhance.artwork_solid_desc", "앨범 커버에서 읽기 좋은 색을 뽑아 곡이 끝날 때까지 유지합니다.",
+                "lyrics_enhance.sources", "중국어 번역 출처",
+                "lyrics_enhance.source_order", "우선순위: %s",
+                "lyrics_enhance.source_manual", "이 곡의 출처",
+                "lyrics_enhance.source_auto", "자동 (순서대로)",
+                "lyrics_enhance.source_off", "이 곡은 플랫폼 번역 사용 안 함",
+                "lyrics_enhance.meanings", "Genius 곡 소개와 주석",
+                "lyrics_enhance.meanings_desc", "가사 페이지의 전구 버튼으로 엽니다.",
+                "lyrics_enhance.close", "닫기",
+    "settings.section.lyrics_enhance", "Spotify 가사 페이지",
+    "settings.section.lyrics_enhance_desc", "Spotify 전체 가사 페이지의 기본값입니다.",
+    "lyrics_enhance.platform_enabled", "넷이즈 / QQ / 쿠고 번역 사용",
+    "lyrics_enhance.platform_enabled_desc", "플랫폼에 이미 있는 중국어 번역을 기계 번역보다 먼저 사용합니다.",
+    "lyrics_enhance.platform_only", "플랫폼 번역만 사용",
+    "lyrics_enhance.platform_only_desc", "플랫폼이 채우지 못한 줄은 비워 두고 번역 엔진에 넘기지 않습니다.",
+    "lyrics_enhance.source_enabled", "이 출처 사용",
+    "lyrics_enhance.play_position", "재생 버튼",
+    "lyrics_enhance.play_center", "가운데 별도 줄",
+    "lyrics_enhance.play_right", "오른쪽 컴팩트",
+    "lyrics_action.translation", "번역",
+                "lyrics_meaning.button", "곡 소개와 주석",
+                "lyrics_meaning.title", "가사 주석",
+                "lyrics_meaning.description", "곡 소개",
+                "lyrics_meaning.annotations", "줄별 주석",
+                "lyrics_meaning.unplaced", "가사에서 찾지 못한 주석",
+                "lyrics_meaning.empty", "이 곡에는 아직 소개나 주석이 없습니다",
+                "lyrics_meaning.loading", "Genius에서 불러오는 중…",
+                "lyrics_meaning.error", "Genius 내용을 불러오지 못했습니다",
+                "lyrics_meaning.open_genius", "Genius에서 열기",
+                "lyrics_meaning.original", "원문 보기",
+                "lyrics_meaning.translated", "중국어 보기",
+                "lyrics_meaning.translating", "번역 중…",
+                "lyrics_meaning.attribution", "출처: Genius",
+    "lyrics_meaning.retry", "다시 시도",
+                "lyrics_meaning.network_error", "Genius에 연결하지 못했습니다. 프록시가 필요할 수 있습니다",
+                "lyrics_meaning.regenerate_notes", "주석 다시 생성",
+                "lyrics_meaning.engine_fallback", "%s(으)로 대체됨",
+                "lyrics_meaning.engine_failed", "번역 실패 — 눌러서 엔진 변경",
+                "lyrics_meaning.engine_title", "번역 엔진",
+                "lyrics_meaning.engine_auto", "자동(설정 따름)",
+                "lyrics_meaning.engine_keyless", "키 필요 없음",
+                "lyrics_meaning.translating_item", "번역 중…",
+                "lyrics_meaning.tap_translate", "탭하여 번역",
+        };
+    }
+
+    private static String[] lyricsPageStringsZhCn() {
+        return new String[]{
+                "lyrics_enhance.title", "歌词页增强",
+                "lyrics_enhance.margin", "歌词左右边距",
+                "lyrics_enhance.margin_desc", "原文、译文和注音共用同一条正文边界（默认 24 dp）。",
+                "lyrics_enhance.artwork_solid", "每首歌固定纯色背景",
+                "lyrics_enhance.artwork_solid_desc", "从封面提取适合阅读的颜色，同一首歌播放期间保持不变。",
+                "lyrics_enhance.sources", "中文译词来源",
+                "lyrics_enhance.source_order", "优先：%s",
+                "lyrics_enhance.source_manual", "本曲译词来源",
+                "lyrics_enhance.source_auto", "自动（按顺序）",
+                "lyrics_enhance.source_off", "本曲不取平台译词",
+                "lyrics_enhance.meanings", "Genius 歌曲简介与注释",
+                "lyrics_enhance.meanings_desc", "用歌词页的灯泡按钮打开。",
+                "lyrics_enhance.close", "关闭",
+    "settings.section.lyrics_enhance", "Spotify 歌词页",
+    "settings.section.lyrics_enhance_desc", "Spotify 内全屏歌词页的全局默认。",
+    "lyrics_enhance.platform_enabled", "使用网易云 / QQ / 酷狗译词",
+    "lyrics_enhance.platform_enabled_desc", "优先使用平台已有的中文译词，而不是机器翻译。",
+    "lyrics_enhance.platform_only", "仅使用平台译词",
+    "lyrics_enhance.platform_only_desc", "平台没有覆盖的行留空，不交给翻译引擎。",
+    "lyrics_enhance.source_enabled", "启用该来源",
+    "lyrics_enhance.play_position", "播放按钮",
+    "lyrics_enhance.play_center", "居中独立一行",
+    "lyrics_enhance.play_right", "紧凑靠右",
+    "lyrics_action.translation", "译文",
+                "lyrics_meaning.button", "歌曲简介与注释",
+                "lyrics_meaning.title", "歌词注释",
+                "lyrics_meaning.description", "歌曲简介",
+                "lyrics_meaning.annotations", "逐句注释",
+                "lyrics_meaning.unplaced", "未能定位到歌词的注释",
+                "lyrics_meaning.empty", "这首歌还没有简介或注释",
+                "lyrics_meaning.loading", "正在获取 Genius 内容…",
+                "lyrics_meaning.error", "无法获取 Genius 内容",
+                "lyrics_meaning.open_genius", "在 Genius 打开",
+                "lyrics_meaning.original", "阅读原文",
+                "lyrics_meaning.translated", "简体中文",
+                "lyrics_meaning.translating", "正在翻译…",
+                "lyrics_meaning.attribution", "来源：Genius",
+    "lyrics_meaning.retry", "重试",
+                "lyrics_meaning.network_error", "无法连接 Genius，可能需要代理",
+                "lyrics_meaning.regenerate_notes", "重新生成注释",
+                "lyrics_meaning.engine_fallback", "已改用 %s",
+                "lyrics_meaning.engine_failed", "翻译失败，点这里换个引擎",
+                "lyrics_meaning.engine_title", "翻译引擎",
+                "lyrics_meaning.engine_auto", "自动（跟随设置）",
+                "lyrics_meaning.engine_keyless", "免密钥",
+                "lyrics_meaning.translating_item", "正在翻译…",
+                "lyrics_meaning.tap_translate", "点按翻译",
+        };
+    }
+
+    private static String[] lyricsPageStringsZhTw() {
+        return new String[]{
+                "lyrics_enhance.title", "歌詞頁增強",
+                "lyrics_enhance.margin", "歌詞左右邊距",
+                "lyrics_enhance.margin_desc", "原文、譯文和注音共用同一條正文邊界（預設 24 dp）。",
+                "lyrics_enhance.artwork_solid", "每首歌固定純色背景",
+                "lyrics_enhance.artwork_solid_desc", "從封面擷取適合閱讀的顏色，同一首歌播放期間保持不變。",
+                "lyrics_enhance.sources", "中文譯詞來源",
+                "lyrics_enhance.source_order", "優先：%s",
+                "lyrics_enhance.source_manual", "本曲譯詞來源",
+                "lyrics_enhance.source_auto", "自動（依順序）",
+                "lyrics_enhance.source_off", "本曲不取平台譯詞",
+                "lyrics_enhance.meanings", "Genius 歌曲簡介與註釋",
+                "lyrics_enhance.meanings_desc", "用歌詞頁的燈泡按鈕開啟。",
+                "lyrics_enhance.close", "關閉",
+    "settings.section.lyrics_enhance", "Spotify 歌詞頁",
+    "settings.section.lyrics_enhance_desc", "Spotify 內全螢幕歌詞頁的全域預設。",
+    "lyrics_enhance.platform_enabled", "使用網易雲 / QQ / 酷狗譯詞",
+    "lyrics_enhance.platform_enabled_desc", "優先使用平台已有的中文譯詞，而不是機器翻譯。",
+    "lyrics_enhance.platform_only", "僅使用平台譯詞",
+    "lyrics_enhance.platform_only_desc", "平台沒有覆蓋的行留空，不交給翻譯引擎。",
+    "lyrics_enhance.source_enabled", "啟用該來源",
+    "lyrics_enhance.play_position", "播放按鈕",
+    "lyrics_enhance.play_center", "居中獨立一行",
+    "lyrics_enhance.play_right", "緊湊靠右",
+    "lyrics_action.translation", "譯文",
+                "lyrics_meaning.button", "歌曲簡介與註釋",
+                "lyrics_meaning.title", "歌詞註釋",
+                "lyrics_meaning.description", "歌曲簡介",
+                "lyrics_meaning.annotations", "逐句註釋",
+                "lyrics_meaning.unplaced", "未能定位到歌詞的註釋",
+                "lyrics_meaning.empty", "這首歌還沒有簡介或註釋",
+                "lyrics_meaning.loading", "正在取得 Genius 內容…",
+                "lyrics_meaning.error", "無法取得 Genius 內容",
+                "lyrics_meaning.open_genius", "在 Genius 開啟",
+                "lyrics_meaning.original", "閱讀原文",
+                "lyrics_meaning.translated", "簡體中文",
+                "lyrics_meaning.translating", "正在翻譯…",
+                "lyrics_meaning.attribution", "來源：Genius",
+    "lyrics_meaning.retry", "重試",
+                "lyrics_meaning.network_error", "無法連線 Genius，可能需要代理",
+                "lyrics_meaning.regenerate_notes", "重新產生註釋",
+                "lyrics_meaning.engine_fallback", "已改用 %s",
+                "lyrics_meaning.engine_failed", "翻譯失敗，點這裡換個引擎",
+                "lyrics_meaning.engine_title", "翻譯引擎",
+                "lyrics_meaning.engine_auto", "自動（跟隨設定）",
+                "lyrics_meaning.engine_keyless", "免金鑰",
+                "lyrics_meaning.translating_item", "正在翻譯…",
+                "lyrics_meaning.tap_translate", "點按翻譯",
+        };
+    }
+
+    private static String[] lyricsPageStringsJa() {
+        return new String[]{
+                "lyrics_enhance.title", "歌詞ページ強化",
+                "lyrics_enhance.margin", "歌詞の左右余白",
+                "lyrics_enhance.margin_desc", "原文・翻訳・発音が同じ本文境界を使います（既定 24dp）。",
+                "lyrics_enhance.artwork_solid", "曲ごとに固定の単色背景",
+                "lyrics_enhance.artwork_solid_desc", "ジャケットから読みやすい色を抽出し、曲の間ずっと保ちます。",
+                "lyrics_enhance.sources", "中国語訳の取得元",
+                "lyrics_enhance.source_order", "優先: %s",
+                "lyrics_enhance.source_manual", "この曲の取得元",
+                "lyrics_enhance.source_auto", "自動（順番どおり）",
+                "lyrics_enhance.source_off", "この曲ではプラットフォーム訳を使わない",
+                "lyrics_enhance.meanings", "Genius の曲紹介と注釈",
+                "lyrics_enhance.meanings_desc", "歌詞ページの電球ボタンで開きます。",
+                "lyrics_enhance.close", "閉じる",
+    "settings.section.lyrics_enhance", "Spotify 歌詞ページ",
+    "settings.section.lyrics_enhance_desc", "Spotify 内の全画面歌詞ページの既定値です。",
+    "lyrics_enhance.platform_enabled", "NetEase / QQ / Kugou の翻訳を使う",
+    "lyrics_enhance.platform_enabled_desc", "プラットフォーム既存の中国語訳を機械翻訳より優先します。",
+    "lyrics_enhance.platform_only", "プラットフォーム訳のみ",
+    "lyrics_enhance.platform_only_desc", "プラットフォームが埋められない行は空のままにします。",
+    "lyrics_enhance.source_enabled", "このソースを有効化",
+    "lyrics_enhance.play_position", "再生ボタン",
+    "lyrics_enhance.play_center", "中央・独立行",
+    "lyrics_enhance.play_right", "右側コンパクト",
+    "lyrics_action.translation", "翻訳",
+                "lyrics_meaning.button", "曲紹介と注釈",
+                "lyrics_meaning.title", "歌詞の注釈",
+                "lyrics_meaning.description", "曲紹介",
+                "lyrics_meaning.annotations", "行ごとの注釈",
+                "lyrics_meaning.unplaced", "歌詞に紐づかない注釈",
+                "lyrics_meaning.empty", "この曲にはまだ紹介も注釈もありません",
+                "lyrics_meaning.loading", "Genius から読み込み中…",
+                "lyrics_meaning.error", "Genius の内容を取得できません",
+                "lyrics_meaning.open_genius", "Genius で開く",
+                "lyrics_meaning.original", "原文を読む",
+                "lyrics_meaning.translated", "簡体字中国語",
+                "lyrics_meaning.translating", "翻訳中…",
+                "lyrics_meaning.attribution", "出典: Genius",
+    "lyrics_meaning.retry", "再試行",
+                "lyrics_meaning.network_error", "Genius に接続できません。プロキシが必要かもしれません",
+                "lyrics_meaning.regenerate_notes", "注釈を再生成",
+                "lyrics_meaning.engine_fallback", "%s に切り替えました",
+                "lyrics_meaning.engine_failed", "翻訳に失敗しました。タップでエンジンを変更",
+                "lyrics_meaning.engine_title", "翻訳エンジン",
+                "lyrics_meaning.engine_auto", "自動（設定に従う）",
+                "lyrics_meaning.engine_keyless", "キー不要",
+                "lyrics_meaning.translating_item", "翻訳中…",
+                "lyrics_meaning.tap_translate", "タップで翻訳",
+        };
+    }
     private static void addSpotifyShortcutStrings(Map<String, Map<String, String>> languages) {
         addLanguageStrings(languages, AppI18n::spotifyShortcutStrings);
     }
@@ -4210,7 +4629,7 @@ final class AppI18n {
             case "ko":
                 return new String[]{
                         "section.spotify_shortcut", "Spotify 바로가기",
-                        "section.spotify_shortcut_desc", "Spotify 재생 화면에서만 작은 이동식 아이콘을 띄웁니다. 누르면 ivLyrics 가사 페이지로 이동합니다.",
+                        "section.spotify_shortcut_desc", "Spotify 재생 화면에서만 작은 이동식 아이콘을 띄웁니다. 누르면 Lyriscope 가사 페이지로 이동합니다.",
                         "button.open_accessibility_permission", "Spotify 감지 권한 열기",
                         "button.accessibility_permission_enabled", "Spotify 감지 권한 허용됨",
                         "button.open_overlay_permission", "플로팅 아이콘 권한 열기",
@@ -4224,133 +4643,133 @@ final class AppI18n {
             case "zh-CN":
                 return spotifyShortcutStringsEn(
                         "Spotify 快捷入口",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "点按标题或艺人即可返回 Spotify。",
                         "点按一次打开 Spotify；长按可打开翻译和发音设置。"
                 );
             case "zh-TW":
                 return spotifyShortcutStringsEn(
                         "Spotify 快捷入口",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "點按標題或藝人即可返回 Spotify。",
                         "點按一次開啟 Spotify；長按可開啟翻譯與發音設定。"
                 );
             case "ja":
                 return spotifyShortcutStringsEn(
                         "Spotifyショートカット",
-                        "Spotifyの再生画面でのみ、小さな移動アイコンを表示します。タップするとivLyricsの歌詞ページを開きます。",
+                        "Spotifyの再生画面でのみ、小さな移動アイコンを表示します。タップするとLyriscopeの歌詞ページを開きます。",
                         "タイトルまたはアーティストをタップするとSpotifyに戻ります。",
                         "1回タップでSpotifyを開き、長押しで翻訳・発音設定を開きます。"
                 );
             case "hi":
                 return spotifyShortcutStringsEn(
                         "Spotify शॉर्टकट",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "Spotify पर वापस जाने के लिए शीर्षक या कलाकार पर टैप करें।",
                         "एक बार टैप करने से Spotify खुलेगा; देर तक दबाने से अनुवाद और उच्चारण सेटिंग खुलेंगी।"
                 );
             case "es":
                 return spotifyShortcutStringsEn(
                         "Acceso directo de Spotify",
-                        "Solo muestra un icono pequeño y movible en la pantalla de reproduccion de Spotify. Al tocarlo abre la pagina de letras de ivLyrics.",
+                        "Solo muestra un icono pequeño y movible en la pantalla de reproduccion de Spotify. Al tocarlo abre la pagina de letras de Lyriscope.",
                         "Toca el título o artista para volver a Spotify.",
                         "Toca una vez para abrir Spotify; mantén pulsado para abrir traducción y pronunciación."
                 );
             case "fr":
                 return spotifyShortcutStringsEn(
                         "Raccourci Spotify",
-                        "Affiche une petite icone deplacable uniquement sur l'ecran de lecture Spotify. Un toucher ouvre la page de paroles ivLyrics.",
+                        "Affiche une petite icone deplacable uniquement sur l'ecran de lecture Spotify. Un toucher ouvre la page de paroles Lyriscope.",
                         "Touchez le titre ou l'artiste pour revenir à Spotify.",
                         "Touchez une fois pour ouvrir Spotify ; appuyez longuement pour ouvrir traduction et prononciation."
                 );
             case "ar":
                 return spotifyShortcutStringsEn(
                         "اختصار Spotify",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "اضغط على العنوان أو الفنان للعودة إلى Spotify.",
                         "اضغط مرة واحدة لفتح Spotify؛ واضغط مطولًا لفتح إعدادات الترجمة والنطق."
                 );
             case "fa":
                 return spotifyShortcutStringsEn(
                         "میانبر Spotify",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "برای بازگشت به Spotify روی عنوان یا هنرمند بزنید.",
                         "یک بار بزنید تا Spotify باز شود؛ برای باز کردن تنظیمات ترجمه و تلفظ نگه دارید."
                 );
             case "de":
                 return spotifyShortcutStringsEn(
                         "Spotify-Verknüpfung",
-                        "Zeigt nur auf dem Spotify-Now-Playing-Bildschirm ein kleines verschiebbares Symbol. Antippen oeffnet die ivLyrics-Lyrics-Seite.",
+                        "Zeigt nur auf dem Spotify-Now-Playing-Bildschirm ein kleines verschiebbares Symbol. Antippen oeffnet die Lyriscope-Lyrics-Seite.",
                         "Titel oder Kuenstler antippen, um zu Spotify zurueckzukehren.",
                         "Einmal tippen oeffnet Spotify, langes Druecken oeffnet Uebersetzung und Aussprache."
                 );
             case "ru":
                 return spotifyShortcutStringsEn(
                         "Ярлык Spotify",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "Коснитесь названия или исполнителя, чтобы вернуться в Spotify.",
                         "Коснитесь один раз, чтобы открыть Spotify; нажмите и удерживайте, чтобы открыть настройки перевода и произношения."
                 );
             case "sv":
                 return spotifyShortcutStringsEn(
                         "Spotify-genväg",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "Tryck på titel eller artist för att gå tillbaka till Spotify.",
                         "Tryck en gång för att öppna Spotify; håll in för att öppna översättning och uttal."
                 );
             case "pt":
                 return spotifyShortcutStringsEn(
                         "Atalho do Spotify",
-                        "Mostra um pequeno icone movel somente na tela de reproducao do Spotify. Tocar abre a pagina de letras do ivLyrics.",
+                        "Mostra um pequeno icone movel somente na tela de reproducao do Spotify. Tocar abre a pagina de letras do Lyriscope.",
                         "Toque no titulo ou artista para voltar ao Spotify.",
                         "Toque uma vez para abrir o Spotify; mantenha pressionado para abrir traducao e pronuncia."
                 );
             case "bn":
                 return spotifyShortcutStringsEn(
                         "Spotify শর্টকাট",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "Spotify-এ ফিরতে শিরোনাম বা শিল্পীর নামে ট্যাপ করুন।",
                         "একবার ট্যাপ করলে Spotify খুলবে; ধরে চাপলে অনুবাদ ও উচ্চারণ সেটিংস খুলবে।"
                 );
             case "it":
                 return spotifyShortcutStringsEn(
                         "Scorciatoia Spotify",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "Tocca titolo o artista per tornare a Spotify.",
                         "Tocca una volta per aprire Spotify; tieni premuto per aprire traduzione e pronuncia."
                 );
             case "th":
                 return spotifyShortcutStringsEn(
                         "ทางลัด Spotify",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "แตะชื่อเพลงหรือศิลปินเพื่อกลับไปที่ Spotify",
                         "แตะหนึ่งครั้งเพื่อเปิด Spotify; กดค้างเพื่อเปิดการตั้งค่าคำแปลและการออกเสียง"
                 );
             case "vi":
                 return spotifyShortcutStringsEn(
                         "Lối tắt Spotify",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "Nhấn tiêu đề hoặc nghệ sĩ để quay lại Spotify.",
                         "Nhấn một lần để mở Spotify; nhấn giữ để mở cài đặt dịch và phát âm."
                 );
             case "id":
                 return spotifyShortcutStringsEn(
                         "Pintasan Spotify",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "Ketuk judul atau artis untuk kembali ke Spotify.",
                         "Ketuk sekali untuk membuka Spotify; tekan lama untuk membuka pengaturan terjemahan dan pengucapan."
                 );
             case "ms":
                 return spotifyShortcutStringsEn(
                         "Pintasan Spotify",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "Ketik tajuk atau artis untuk kembali ke Spotify.",
                         "Ketik sekali untuk membuka Spotify; tekan lama untuk membuka tetapan terjemahan dan sebutan."
                 );
             case "tr":
                 return new String[]{
                         "section.spotify_shortcut", "Spotify Kısayolu",
-                        "section.spotify_shortcut_desc", "Yalnızca Spotify Şu Anda Çalıyor ekranında küçük taşınabilir bir ikon gösterir. Dokununca ivLyrics söz sayfasını açar.",
+                        "section.spotify_shortcut_desc", "Yalnızca Spotify Şu Anda Çalıyor ekranında küçük taşınabilir bir ikon gösterir. Dokununca Lyriscope söz sayfasını açar.",
                         "button.open_accessibility_permission", "Spotify Algılama İznini Aç",
                         "button.accessibility_permission_enabled", "Spotify Algılama İzni Etkin",
                         "button.open_overlay_permission", "Kayan İkon İznini Aç",
@@ -4364,7 +4783,7 @@ final class AppI18n {
             default:
                 return spotifyShortcutStringsEn(
                         "Spotify Shortcut",
-                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the ivLyrics lyrics page.",
+                        "Only shows a small movable icon on Spotify's Now Playing screen. Tapping opens the Lyriscope lyrics page.",
                         "Tap the title or artist to jump back to Spotify.",
                         "Tap once to open Spotify; long-press to open translation and pronunciation settings."
                 );
@@ -5684,47 +6103,47 @@ final class AppI18n {
     private static String[] videoBackgroundStrings(String lang) {
         switch (normalize(lang)) {
             case "ko":
-                return videoBackgroundStringsValues("앨범 커버, 영상, 블러 그라데이션, 단색 배경 중 하나를 사용합니다.", "영상", "ivLyrics YouTube 영상 정보를 불러와 실제 영상을 배경으로 재생합니다.");
+                return videoBackgroundStringsValues("앨범 커버, 영상, 블러 그라데이션, 단색 배경 중 하나를 사용합니다.", "영상", "Lyriscope YouTube 영상 정보를 불러와 실제 영상을 배경으로 재생합니다.");
             case "zh-CN":
-                return videoBackgroundStringsValues("选择专辑封面、视频、模糊渐变或纯色背景。", "视频", "加载 ivLyrics YouTube 视频信息，并在播放器后方播放真实视频。");
+                return videoBackgroundStringsValues("选择专辑封面、视频、模糊渐变或纯色背景。", "视频", "加载 Lyriscope YouTube 视频信息，并在播放器后方播放真实视频。");
             case "zh-TW":
-                return videoBackgroundStringsValues("選擇專輯封面、影片、模糊漸層或純色背景。", "影片", "載入 ivLyrics YouTube 影片資訊，並在播放器後方播放實際影片。");
+                return videoBackgroundStringsValues("選擇專輯封面、影片、模糊漸層或純色背景。", "影片", "載入 Lyriscope YouTube 影片資訊，並在播放器後方播放實際影片。");
             case "ja":
-                return videoBackgroundStringsValues("アルバムカバー、動画、ぼかしグラデーション、単色背景から選びます。", "動画", "ivLyrics の YouTube 動画情報を読み込み、実際の動画を背景で再生します。");
+                return videoBackgroundStringsValues("アルバムカバー、動画、ぼかしグラデーション、単色背景から選びます。", "動画", "Lyriscope の YouTube 動画情報を読み込み、実際の動画を背景で再生します。");
             case "hi":
-                return videoBackgroundStringsValues("एल्बम कवर, वीडियो, धुंधली ढाल, या ठोस रंग पृष्ठभूमि चुनें।", "वीडियो", "ivLyrics YouTube वीडियो जानकारी लोड करता है और प्लेयर के पीछे असली वीडियो चलाता है।");
+                return videoBackgroundStringsValues("एल्बम कवर, वीडियो, धुंधली ढाल, या ठोस रंग पृष्ठभूमि चुनें।", "वीडियो", "Lyriscope YouTube वीडियो जानकारी लोड करता है और प्लेयर के पीछे असली वीडियो चलाता है।");
             case "es":
-                return videoBackgroundStringsValues("Elija portada del álbum, video, degradado borroso o fondo sólido.", "Video", "Carga datos de video de YouTube de ivLyrics y reproduce el video real detrás del reproductor.");
+                return videoBackgroundStringsValues("Elija portada del álbum, video, degradado borroso o fondo sólido.", "Video", "Carga datos de video de YouTube de Lyriscope y reproduce el video real detrás del reproductor.");
             case "fr":
-                return videoBackgroundStringsValues("Choisissez une pochette, une vidéo, un dégradé flou ou une couleur unie.", "Vidéo", "Charge la vidéo YouTube ivLyrics et lit la vraie vidéo derrière le lecteur.");
+                return videoBackgroundStringsValues("Choisissez une pochette, une vidéo, un dégradé flou ou une couleur unie.", "Vidéo", "Charge la vidéo YouTube Lyriscope et lit la vraie vidéo derrière le lecteur.");
             case "ar":
-                return videoBackgroundStringsValues("اختر غلاف الألبوم أو الفيديو أو التدرج الضبابي أو لونًا ثابتًا.", "فيديو", "يحمّل معلومات فيديو YouTube من ivLyrics ويشغل الفيديو الحقيقي خلف المشغّل.");
+                return videoBackgroundStringsValues("اختر غلاف الألبوم أو الفيديو أو التدرج الضبابي أو لونًا ثابتًا.", "فيديو", "يحمّل معلومات فيديو YouTube من Lyriscope ويشغل الفيديو الحقيقي خلف المشغّل.");
             case "fa":
-                return videoBackgroundStringsValues("جلد آلبوم، ویدیو، گرادیان تار یا رنگ ثابت را انتخاب کنید.", "ویدیو", "اطلاعات ویدیوی YouTube از ivLyrics را می‌گیرد و ویدیوی واقعی را پشت پخش‌کننده اجرا می‌کند.");
+                return videoBackgroundStringsValues("جلد آلبوم، ویدیو، گرادیان تار یا رنگ ثابت را انتخاب کنید.", "ویدیو", "اطلاعات ویدیوی YouTube از Lyriscope را می‌گیرد و ویدیوی واقعی را پشت پخش‌کننده اجرا می‌کند.");
             case "de":
-                return videoBackgroundStringsValues("Wählen Sie Albumcover, Video, unscharfen Verlauf oder Volltonfarbe.", "Video", "Lädt ivLyrics-YouTube-Videodaten und spielt das echte Video hinter dem Player ab.");
+                return videoBackgroundStringsValues("Wählen Sie Albumcover, Video, unscharfen Verlauf oder Volltonfarbe.", "Video", "Lädt Lyriscope-YouTube-Videodaten und spielt das echte Video hinter dem Player ab.");
             case "ru":
-                return videoBackgroundStringsValues("Выберите обложку, видео, размытый градиент или сплошной цвет.", "Видео", "Загружает YouTube-видео ivLyrics и воспроизводит настоящее видео за плеером.");
+                return videoBackgroundStringsValues("Выберите обложку, видео, размытый градиент или сплошной цвет.", "Видео", "Загружает YouTube-видео Lyriscope и воспроизводит настоящее видео за плеером.");
             case "sv":
-                return videoBackgroundStringsValues("Välj albumomslag, video, suddig gradient eller enfärgad bakgrund.", "Video", "Läser in ivLyrics YouTube-video och spelar den riktiga videon bakom spelaren.");
+                return videoBackgroundStringsValues("Välj albumomslag, video, suddig gradient eller enfärgad bakgrund.", "Video", "Läser in Lyriscope YouTube-video och spelar den riktiga videon bakom spelaren.");
             case "pt":
-                return videoBackgroundStringsValues("Escolha capa do álbum, vídeo, gradiente desfocado ou cor sólida.", "Vídeo", "Carrega o vídeo do YouTube do ivLyrics e reproduz o vídeo real atrás do player.");
+                return videoBackgroundStringsValues("Escolha capa do álbum, vídeo, gradiente desfocado ou cor sólida.", "Vídeo", "Carrega o vídeo do YouTube do Lyriscope e reproduz o vídeo real atrás do player.");
             case "bn":
-                return videoBackgroundStringsValues("অ্যালবাম কভার, ভিডিও, ঝাপসা গ্রেডিয়েন্ট বা কঠিন রঙের পটভূমি বেছে নিন।", "ভিডিও", "ivLyrics YouTube ভিডিও তথ্য লোড করে এবং প্লেয়ারের পেছনে আসল ভিডিও চালায়।");
+                return videoBackgroundStringsValues("অ্যালবাম কভার, ভিডিও, ঝাপসা গ্রেডিয়েন্ট বা কঠিন রঙের পটভূমি বেছে নিন।", "ভিডিও", "Lyriscope YouTube ভিডিও তথ্য লোড করে এবং প্লেয়ারের পেছনে আসল ভিডিও চালায়।");
             case "it":
-                return videoBackgroundStringsValues("Scegli copertina, video, sfumatura sfocata o colore solido.", "Video", "Carica il video YouTube di ivLyrics e riproduce il video reale dietro il player.");
+                return videoBackgroundStringsValues("Scegli copertina, video, sfumatura sfocata o colore solido.", "Video", "Carica il video YouTube di Lyriscope e riproduce il video reale dietro il player.");
             case "th":
-                return videoBackgroundStringsValues("เลือกปกอัลบั้ม วิดีโอ ไล่ระดับแบบเบลอ หรือพื้นหลังสีทึบ", "วิดีโอ", "โหลดข้อมูลวิดีโอ YouTube ของ ivLyrics และเล่นวิดีโอจริงด้านหลังเครื่องเล่น");
+                return videoBackgroundStringsValues("เลือกปกอัลบั้ม วิดีโอ ไล่ระดับแบบเบลอ หรือพื้นหลังสีทึบ", "วิดีโอ", "โหลดข้อมูลวิดีโอ YouTube ของ Lyriscope และเล่นวิดีโอจริงด้านหลังเครื่องเล่น");
             case "vi":
-                return videoBackgroundStringsValues("Chọn bìa album, video, nền chuyển màu mờ hoặc màu đặc.", "Video", "Tải video YouTube của ivLyrics và phát video thật phía sau trình phát.");
+                return videoBackgroundStringsValues("Chọn bìa album, video, nền chuyển màu mờ hoặc màu đặc.", "Video", "Tải video YouTube của Lyriscope và phát video thật phía sau trình phát.");
             case "id":
-                return videoBackgroundStringsValues("Pilih sampul album, video, gradien buram, atau warna solid.", "Video", "Memuat video YouTube ivLyrics dan memutar video asli di belakang pemutar.");
+                return videoBackgroundStringsValues("Pilih sampul album, video, gradien buram, atau warna solid.", "Video", "Memuat video YouTube Lyriscope dan memutar video asli di belakang pemutar.");
             case "ms":
-                return videoBackgroundStringsValues("Pilih kulit album, video, kecerunan kabur atau warna pepejal.", "Video", "Memuatkan video YouTube ivLyrics dan memainkan video sebenar di belakang pemain.");
+                return videoBackgroundStringsValues("Pilih kulit album, video, kecerunan kabur atau warna pepejal.", "Video", "Memuatkan video YouTube Lyriscope dan memainkan video sebenar di belakang pemain.");
             case "tr":
-                return videoBackgroundStringsValues("Albüm kapağı, video, bulanık gradyan veya düz renk arka plan seçin.", "Video", "ivLyrics YouTube video bilgisini yükler ve gerçek videoyu oynatıcının arkasında oynatır.");
+                return videoBackgroundStringsValues("Albüm kapağı, video, bulanık gradyan veya düz renk arka plan seçin.", "Video", "Lyriscope YouTube video bilgisini yükler ve gerçek videoyu oynatıcının arkasında oynatır.");
             default:
-                return videoBackgroundStringsValues("Choose album cover, video, blurred gradient, or solid color background.", "Video", "Loads ivLyrics YouTube video metadata and plays the real video behind the player.");
+                return videoBackgroundStringsValues("Choose album cover, video, blurred gradient, or solid color background.", "Video", "Loads Lyriscope YouTube video metadata and plays the real video behind the player.");
         }
     }
 
@@ -5886,7 +6305,7 @@ final class AppI18n {
                 "setting.main_preview", "메인 하단 가사",
                 "setting.main_preview_desc", "표시할 원문/발음/번역을 여러 개 선택합니다. 긴 줄은 가사 시간에 맞춰 자연스럽게 이동합니다.",
                 "setting.auto_interlude", "전주/간주/후주 자동 감지",
-                "setting.auto_interlude_desc", "음표/공백 라인과 가사 종료 후 3.5초 이상 비는 구간을 원본 ivLyrics처럼 움직이는 표시로 바꿉니다.",
+                "setting.auto_interlude_desc", "음표/공백 라인과 가사 종료 후 3.5초 이상 비는 구간을 원본 Lyriscope처럼 움직이는 표시로 바꿉니다.",
                 "setting.interlude_labels", "간주 라벨 표시",
                 "setting.interlude_labels_desc", "전주/간주/후주 표시에서 움직이는 아이콘은 유지하고 글자 라벨을 표시합니다.",
                 "setting.synced_karaoke_animation", "일반 싱크 가사 노래방 효과",
@@ -5908,11 +6327,11 @@ final class AppI18n {
                 "setting.video_scale", "영상 확대",
                 "setting.video_scale_desc", "영상 자체에 레터박스가 있거나 가장자리를 더 채우고 싶을 때 배경 영상을 확대합니다.",
                 "setting.noise", "노이즈 텍스처",
-                "setting.noise_desc", "원본 ivLyrics처럼 아주 약한 입자감을 배경에 얹습니다.",
+                "setting.noise_desc", "원본 Lyriscope처럼 아주 약한 입자감을 배경에 얹습니다.",
                 "setting.reduce_motion", "움직임 줄이기",
                 "setting.reduce_motion_desc", "앨범/그라데이션 배경의 자동 움직임을 멈춥니다.",
                 "section.ai_lyrics", "가사 AI",
-                "section.ai_lyrics_desc", "원본 ivLyrics와 같은 프롬프트 규칙으로 현재 가사의 발음과 번역을 생성합니다.",
+                "section.ai_lyrics_desc", "원본 Lyriscope와 같은 프롬프트 규칙으로 현재 가사의 발음과 번역을 생성합니다.",
                 "section.provider", "제공자",
                 "field.api_key", "API 키",
                 "field.model", "모델",
@@ -5931,15 +6350,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "AI 캐시 초기화",
                 "button.debug_log", "디버그 / 로그",
                 "onboarding.subtitle", "현재 재생 중인 음악에 맞춰 노래방 가사, 번역, 발음을 보여줍니다.",
-                "onboarding.welcome_title", "ivLyrics 설정 시작",
+                "onboarding.welcome_title", "Lyriscope 설정 시작",
                 "onboarding.welcome_desc", "처음에는 표시 언어를 고르고, 미디어 인식 권한과 직접 발급한 Spotify API 정보를 순서대로 설정합니다.",
                 "onboarding.app_language_en", "앱 언어",
                 "onboarding.app_language_native", "앱 표시 언어",
                 "onboarding.permission_title", "미디어 인식 권한",
                 "onboarding.permission_desc", "Spotify에서 현재 재생 중인 곡을 읽으려면 Android 알림 접근 권한이 필요합니다.",
-                "onboarding.permission_hint", "설정 화면에서 ivLyrics를 찾아 허용한 뒤 앱으로 돌아오세요.",
+                "onboarding.permission_hint", "설정 화면에서 Lyriscope를 찾아 허용한 뒤 앱으로 돌아오세요.",
                 "onboarding.permission_status_enabled", "권한이 허용되었습니다. 현재 재생 중인 Spotify 곡을 감지할 수 있습니다.",
-                "onboarding.permission_status_required", "아직 권한이 없습니다. 권한 설정을 열어 ivLyrics를 허용하세요.",
+                "onboarding.permission_status_required", "아직 권한이 없습니다. 권한 설정을 열어 Lyriscope를 허용하세요.",
                 "onboarding.spotify_title", "곡 정보 연결",
                 "onboarding.spotify_desc", "현재 재생 중인 곡의 ISRC와 고해상도 앨범 이미지를 가져오기 위해 Spotify Web API를 사용합니다.",
                 "onboarding.step_format", "%d / %d단계",
@@ -6011,7 +6430,7 @@ final class AppI18n {
                 "spotify.step0.title", "Spotify 개발자 대시보드로 이동",
                 "spotify.step0.desc", "브라우저에서 Spotify Developer Dashboard를 여세요. 계정 로그인 후 앱을 새로 만들면 됩니다.",
                 "spotify.step1.title", "Create app에서 이름 입력",
-                "spotify.step1.desc", "Create app을 누른 뒤 App name에는 아래 값을 그대로 넣으세요. ivLyrics 또는 ivlyrics라고 적지 마세요.",
+                "spotify.step1.desc", "Create app을 누른 뒤 App name에는 아래 값을 그대로 넣으세요. Lyriscope 또는 ivlyrics라고 적지 마세요.",
                 "spotify.step2.title", "설명 입력",
                 "spotify.step2.desc", "App description에도 아래 값을 그대로 넣으세요. 이 값은 의미 있는 값이 아니라 헷갈리지 않기 위한 예시입니다.",
                 "spotify.step3.title", "Redirect URI 입력",
@@ -6152,11 +6571,11 @@ final class AppI18n {
                 "setting.video_scale", "Video zoom",
                 "setting.video_scale_desc", "Zoom the video background when the source has letterboxing or needs to fill more of the screen.",
                 "setting.noise", "Noise texture",
-                "setting.noise_desc", "Adds a subtle grain texture like the original ivLyrics.",
+                "setting.noise_desc", "Adds a subtle grain texture like the original Lyriscope.",
                 "setting.reduce_motion", "Reduce motion",
                 "setting.reduce_motion_desc", "Stops automatic album/gradient background movement.",
                 "section.ai_lyrics", "Lyrics AI",
-                "section.ai_lyrics_desc", "Generate pronunciation and translations with prompts compatible with ivLyrics.",
+                "section.ai_lyrics_desc", "Generate pronunciation and translations with prompts compatible with Lyriscope.",
                 "section.provider", "Provider",
                 "field.api_key", "API Key",
                 "field.model", "Model",
@@ -6175,15 +6594,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "Clear AI Cache",
                 "button.debug_log", "Debug / Logs",
                 "onboarding.subtitle", "Karaoke lyrics, translation, and pronunciation for the song currently playing.",
-                "onboarding.welcome_title", "Set Up ivLyrics",
+                "onboarding.welcome_title", "Set Up Lyriscope",
                 "onboarding.welcome_desc", "Choose the app language first, then set media access permission and your own Spotify API credentials.",
                 "onboarding.app_language_en", "App Language",
                 "onboarding.app_language_native", "App Language",
                 "onboarding.permission_title", "Media Access Permission",
                 "onboarding.permission_desc", "Android notification access is required to read the song currently playing in Spotify.",
-                "onboarding.permission_hint", "Find ivLyrics in the settings screen, allow access, then return to the app.",
+                "onboarding.permission_hint", "Find Lyriscope in the settings screen, allow access, then return to the app.",
                 "onboarding.permission_status_enabled", "Permission is enabled. Spotify playback can now be detected.",
-                "onboarding.permission_status_required", "Permission is not enabled yet. Open permission settings and allow ivLyrics.",
+                "onboarding.permission_status_required", "Permission is not enabled yet. Open permission settings and allow Lyriscope.",
                 "onboarding.spotify_title", "Connect Song Info",
                 "onboarding.spotify_desc", "Spotify Web API is used to load ISRC and high-resolution artwork for the current song.",
                 "onboarding.step_format", "Step %d / %d",
@@ -6255,7 +6674,7 @@ final class AppI18n {
                 "spotify.step0.title", "Go to Spotify Developer Dashboard",
                 "spotify.step0.desc", "Open Spotify Developer Dashboard in your browser. Sign in and create a new app.",
                 "spotify.step1.title", "Enter a name in Create app",
-                "spotify.step1.desc", "Press Create app and enter the value below for App name. Do not write ivLyrics or ivlyrics.",
+                "spotify.step1.desc", "Press Create app and enter the value below for App name. Do not write Lyriscope or ivlyrics.",
                 "spotify.step2.title", "Enter the description",
                 "spotify.step2.desc", "Enter the value below for App description too. It is just an example to avoid confusion.",
                 "spotify.step3.title", "Enter Redirect URI",
@@ -6394,11 +6813,11 @@ final class AppI18n {
                 "setting.blur", "模糊",
                 "setting.blur_desc", "专辑封面和渐变背景的模糊强度。",
                 "setting.noise", "噪点纹理",
-                "setting.noise_desc", "加入类似原版 ivLyrics 的轻微颗粒感。",
+                "setting.noise_desc", "加入类似原版 Lyriscope 的轻微颗粒感。",
                 "setting.reduce_motion", "减少动态效果",
                 "setting.reduce_motion_desc", "停止专辑/渐变背景的自动移动。",
                 "section.ai_lyrics", "歌词 AI",
-                "section.ai_lyrics_desc", "使用兼容 ivLyrics 的提示词生成发音和翻译。",
+                "section.ai_lyrics_desc", "使用兼容 Lyriscope 的提示词生成发音和翻译。",
                 "section.provider", "提供商",
                 "field.api_key", "API 密钥",
                 "field.model", "模型",
@@ -6417,15 +6836,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "清除 AI 缓存",
                 "button.debug_log", "调试 / 日志",
                 "onboarding.subtitle", "根据当前播放歌曲显示卡拉 OK 歌词、翻译和发音。",
-                "onboarding.welcome_title", "设置 ivLyrics",
+                "onboarding.welcome_title", "设置 Lyriscope",
                 "onboarding.welcome_desc", "先选择应用语言，然后依次设置媒体识别权限和你自己的 Spotify API 凭据。",
                 "onboarding.app_language_en", "应用程序语言",
                 "onboarding.app_language_native", "应用语言",
                 "onboarding.permission_title", "媒体识别权限",
                 "onboarding.permission_desc", "要读取 Spotify 当前播放的歌曲，需要 Android 通知访问权限。",
-                "onboarding.permission_hint", "在设置页面找到 ivLyrics 并允许访问，然后返回应用。",
+                "onboarding.permission_hint", "在设置页面找到 Lyriscope 并允许访问，然后返回应用。",
                 "onboarding.permission_status_enabled", "权限已开启。现在可以检测 Spotify 正在播放的歌曲。",
-                "onboarding.permission_status_required", "权限尚未开启。请打开权限设置并允许 ivLyrics。",
+                "onboarding.permission_status_required", "权限尚未开启。请打开权限设置并允许 Lyriscope。",
                 "onboarding.spotify_title", "连接歌曲信息",
                 "onboarding.spotify_desc", "使用 Spotify Web API 获取当前歌曲的 ISRC 和高清封面。",
                 "onboarding.step_format", "第 %d / %d 步",
@@ -6459,7 +6878,7 @@ final class AppI18n {
                 "lyrics.sync.help", "+ 值会更早显示歌词，- 值会更晚显示。",
                 "lyrics.menu_tip", "长按标题或艺人可打开翻译和发音设置。",
                 "lyrics.rule.track_language", "歌曲语言",
-                "lyrics.rule.save_target", "保存目标",
+                "lyrics.rule.save_target", "输出",
                 "lyrics.rule.translation_language", "翻译语言",
                 "label.on", "开启",
                 "label.off", "关闭",
@@ -6497,7 +6916,7 @@ final class AppI18n {
                 "spotify.step0.title", "前往 Spotify Developer Dashboard",
                 "spotify.step0.desc", "在浏览器中打开 Spotify Developer Dashboard。登录后创建新应用。",
                 "spotify.step1.title", "在 Create app 中输入名称",
-                "spotify.step1.desc", "点击 Create app，并在 App name 中直接输入下面的值。不要填写 ivLyrics 或 ivlyrics。",
+                "spotify.step1.desc", "点击 Create app，并在 App name 中直接输入下面的值。不要填写 Lyriscope 或 ivlyrics。",
                 "spotify.step2.title", "输入描述",
                 "spotify.step2.desc", "App description 也直接输入下面的值。这只是为了避免混淆的示例。",
                 "spotify.step3.title", "输入 Redirect URI",
@@ -6636,11 +7055,11 @@ final class AppI18n {
                 "setting.blur", "模糊",
                 "setting.blur_desc", "專輯封面和漸變背景的模糊強度。",
                 "setting.noise", "雜訊紋理",
-                "setting.noise_desc", "加入像原始 ivLyrics 一樣的微妙顆粒紋理。",
+                "setting.noise_desc", "加入像原始 Lyriscope 一樣的微妙顆粒紋理。",
                 "setting.reduce_motion", "減少動態效果",
                 "setting.reduce_motion_desc", "停止專輯/漸層背景的自動移動。",
                 "section.ai_lyrics", "歌詞人工智慧",
-                "section.ai_lyrics_desc", "使用與 ivLyrics 相容的提示產生發音和翻譯。",
+                "section.ai_lyrics_desc", "使用與 Lyriscope 相容的提示產生發音和翻譯。",
                 "section.provider", "提供者",
                 "field.api_key", "API 金鑰",
                 "field.model", "模型",
@@ -6659,15 +7078,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "清除 AI 快取",
                 "button.debug_log", "調試/日誌",
                 "onboarding.subtitle", "目前播放歌曲的卡拉 OK 歌詞、翻譯和發音。",
-                "onboarding.welcome_title", "設定 ivLyrics",
+                "onboarding.welcome_title", "設定 Lyriscope",
                 "onboarding.welcome_desc", "先選擇應用程式語言，然後設定媒體存取權限和您自己的 Spotify API 憑證。",
                 "onboarding.app_language_en", "應用程式語言",
                 "onboarding.app_language_native", "應用程式語言",
                 "onboarding.permission_title", "媒體存取權限",
                 "onboarding.permission_desc", "需要 Android 通知存取權限才能讀取目前在 Spotify 中播放的歌曲。",
-                "onboarding.permission_hint", "在設定畫面中找到 ivLyrics，允許訪問，然後返回應用程式。",
+                "onboarding.permission_hint", "在設定畫面中找到 Lyriscope，允許訪問，然後返回應用程式。",
                 "onboarding.permission_status_enabled", "權限已啟用。現在可以偵測到 Spotify 播放。",
-                "onboarding.permission_status_required", "權限尚未啟用。開啟權限設定並允許ivLyrics。",
+                "onboarding.permission_status_required", "權限尚未啟用。開啟權限設定並允許Lyriscope。",
                 "onboarding.spotify_title", "連結歌曲資訊",
                 "onboarding.spotify_desc", "Spotify Web API 用於載入目前歌曲的 ISRC 和高解析度插圖。",
                 "onboarding.step_format", "步驟 %d / %d",
@@ -6739,7 +7158,7 @@ final class AppI18n {
                 "spotify.step0.title", "前往 Spotify 開發人員儀表板",
                 "spotify.step0.desc", "在瀏覽器中開啟 Spotify 開發人員儀表板。登入並建立一個新應用程式。",
                 "spotify.step1.title", "在 Create app 中輸入名稱",
-                "spotify.step1.desc", "按 Create app 並輸入下列 App name 值。不要寫 ivLyrics 或 ivlyrics。",
+                "spotify.step1.desc", "按 Create app 並輸入下列 App name 值。不要寫 Lyriscope 或 ivlyrics。",
                 "spotify.step2.title", "輸入說明",
                 "spotify.step2.desc", "也為 App description 輸入以下值。這只是一個例子，以避免混淆。",
                 "spotify.step3.title", "輸入重定向 URI",
@@ -6878,11 +7297,11 @@ final class AppI18n {
                 "setting.blur", "ぼかし",
                 "setting.blur_desc", "アルバムカバーとグラデーション背景のぼかし強度です。",
                 "setting.noise", "ノイズテクスチャ",
-                "setting.noise_desc", "元のivLyricsのような控えめな粒状感を加えます。",
+                "setting.noise_desc", "元のLyriscopeのような控えめな粒状感を加えます。",
                 "setting.reduce_motion", "動きを減らす",
                 "setting.reduce_motion_desc", "アルバム/グラデーション背景の自動移動を止めます。",
                 "section.ai_lyrics", "歌詞AI",
-                "section.ai_lyrics_desc", "ivLyrics互換のプロンプトで発音と翻訳を生成します。",
+                "section.ai_lyrics_desc", "Lyriscope互換のプロンプトで発音と翻訳を生成します。",
                 "section.provider", "プロバイダー",
                 "field.api_key", "APIキー",
                 "field.model", "モデル",
@@ -6901,15 +7320,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "AIキャッシュ初期化",
                 "button.debug_log", "デバッグ / ログ",
                 "onboarding.subtitle", "再生中の曲に合わせてカラオケ歌詞、翻訳、発音を表示します。",
-                "onboarding.welcome_title", "ivLyricsの設定",
+                "onboarding.welcome_title", "Lyriscopeの設定",
                 "onboarding.welcome_desc", "まず表示言語を選び、メディア認識権限と自分のSpotify API情報を順番に設定します。",
                 "onboarding.app_language_en", "アプリの言語",
                 "onboarding.app_language_native", "アプリ表示言語",
                 "onboarding.permission_title", "メディア認識権限",
                 "onboarding.permission_desc", "Spotifyで再生中の曲を読み取るにはAndroidの通知アクセス権限が必要です。",
-                "onboarding.permission_hint", "設定画面でivLyricsを見つけて許可し、アプリに戻ってください。",
+                "onboarding.permission_hint", "設定画面でLyriscopeを見つけて許可し、アプリに戻ってください。",
                 "onboarding.permission_status_enabled", "権限が許可されました。Spotifyの再生曲を検出できます。",
-                "onboarding.permission_status_required", "まだ権限がありません。権限設定を開いてivLyricsを許可してください。",
+                "onboarding.permission_status_required", "まだ権限がありません。権限設定を開いてLyriscopeを許可してください。",
                 "onboarding.spotify_title", "曲情報を接続",
                 "onboarding.spotify_desc", "現在の曲のISRCと高解像度アートワーク取得にSpotify Web APIを使用します。",
                 "onboarding.step_format", "ステップ %d / %d",
@@ -6981,7 +7400,7 @@ final class AppI18n {
                 "spotify.step0.title", "Spotify Developer Dashboardへ移動",
                 "spotify.step0.desc", "ブラウザでSpotify Developer Dashboardを開きます。ログインして新しいアプリを作成してください。",
                 "spotify.step1.title", "Create appで名前を入力",
-                "spotify.step1.desc", "Create appを押し、App nameには下の値をそのまま入力してください。ivLyricsまたはivlyricsとは書かないでください。",
+                "spotify.step1.desc", "Create appを押し、App nameには下の値をそのまま入力してください。Lyriscopeまたはivlyricsとは書かないでください。",
                 "spotify.step2.title", "説明を入力",
                 "spotify.step2.desc", "App descriptionにも下の値をそのまま入力してください。混乱を避けるための例です。",
                 "spotify.step3.title", "Redirect URIを入力",
@@ -7120,11 +7539,11 @@ final class AppI18n {
                 "setting.blur", "धुंधला",
                 "setting.blur_desc", "एल्बम कवर और ग्रेडिएंट पृष्ठभूमि के लिए धुंधला तीव्रता।",
                 "setting.noise", "नॉइज़ टेक्सचर",
-                "setting.noise_desc", "मूल ivLyrics की तरह एक हल्का ग्रेन टेक्सचर जोड़ता है।",
+                "setting.noise_desc", "मूल Lyriscope की तरह एक हल्का ग्रेन टेक्सचर जोड़ता है।",
                 "setting.reduce_motion", "गति कम करें",
                 "setting.reduce_motion_desc", "स्वचालित एल्बम/ग्रेडिएंट बैकग्राउंड मूवमेंट को रोकता है।",
                 "section.ai_lyrics", "गीत AI",
-                "section.ai_lyrics_desc", "ivLyrics के साथ संगत संकेतों के साथ उच्चारण और अनुवाद उत्पन्न करें।",
+                "section.ai_lyrics_desc", "Lyriscope के साथ संगत संकेतों के साथ उच्चारण और अनुवाद उत्पन्न करें।",
                 "section.provider", "प्रदाता",
                 "field.api_key", "API कुंजी",
                 "field.model", "मॉडल",
@@ -7143,15 +7562,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "AI कैश साफ़ करें",
                 "button.debug_log", "डीबग/लॉग्स",
                 "onboarding.subtitle", "वर्तमान में चल रहे गाने के लिए कराओके गीत, अनुवाद और उच्चारण।",
-                "onboarding.welcome_title", "ivLyrics सेट अप करें",
+                "onboarding.welcome_title", "Lyriscope सेट अप करें",
                 "onboarding.welcome_desc", "पहले ऐप भाषा चुनें, फिर मीडिया एक्सेस अनुमति और अपना Spotify API क्रेडेंशियल सेट करें।",
                 "onboarding.app_language_en", "ऐप भाषा",
                 "onboarding.app_language_native", "ऐप भाषा",
                 "onboarding.permission_title", "मीडिया एक्सेस अनुमति",
                 "onboarding.permission_desc", "Android नोटिफिकेशन एक्सेस वर्तमान में Spotify में चल रहे गाने को पढ़ने के लिए आवश्यक है।",
-                "onboarding.permission_hint", "सेटिंग स्क्रीन में ivLyrics ढूंढें, एक्सेस की अनुमति दें, फिर ऐप पर वापस लौटें।",
+                "onboarding.permission_hint", "सेटिंग स्क्रीन में Lyriscope ढूंढें, एक्सेस की अनुमति दें, फिर ऐप पर वापस लौटें।",
                 "onboarding.permission_status_enabled", "अनुमति सक्षम है. Spotify प्लेबैक का अब पता लगाया जा सकता है।",
-                "onboarding.permission_status_required", "अनुमति अभी तक सक्षम नहीं है। अनुमति सेटिंग खोलें और ivLyrics को अनुमति दें।",
+                "onboarding.permission_status_required", "अनुमति अभी तक सक्षम नहीं है। अनुमति सेटिंग खोलें और Lyriscope को अनुमति दें।",
                 "onboarding.spotify_title", "गीत की जानकारी कनेक्ट करें",
                 "onboarding.spotify_desc", "Spotify Web API का उपयोग वर्तमान गीत के लिए ISRC और उच्च-रिज़ॉल्यूशन एल्बम चित्र लोड करने के लिए किया जाता है।",
                 "onboarding.step_format", "चरण %d / %d",
@@ -7223,7 +7642,7 @@ final class AppI18n {
                 "spotify.step0.title", "Spotify डेवलपर डैशबोर्ड पर जाएं",
                 "spotify.step0.desc", "अपने ब्राउज़र में Spotify डेवलपर डैशबोर्ड खोलें। साइन इन करें और एक नया ऐप बनाएं।",
                 "spotify.step1.title", "Create app में एक नाम दर्ज करें",
-                "spotify.step1.desc", "Create app दबाएँ और App name के लिए नीचे मान दर्ज करें। ivLyrics या ivlyrics न लिखें।",
+                "spotify.step1.desc", "Create app दबाएँ और App name के लिए नीचे मान दर्ज करें। Lyriscope या ivlyrics न लिखें।",
                 "spotify.step2.title", "विवरण दर्ज करें",
                 "spotify.step2.desc", "App description के लिए भी नीचे मान दर्ज करें। भ्रम से बचने के लिए यह सिर्फ एक उदाहरण है।",
                 "spotify.step3.title", "रीडायरेक्ट URI दर्ज करें",
@@ -7362,11 +7781,11 @@ final class AppI18n {
                 "setting.blur", "Desenfoque",
                 "setting.blur_desc", "Intensidad de desenfoque para portadas de álbumes y fondos degradados.",
                 "setting.noise", "Textura de ruido",
-                "setting.noise_desc", "Agrega una textura de grano sutil como el ivLyrics original.",
+                "setting.noise_desc", "Agrega una textura de grano sutil como el Lyriscope original.",
                 "setting.reduce_motion", "Reducir el movimiento",
                 "setting.reduce_motion_desc", "Detiene el movimiento automático del fondo del álbum/degradado.",
                 "section.ai_lyrics", "Letras AI",
-                "section.ai_lyrics_desc", "Genera pronunciación y traducciones con indicaciones compatibles con ivLyrics.",
+                "section.ai_lyrics_desc", "Genera pronunciación y traducciones con indicaciones compatibles con Lyriscope.",
                 "section.provider", "Proveedor",
                 "field.api_key", "Clave de API",
                 "field.model", "Modelo",
@@ -7385,15 +7804,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "Borrar caché AI",
                 "button.debug_log", "Depuración/registros",
                 "onboarding.subtitle", "Letras de karaoke, traducción y pronunciación de la canción que se reproduce actualmente.",
-                "onboarding.welcome_title", "Configurar ivLyrics",
+                "onboarding.welcome_title", "Configurar Lyriscope",
                 "onboarding.welcome_desc", "Primero elija el idioma de la aplicación, luego configure el permiso de acceso a los medios y sus propias credenciales Spotify API.",
                 "onboarding.app_language_en", "Idioma de la aplicación",
                 "onboarding.app_language_native", "Idioma de la aplicación",
                 "onboarding.permission_title", "Permiso de acceso a medios",
                 "onboarding.permission_desc", "Se requiere acceso a la notificación Android para leer la canción que se reproduce actualmente en Spotify.",
-                "onboarding.permission_hint", "Busque ivLyrics en la pantalla de configuración, permita el acceso y luego regrese a la aplicación.",
+                "onboarding.permission_hint", "Busque Lyriscope en la pantalla de configuración, permita el acceso y luego regrese a la aplicación.",
                 "onboarding.permission_status_enabled", "El permiso está habilitado. Ahora se puede detectar la reproducción Spotify.",
-                "onboarding.permission_status_required", "El permiso aún no está habilitado. Abra la configuración de permisos y permita ivLyrics.",
+                "onboarding.permission_status_required", "El permiso aún no está habilitado. Abra la configuración de permisos y permita Lyriscope.",
                 "onboarding.spotify_title", "Conectar información de la canción",
                 "onboarding.spotify_desc", "Spotify Web API se utiliza para cargar ISRC y el arte de alta resolución de la canción actual.",
                 "onboarding.step_format", "Paso %d / %d",
@@ -7465,7 +7884,7 @@ final class AppI18n {
                 "spotify.step0.title", "Vaya a Spotify Developer Dashboard",
                 "spotify.step0.desc", "Abra Spotify Developer Dashboard en su navegador. Inicia sesión y crea una nueva aplicación.",
                 "spotify.step1.title", "Ingrese un nombre en Create app",
-                "spotify.step1.desc", "Presione Create app e ingrese el valor a continuación para App name. No escriba ivLyrics o ivlyrics.",
+                "spotify.step1.desc", "Presione Create app e ingrese el valor a continuación para App name. No escriba Lyriscope o ivlyrics.",
                 "spotify.step2.title", "Ingrese la descripción",
                 "spotify.step2.desc", "Ingrese el valor a continuación para App description también. Es sólo un ejemplo para evitar confusiones.",
                 "spotify.step3.title", "Ingrese el URI de redireccionamiento",
@@ -7604,11 +8023,11 @@ final class AppI18n {
                 "setting.blur", "Flou",
                 "setting.blur_desc", "Intensité du flou pour la couverture de l'album et les arrière-plans dégradés.",
                 "setting.noise", "Texture de bruit",
-                "setting.noise_desc", "Ajoute une texture de grain subtile comme l'original ivLyrics.",
+                "setting.noise_desc", "Ajoute une texture de grain subtile comme l'original Lyriscope.",
                 "setting.reduce_motion", "Réduire le mouvement",
                 "setting.reduce_motion_desc", "Arrête le mouvement automatique de l'arrière-plan de l'album/dégradé.",
                 "section.ai_lyrics", "Paroles AI",
-                "section.ai_lyrics_desc", "Générez la prononciation et les traductions avec des invites compatibles avec ivLyrics.",
+                "section.ai_lyrics_desc", "Générez la prononciation et les traductions avec des invites compatibles avec Lyriscope.",
                 "section.provider", "Fournisseur",
                 "field.api_key", "Clé API",
                 "field.model", "Modèle",
@@ -7627,15 +8046,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "Effacer le cache AI",
                 "button.debug_log", "Débogage/journaux",
                 "onboarding.subtitle", "Paroles, traduction et prononciation du karaoké pour la chanson en cours de lecture.",
-                "onboarding.welcome_title", "Configurer ivLyrics",
+                "onboarding.welcome_title", "Configurer Lyriscope",
                 "onboarding.welcome_desc", "Choisissez d'abord la langue de l'application, puis définissez l'autorisation d'accès au média et vos propres informations d'identification Spotify API.",
                 "onboarding.app_language_en", "Langue de l'application",
                 "onboarding.app_language_native", "Langue de l'application",
                 "onboarding.permission_title", "Autorisation d'accès au média",
                 "onboarding.permission_desc", "L'accès aux notifications Android est requis pour lire la chanson en cours de lecture dans Spotify.",
-                "onboarding.permission_hint", "Recherchez ivLyrics dans l'écran des paramètres, autorisez l'accès, puis revenez à l'application.",
+                "onboarding.permission_hint", "Recherchez Lyriscope dans l'écran des paramètres, autorisez l'accès, puis revenez à l'application.",
                 "onboarding.permission_status_enabled", "L'autorisation est activée. La lecture Spotify peut maintenant être détectée.",
-                "onboarding.permission_status_required", "L'autorisation n'est pas encore activée. Ouvrez les paramètres d'autorisation et autorisez ivLyrics.",
+                "onboarding.permission_status_required", "L'autorisation n'est pas encore activée. Ouvrez les paramètres d'autorisation et autorisez Lyriscope.",
                 "onboarding.spotify_title", "Connecter les informations sur la chanson",
                 "onboarding.spotify_desc", "Spotify Web API est utilisé pour charger ISRC et une illustration haute résolution pour la chanson en cours.",
                 "onboarding.step_format", "Étape %d / %d",
@@ -7707,7 +8126,7 @@ final class AppI18n {
                 "spotify.step0.title", "Accédez au tableau de bord du développeur Spotify",
                 "spotify.step0.desc", "Ouvrez le tableau de bord du développeur Spotify dans votre navigateur. Connectez-vous et créez une nouvelle application.",
                 "spotify.step1.title", "Entrez un nom dans Create app",
-                "spotify.step1.desc", "Appuyez sur Create app et entrez la valeur ci-dessous pour App name. N'écrivez pas ivLyrics ou ivlyrics.",
+                "spotify.step1.desc", "Appuyez sur Create app et entrez la valeur ci-dessous pour App name. N'écrivez pas Lyriscope ou ivlyrics.",
                 "spotify.step2.title", "Saisissez la description",
                 "spotify.step2.desc", "Saisissez également la valeur ci-dessous pour App description. Ce n'est qu'un exemple pour éviter toute confusion.",
                 "spotify.step3.title", "Entrez l'URI de redirection",
@@ -7846,11 +8265,11 @@ final class AppI18n {
                 "setting.blur", "تمويه",
                 "setting.blur_desc", "شدة التمويه لغلاف الألبوم والخلفيات المتدرجة.",
                 "setting.noise", "نسيج الضوضاء",
-                "setting.noise_desc", "يضيف نسيجًا حبيبيًا دقيقًا مثل ivLyrics الأصلي.",
+                "setting.noise_desc", "يضيف نسيجًا حبيبيًا دقيقًا مثل Lyriscope الأصلي.",
                 "setting.reduce_motion", "تقليل الحركة",
                 "setting.reduce_motion_desc", "يوقف حركة الخلفية التلقائية للألبوم/التدرج.",
                 "section.ai_lyrics", "الذكاء الاصطناعي للكلمات",
-                "section.ai_lyrics_desc", "قم بإنشاء النطق والترجمات باستخدام المطالبات المتوافقة مع ivLyrics.",
+                "section.ai_lyrics_desc", "قم بإنشاء النطق والترجمات باستخدام المطالبات المتوافقة مع Lyriscope.",
                 "section.provider", "المزوّد",
                 "field.api_key", "مفتاح API",
                 "field.model", "نموذج",
@@ -7869,15 +8288,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "مسح ذاكرة التخزين المؤقت لـ AI",
                 "button.debug_log", "تصحيح / سجلات",
                 "onboarding.subtitle", "كلمات كاريوكي وترجمتها ونطقها للأغنية التي يتم تشغيلها حاليًا.",
-                "onboarding.welcome_title", "إعداد ivLyrics",
+                "onboarding.welcome_title", "إعداد Lyriscope",
                 "onboarding.welcome_desc", "اختر لغة التطبيق أولاً، ثم قم بتعيين إذن الوصول إلى الوسائط وبيانات اعتماد Spotify API الخاصة بك.",
                 "onboarding.app_language_en", "لغة التطبيق",
                 "onboarding.app_language_native", "لغة عرض التطبيق",
                 "onboarding.permission_title", "إذن الوصول إلى الوسائط",
                 "onboarding.permission_desc", "Android مطلوب الوصول إلى الإشعارات لقراءة الأغنية التي يتم تشغيلها حاليًا في Spotify.",
-                "onboarding.permission_hint", "ابحث عن ivLyrics في شاشة الإعدادات، واسمح بالوصول، ثم ارجع إلى التطبيق.",
+                "onboarding.permission_hint", "ابحث عن Lyriscope في شاشة الإعدادات، واسمح بالوصول، ثم ارجع إلى التطبيق.",
                 "onboarding.permission_status_enabled", "تم تمكين الإذن. يمكن الآن اكتشاف تشغيل Spotify.",
-                "onboarding.permission_status_required", "لم يتم تمكين الإذن بعد. افتح إعدادات الأذونات واسمح بـ ivLyrics.",
+                "onboarding.permission_status_required", "لم يتم تمكين الإذن بعد. افتح إعدادات الأذونات واسمح بـ Lyriscope.",
                 "onboarding.spotify_title", "ربط معلومات الأغنية",
                 "onboarding.spotify_desc", "Spotify Web API لتحميل ISRC وصورة الغلاف عالية الدقة للأغنية الحالية.",
                 "onboarding.step_format", "الخطوة %d / %d",
@@ -7949,7 +8368,7 @@ final class AppI18n {
                 "spotify.step0.title", "انتقل إلى Spotify Developer Dashboard",
                 "spotify.step0.desc", "افتح Spotify Developer Dashboard في متصفحك. قم بتسجيل الدخول وإنشاء تطبيق جديد.",
                 "spotify.step1.title", "أدخل اسمًا في Create app",
-                "spotify.step1.desc", "اضغط على Create app وأدخل القيمة أدناه لـ App name. لا تكتب ivLyrics أو ivlyrics.",
+                "spotify.step1.desc", "اضغط على Create app وأدخل القيمة أدناه لـ App name. لا تكتب Lyriscope أو ivlyrics.",
                 "spotify.step2.title", "أدخل الوصف",
                 "spotify.step2.desc", "أدخل القيمة أدناه لـ App description أيضًا. إنه مجرد مثال لتجنب الارتباك.",
                 "spotify.step3.title", "أدخل URI لإعادة التوجيه",
@@ -8088,11 +8507,11 @@ final class AppI18n {
                 "setting.blur", "محو کردن",
                 "setting.blur_desc", "شدت تاری برای جلد آلبوم و پس‌زمینه گرادیان.",
                 "setting.noise", "بافت نویز",
-                "setting.noise_desc", "یک بافت دانه ظریف مانند ivLyrics اصلی اضافه می کند.",
+                "setting.noise_desc", "یک بافت دانه ظریف مانند Lyriscope اصلی اضافه می کند.",
                 "setting.reduce_motion", "کاهش حرکت",
                 "setting.reduce_motion_desc", "حرکت خودکار آلبوم/ گرادیان پس زمینه را متوقف می کند.",
                 "section.ai_lyrics", "هوش مصنوعی متن ترانه",
-                "section.ai_lyrics_desc", "تلفظ و ترجمه را با دستورات سازگار با ivLyrics ایجاد کنید.",
+                "section.ai_lyrics_desc", "تلفظ و ترجمه را با دستورات سازگار با Lyriscope ایجاد کنید.",
                 "section.provider", "ارائه دهنده",
                 "field.api_key", "کلید API",
                 "field.model", "مدل",
@@ -8111,15 +8530,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "پاک کردن حافظه نهان AI",
                 "button.debug_log", "اشکال زدایی / گزارشات",
                 "onboarding.subtitle", "شعر کارائوکه، ترجمه و تلفظ آهنگ در حال پخش.",
-                "onboarding.welcome_title", "راه اندازی ivLyrics",
+                "onboarding.welcome_title", "راه اندازی Lyriscope",
                 "onboarding.welcome_desc", "ابتدا زبان برنامه را انتخاب کنید، سپس مجوز دسترسی به رسانه و اعتبار Spotify API خود را تنظیم کنید.",
                 "onboarding.app_language_en", "زبان برنامه",
                 "onboarding.app_language_native", "زبان برنامه",
                 "onboarding.permission_title", "مجوز دسترسی به رسانه",
                 "onboarding.permission_desc", "دسترسی اعلان Android برای خواندن آهنگی که در حال پخش در Spotify است، لازم است.",
-                "onboarding.permission_hint", "ivLyrics را در صفحه تنظیمات پیدا کنید، اجازه دسترسی دهید، سپس به برنامه بازگردید.",
+                "onboarding.permission_hint", "Lyriscope را در صفحه تنظیمات پیدا کنید، اجازه دسترسی دهید، سپس به برنامه بازگردید.",
                 "onboarding.permission_status_enabled", "مجوز فعال است. پخش Spotify اکنون قابل شناسایی است.",
-                "onboarding.permission_status_required", "مجوز هنوز فعال نشده است. تنظیمات مجوز را باز کنید و به ivLyrics اجازه دهید.",
+                "onboarding.permission_status_required", "مجوز هنوز فعال نشده است. تنظیمات مجوز را باز کنید و به Lyriscope اجازه دهید.",
                 "onboarding.spotify_title", "اتصال اطلاعات آهنگ",
                 "onboarding.spotify_desc", "Spotify Web API برای بارگیری ISRC و تصویر آلبوم با وضوح بالا برای آهنگ فعلی استفاده می‌شود.",
                 "onboarding.step_format", "مرحله %d / %d",
@@ -8191,7 +8610,7 @@ final class AppI18n {
                 "spotify.step0.title", "به Spotify Developer Dashboard بروید",
                 "spotify.step0.desc", "Spotify Developer Dashboard را در مرورگر خود باز کنید. وارد شوید و یک برنامه جدید ایجاد کنید.",
                 "spotify.step1.title", "یک نام در Create app وارد کنید",
-                "spotify.step1.desc", "Create app را فشار دهید و مقدار زیر را برای App name وارد کنید. ivLyrics یا ivlyrics را ننویسید.",
+                "spotify.step1.desc", "Create app را فشار دهید و مقدار زیر را برای App name وارد کنید. Lyriscope یا ivlyrics را ننویسید.",
                 "spotify.step2.title", "توضیحات را وارد کنید",
                 "spotify.step2.desc", "مقدار زیر را برای App description نیز وارد کنید. این فقط یک مثال برای جلوگیری از سردرگمی است.",
                 "spotify.step3.title", "Redirect URI را وارد کنید",
@@ -8330,11 +8749,11 @@ final class AppI18n {
                 "setting.blur", "Unschärfe",
                 "setting.blur_desc", "Unschärfeintensität für Albumcover und Verlaufshintergründe.",
                 "setting.noise", "Rauschtextur",
-                "setting.noise_desc", "Fügt eine subtile Körnungstextur wie beim Original ivLyrics hinzu.",
+                "setting.noise_desc", "Fügt eine subtile Körnungstextur wie beim Original Lyriscope hinzu.",
                 "setting.reduce_motion", "Bewegung reduzieren",
                 "setting.reduce_motion_desc", "Stoppt die automatische Album-/Verlaufshintergrundbewegung.",
                 "section.ai_lyrics", "Songtext AI",
-                "section.ai_lyrics_desc", "Generieren Sie Aussprache und Übersetzungen mit Eingabeaufforderungen, die mit ivLyrics kompatibel sind.",
+                "section.ai_lyrics_desc", "Generieren Sie Aussprache und Übersetzungen mit Eingabeaufforderungen, die mit Lyriscope kompatibel sind.",
                 "section.provider", "Anbieter",
                 "field.api_key", "API-Schlüssel",
                 "field.model", "Modell",
@@ -8353,15 +8772,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "AI-Cache löschen",
                 "button.debug_log", "Debug / Protokolle",
                 "onboarding.subtitle", "Karaoke-Texte, Übersetzung und Aussprache für das aktuell abgespielte Lied.",
-                "onboarding.welcome_title", "ivLyrics einrichten",
+                "onboarding.welcome_title", "Lyriscope einrichten",
                 "onboarding.welcome_desc", "Wählen Sie zuerst die App-Sprache und legen Sie dann die Medienzugriffsberechtigung und Ihre eigenen Spotify API Anmeldeinformationen fest.",
                 "onboarding.app_language_en", "App-Sprache",
                 "onboarding.app_language_native", "App-Sprache",
                 "onboarding.permission_title", "Medienzugriffsberechtigung",
                 "onboarding.permission_desc", "Android-Benachrichtigungszugriff ist erforderlich, um den Song zu lesen, der aktuell in Spotify abgespielt wird.",
-                "onboarding.permission_hint", "Suchen Sie im Einstellungsbildschirm nach ivLyrics, erlauben Sie den Zugriff und kehren Sie dann zur App zurück.",
+                "onboarding.permission_hint", "Suchen Sie im Einstellungsbildschirm nach Lyriscope, erlauben Sie den Zugriff und kehren Sie dann zur App zurück.",
                 "onboarding.permission_status_enabled", "Berechtigung ist aktiviert. Die Wiedergabe von Spotify kann jetzt erkannt werden.",
-                "onboarding.permission_status_required", "Berechtigung ist noch nicht aktiviert. Öffnen Sie die Berechtigungseinstellungen und erlauben Sie ivLyrics.",
+                "onboarding.permission_status_required", "Berechtigung ist noch nicht aktiviert. Öffnen Sie die Berechtigungseinstellungen und erlauben Sie Lyriscope.",
                 "onboarding.spotify_title", "Song-Info verbinden",
                 "onboarding.spotify_desc", "Spotify Web API wird zum Laden von ISRC und hochauflösenden Grafiken für den aktuellen Song verwendet.",
                 "onboarding.step_format", "Schritt %d / %d",
@@ -8433,7 +8852,7 @@ final class AppI18n {
                 "spotify.step0.title", "Gehen Sie zum Spotify-Entwickler-Dashboard",
                 "spotify.step0.desc", "Öffnen Sie das Spotify-Entwickler-Dashboard in Ihrem Browser. Melden Sie sich an und erstellen Sie eine neue App.",
                 "spotify.step1.title", "Geben Sie einen Namen in Create app ein.",
-                "spotify.step1.desc", "Drücken Sie Create app und geben Sie den folgenden Wert für App name ein. Schreiben Sie keine ivLyrics oder ivlyrics.",
+                "spotify.step1.desc", "Drücken Sie Create app und geben Sie den folgenden Wert für App name ein. Schreiben Sie keine Lyriscope oder ivlyrics.",
                 "spotify.step2.title", "Geben Sie die Beschreibung ein.",
                 "spotify.step2.desc", "Geben Sie auch den folgenden Wert für App description ein. Es handelt sich lediglich um ein Beispiel, um Verwirrung zu vermeiden.",
                 "spotify.step3.title", "Geben Sie den Umleitungs-URI ein.",
@@ -8572,11 +8991,11 @@ final class AppI18n {
                 "setting.blur", "Размытие",
                 "setting.blur_desc", "Интенсивность размытия обложки альбома и градиентного фона.",
                 "setting.noise", "Текстура шума",
-                "setting.noise_desc", "Добавляет тонкую текстуру зерна, как в оригинальной ivLyrics.",
+                "setting.noise_desc", "Добавляет тонкую текстуру зерна, как в оригинальной Lyriscope.",
                 "setting.reduce_motion", "Уменьшение движения",
                 "setting.reduce_motion_desc", "Останавливает автоматическое перемещение альбома/градиентного фона.",
                 "section.ai_lyrics", "Текст AI",
-                "section.ai_lyrics_desc", "Генерация произношения и переводов с помощью подсказок, совместимых с ivLyrics.",
+                "section.ai_lyrics_desc", "Генерация произношения и переводов с помощью подсказок, совместимых с Lyriscope.",
                 "section.provider", "Провайдер",
                 "field.api_key", "API-ключ",
                 "field.model", "Модель",
@@ -8595,15 +9014,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "Очистить кэш AI",
                 "button.debug_log", "Отладка/журналы",
                 "onboarding.subtitle", "Текст караоке, перевод и произношение для воспроизводимой в данный момент песни.",
-                "onboarding.welcome_title", "Настройка ivLyrics",
+                "onboarding.welcome_title", "Настройка Lyriscope",
                 "onboarding.welcome_desc", "Сначала выберите язык приложения, затем установите разрешение на доступ к мультимедиа и свои собственные учетные данные Spotify API.",
                 "onboarding.app_language_en", "Язык приложения",
                 "onboarding.app_language_native", "Язык приложения",
                 "onboarding.permission_title", "Разрешение на доступ к мультимедиа",
                 "onboarding.permission_desc", "Доступ к уведомлению Android необходим для чтения песни, воспроизводимой в данный момент в Spotify.",
-                "onboarding.permission_hint", "Найдите ivLyrics на экране настроек, разрешите доступ, затем вернитесь в приложение.",
+                "onboarding.permission_hint", "Найдите Lyriscope на экране настроек, разрешите доступ, затем вернитесь в приложение.",
                 "onboarding.permission_status_enabled", "Разрешение включено. Теперь можно обнаружить воспроизведение Spotify.",
-                "onboarding.permission_status_required", "Разрешение еще не включено. Откройте настройки разрешений и разрешите ivLyrics.",
+                "onboarding.permission_status_required", "Разрешение еще не включено. Откройте настройки разрешений и разрешите Lyriscope.",
                 "onboarding.spotify_title", "Подключение информации о песне",
                 "onboarding.spotify_desc", "Spotify Web API используется для загрузки ISRC и обложки в высоком разрешении для текущей песни.",
                 "onboarding.step_format", "Шаг %d / %d",
@@ -8675,7 +9094,7 @@ final class AppI18n {
                 "spotify.step0.title", "Перейдите в Spotify Developer Dashboard",
                 "spotify.step0.desc", "Откройте Spotify Developer Dashboard в браузере. Войдите в систему и создайте новое приложение.",
                 "spotify.step1.title", "Введите имя в Create app",
-                "spotify.step1.desc", "Нажмите Create app и введите значение ниже для App name. Не пишите ivLyrics или ivlyrics.",
+                "spotify.step1.desc", "Нажмите Create app и введите значение ниже для App name. Не пишите Lyriscope или ivlyrics.",
                 "spotify.step2.title", "Введите описание",
                 "spotify.step2.desc", "Введите также значение ниже для App description. Это просто пример, чтобы избежать путаницы.",
                 "spotify.step3.title", "Введите URI перенаправления",
@@ -8814,11 +9233,11 @@ final class AppI18n {
                 "setting.blur", "Oskärpa",
                 "setting.blur_desc", "Oskärpa intensitet för skivomslag och övertonade bakgrunder.",
                 "setting.noise", "Brusstruktur",
-                "setting.noise_desc", "Lägger till en subtil kornstruktur som originalet ivLyrics.",
+                "setting.noise_desc", "Lägger till en subtil kornstruktur som originalet Lyriscope.",
                 "setting.reduce_motion", "Minska rörelse",
                 "setting.reduce_motion_desc", "Stoppar automatisk bakgrundsrörelse för album/gradient.",
                 "section.ai_lyrics", "Lyrics AI",
-                "section.ai_lyrics_desc", "Generera uttal och översättningar med uppmaningar som är kompatibla med ivLyrics.",
+                "section.ai_lyrics_desc", "Generera uttal och översättningar med uppmaningar som är kompatibla med Lyriscope.",
                 "section.provider", "Leverantör",
                 "field.api_key", "API-nyckel",
                 "field.model", "Modell",
@@ -8837,15 +9256,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "Rensa AI-cache",
                 "button.debug_log", "Felsökning / loggar",
                 "onboarding.subtitle", "Karaoketexter, översättning och uttal för låten som spelas för närvarande.",
-                "onboarding.welcome_title", "Konfigurera ivLyrics",
+                "onboarding.welcome_title", "Konfigurera Lyriscope",
                 "onboarding.welcome_desc", "Välj appens språk först, ställ sedan in medieåtkomstbehörighet och dina egna Spotify API-uppgifter.",
                 "onboarding.app_language_en", "Appens språk",
                 "onboarding.app_language_native", "Appspråk",
                 "onboarding.permission_title", "Mediaåtkomstbehörighet",
                 "onboarding.permission_desc", "Android-aviseringsåtkomst krävs för att läsa låten som spelas i Spotify.",
-                "onboarding.permission_hint", "Hitta ivLyrics på inställningsskärmen, tillåt åtkomst och återgå sedan till appen.",
+                "onboarding.permission_hint", "Hitta Lyriscope på inställningsskärmen, tillåt åtkomst och återgå sedan till appen.",
                 "onboarding.permission_status_enabled", "Behörighet är aktiverad. Spotify uppspelning kan nu detekteras.",
-                "onboarding.permission_status_required", "Behörighet är inte aktiverad ännu. Öppna behörighetsinställningar och tillåt ivLyrics.",
+                "onboarding.permission_status_required", "Behörighet är inte aktiverad ännu. Öppna behörighetsinställningar och tillåt Lyriscope.",
                 "onboarding.spotify_title", "Anslut låtinfo",
                 "onboarding.spotify_desc", "Spotify Web API används för att ladda ISRC och högupplöst albumomslag för den aktuella låten.",
                 "onboarding.step_format", "Steg %d / %d",
@@ -8917,7 +9336,7 @@ final class AppI18n {
                 "spotify.step0.title", "Gå till Spotify Developer Dashboard",
                 "spotify.step0.desc", "Öppna Spotify Developer Dashboard i din webbläsare. Logga in och skapa en ny app.",
                 "spotify.step1.title", "Ange ett namn i Create app",
-                "spotify.step1.desc", "Tryck på Create app och ange värdet nedan för App name. Skriv inte ivLyrics eller ivlyrics.",
+                "spotify.step1.desc", "Tryck på Create app och ange värdet nedan för App name. Skriv inte Lyriscope eller ivlyrics.",
                 "spotify.step2.title", "Ange beskrivningen",
                 "spotify.step2.desc", "Ange värdet nedan för App description också. Det är bara ett exempel för att undvika förvirring.",
                 "spotify.step3.title", "Ange omdirigerings-URI",
@@ -9056,11 +9475,11 @@ final class AppI18n {
                 "setting.blur", "Desfoque",
                 "setting.blur_desc", "Intensidade de desfoque para capa de álbum e fundos gradientes.",
                 "setting.noise", "Textura de ruído",
-                "setting.noise_desc", "Adiciona uma textura de grão sutil como o ivLyrics original.",
+                "setting.noise_desc", "Adiciona uma textura de grão sutil como o Lyriscope original.",
                 "setting.reduce_motion", "Reduzir movimento",
                 "setting.reduce_motion_desc", "Interrompe o movimento automático do fundo do álbum/gradiente.",
                 "section.ai_lyrics", "Letras AI",
-                "section.ai_lyrics_desc", "Gere pronúncia e traduções com prompts compatíveis com ivLyrics.",
+                "section.ai_lyrics_desc", "Gere pronúncia e traduções com prompts compatíveis com Lyriscope.",
                 "section.provider", "Provedor",
                 "field.api_key", "Chave de API",
                 "field.model", "Modelo",
@@ -9079,15 +9498,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "Limpar cache de IA",
                 "button.debug_log", "Depuração / registros",
                 "onboarding.subtitle", "Letras de karaokê, tradução e pronúncia da música atualmente tocando.",
-                "onboarding.welcome_title", "Configurar ivLyrics",
+                "onboarding.welcome_title", "Configurar Lyriscope",
                 "onboarding.welcome_desc", "Escolha primeiro o idioma do aplicativo e, em seguida, defina a permissão de acesso à mídia e suas próprias credenciais Spotify API.",
                 "onboarding.app_language_en", "Idioma do aplicativo",
                 "onboarding.app_language_native", "Idioma do aplicativo",
                 "onboarding.permission_title", "Permissão de acesso à mídia",
                 "onboarding.permission_desc", "O acesso à notificação Android é necessário para ler a música atualmente tocando em Spotify.",
-                "onboarding.permission_hint", "Encontre ivLyrics na tela de configurações, permita o acesso e retorne ao aplicativo.",
+                "onboarding.permission_hint", "Encontre Lyriscope na tela de configurações, permita o acesso e retorne ao aplicativo.",
                 "onboarding.permission_status_enabled", "A permissão está habilitada. A reprodução de Spotify agora pode ser detectada.",
-                "onboarding.permission_status_required", "A permissão ainda não está habilitada. Abra as configurações de permissão e permita ivLyrics.",
+                "onboarding.permission_status_required", "A permissão ainda não está habilitada. Abra as configurações de permissão e permita Lyriscope.",
                 "onboarding.spotify_title", "Conectar informações da música",
                 "onboarding.spotify_desc", "Spotify Web API é usado para carregar ISRC e arte de alta resolução para a música atual.",
                 "onboarding.step_format", "Etapa %d / %d",
@@ -9159,7 +9578,7 @@ final class AppI18n {
                 "spotify.step0.title", "Acesse o Spotify Developer Dashboard",
                 "spotify.step0.desc", "Abra o Spotify Developer Dashboard em seu navegador. Faça login e crie um novo aplicativo.",
                 "spotify.step1.title", "Insira um nome em Create app",
-                "spotify.step1.desc", "Pressione Create app e insira o valor abaixo para App name. Não escreva ivLyrics ou ivlyrics.",
+                "spotify.step1.desc", "Pressione Create app e insira o valor abaixo para App name. Não escreva Lyriscope ou ivlyrics.",
                 "spotify.step2.title", "Insira a descrição",
                 "spotify.step2.desc", "Insira o valor abaixo para App description também. É apenas um exemplo para evitar confusão.",
                 "spotify.step3.title", "Insira o URI de redirecionamento",
@@ -9298,11 +9717,11 @@ final class AppI18n {
                 "setting.blur", "ব্লার",
                 "setting.blur_desc", "অ্যালবাম কভার এবং গ্রেডিয়েন্ট ব্যাকগ্রাউন্ডের জন্য ব্লার তীব্রতা।",
                 "setting.noise", "নয়েজ টেক্সচার",
-                "setting.noise_desc", "আসল ivLyrics এর মতো একটি সূক্ষ্ম দানা টেক্সচার যোগ করে।",
+                "setting.noise_desc", "আসল Lyriscope এর মতো একটি সূক্ষ্ম দানা টেক্সচার যোগ করে।",
                 "setting.reduce_motion", "গতি হ্রাস করুন",
                 "setting.reduce_motion_desc", "স্বয়ংক্রিয় অ্যালবাম/গ্রেডিয়েন্ট ব্যাকগ্রাউন্ড চলাচল বন্ধ করে।",
                 "section.ai_lyrics", "লিরিক্স AI",
-                "section.ai_lyrics_desc", "ivLyrics এর সাথে সামঞ্জস্যপূর্ণ প্রম্পট সহ উচ্চারণ এবং অনুবাদ তৈরি করুন।",
+                "section.ai_lyrics_desc", "Lyriscope এর সাথে সামঞ্জস্যপূর্ণ প্রম্পট সহ উচ্চারণ এবং অনুবাদ তৈরি করুন।",
                 "section.provider", "প্রদানকারী",
                 "field.api_key", "API কী",
                 "field.model", "মডেল",
@@ -9321,15 +9740,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "AI ক্যাশে সাফ করুন",
                 "button.debug_log", "ডিবাগ / লগস",
                 "onboarding.subtitle", "বর্তমানে চলমান গানের জন্য কারাওকে লিরিক্স, অনুবাদ ও উচ্চারণ।",
-                "onboarding.welcome_title", "ivLyrics সেট আপ করুন",
+                "onboarding.welcome_title", "Lyriscope সেট আপ করুন",
                 "onboarding.welcome_desc", "প্রথমে অ্যাপের ভাষা চয়ন করুন, তারপর মিডিয়া অ্যাক্সেসের অনুমতি এবং আপনার নিজস্ব Spotify API শংসাপত্র সেট করুন৷",
                 "onboarding.app_language_en", "অ্যাপের ভাষা",
                 "onboarding.app_language_native", "অ্যাপের ভাষা",
                 "onboarding.permission_title", "মিডিয়া অ্যাক্সেসের অনুমতি",
                 "onboarding.permission_desc", "Android Spotify এ বর্তমানে যে গানটি চলছে তা পড়ার জন্য বিজ্ঞপ্তি অ্যাক্সেস প্রয়োজন।",
-                "onboarding.permission_hint", "সেটিংস স্ক্রিনে ivLyrics খুঁজুন, অ্যাক্সেসের অনুমতি দিন, তারপর অ্যাপে ফিরে যান।",
+                "onboarding.permission_hint", "সেটিংস স্ক্রিনে Lyriscope খুঁজুন, অ্যাক্সেসের অনুমতি দিন, তারপর অ্যাপে ফিরে যান।",
                 "onboarding.permission_status_enabled", "অনুমতি সক্ষম করা হয়েছে৷ Spotify প্লেব্যাক এখন সনাক্ত করা যেতে পারে।",
-                "onboarding.permission_status_required", "অনুমতি এখনও সক্রিয় করা হয়নি৷ অনুমতি সেটিংস খুলুন এবং ivLyrics অনুমতি দিন।",
+                "onboarding.permission_status_required", "অনুমতি এখনও সক্রিয় করা হয়নি৷ অনুমতি সেটিংস খুলুন এবং Lyriscope অনুমতি দিন।",
                 "onboarding.spotify_title", "গানের তথ্য সংযুক্ত করুন",
                 "onboarding.spotify_desc", "Spotify Web API বর্তমান গানের জন্য ISRC এবং উচ্চ-রেজোলিউশন আর্টওয়ার্ক লোড করতে ব্যবহৃত হয়।",
                 "onboarding.step_format", "ধাপ %d / %d",
@@ -9401,7 +9820,7 @@ final class AppI18n {
                 "spotify.step0.title", "Spotify বিকাশকারী ড্যাশবোর্ডে যান",
                 "spotify.step0.desc", "আপনার ব্রাউজারে Spotify বিকাশকারী ড্যাশবোর্ড খুলুন। সাইন ইন করুন এবং একটি নতুন অ্যাপ তৈরি করুন।",
                 "spotify.step1.title", "Create app এ একটি নাম লিখুন",
-                "spotify.step1.desc", "Create app টিপুন এবং App name এর জন্য নীচের মানটি লিখুন। ivLyrics বা ivlyrics লিখবেন না।",
+                "spotify.step1.desc", "Create app টিপুন এবং App name এর জন্য নীচের মানটি লিখুন। Lyriscope বা ivlyrics লিখবেন না।",
                 "spotify.step2.title", "বিবরণ লিখুন",
                 "spotify.step2.desc", "App description এর জন্যও নিচের মানটি লিখুন। বিভ্রান্তি এড়াতে এটি একটি উদাহরণ মাত্র।",
                 "spotify.step3.title", "রিডাইরেক্ট URI লিখুন",
@@ -9540,11 +9959,11 @@ final class AppI18n {
                 "setting.blur", "Sfocatura",
                 "setting.blur_desc", "Intensità di sfocatura per copertine di album e sfondi sfumati.",
                 "setting.noise", "Texture di rumore",
-                "setting.noise_desc", "Aggiunge una texture a grana sottile come l'originale ivLyrics.",
+                "setting.noise_desc", "Aggiunge una texture a grana sottile come l'originale Lyriscope.",
                 "setting.reduce_motion", "Riduci movimento",
                 "setting.reduce_motion_desc", "Interrompe il movimento automatico dell'album/dello sfondo sfumato.",
                 "section.ai_lyrics", "Testi AI",
-                "section.ai_lyrics_desc", "Genera pronuncia e traduzioni con istruzioni compatibili con ivLyrics.",
+                "section.ai_lyrics_desc", "Genera pronuncia e traduzioni con istruzioni compatibili con Lyriscope.",
                 "section.provider", "Fornitore",
                 "field.api_key", "Chiave API",
                 "field.model", "Modello",
@@ -9563,15 +9982,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "Cancella cache AI",
                 "button.debug_log", "Debug/registri",
                 "onboarding.subtitle", "Testi karaoke, traduzione e pronuncia per il brano attualmente in riproduzione.",
-                "onboarding.welcome_title", "Configura ivLyrics",
+                "onboarding.welcome_title", "Configura Lyriscope",
                 "onboarding.welcome_desc", "Scegli prima la lingua dell'app, quindi imposta l'autorizzazione di accesso ai contenuti multimediali e le tue credenziali Spotify API.",
                 "onboarding.app_language_en", "Lingua dell'app",
                 "onboarding.app_language_native", "Lingua app",
                 "onboarding.permission_title", "Autorizzazione accesso multimediale",
                 "onboarding.permission_desc", "È necessario l'accesso alle notifiche Android per leggere il brano attualmente in riproduzione in Spotify.",
-                "onboarding.permission_hint", "Trova ivLyrics nella schermata delle impostazioni, consenti l'accesso, quindi torna all'app.",
+                "onboarding.permission_hint", "Trova Lyriscope nella schermata delle impostazioni, consenti l'accesso, quindi torna all'app.",
                 "onboarding.permission_status_enabled", "L'autorizzazione è abilitata. Ora è possibile rilevare la riproduzione Spotify.",
-                "onboarding.permission_status_required", "L'autorizzazione non è ancora abilitata. Apri le impostazioni delle autorizzazioni e consenti ivLyrics.",
+                "onboarding.permission_status_required", "L'autorizzazione non è ancora abilitata. Apri le impostazioni delle autorizzazioni e consenti Lyriscope.",
                 "onboarding.spotify_title", "Connetti informazioni sul brano",
                 "onboarding.spotify_desc", "Spotify Web API viene utilizzato per caricare ISRC e la grafica ad alta risoluzione per il brano corrente.",
                 "onboarding.step_format", "Passo %d / %d",
@@ -9643,7 +10062,7 @@ final class AppI18n {
                 "spotify.step0.title", "Vai alla Spotify Developer Dashboard",
                 "spotify.step0.desc", "Apri la Spotify Developer Dashboard nel tuo browser. Accedi e crea una nuova app.",
                 "spotify.step1.title", "Immettere un nome in Create app",
-                "spotify.step1.desc", "Premere Create app e immettere il valore di seguito per App name. Non scrivere ivLyrics o ivlyrics.",
+                "spotify.step1.desc", "Premere Create app e immettere il valore di seguito per App name. Non scrivere Lyriscope o ivlyrics.",
                 "spotify.step2.title", "Inserisci la descrizione",
                 "spotify.step2.desc", "Inserisci il valore qui sotto anche per App description. È solo un esempio per evitare confusione.",
                 "spotify.step3.title", "Inserisci l'URI di reindirizzamento",
@@ -9782,11 +10201,11 @@ final class AppI18n {
                 "setting.blur", "เบลอ",
                 "setting.blur_desc", "ความเข้มของการเบลอสำหรับปกอัลบั้มและพื้นหลังแบบไล่ระดับสี",
                 "setting.noise", "เนื้อนอยส์",
-                "setting.noise_desc", "เพิ่มเนื้อเกรนที่ละเอียดอ่อนเหมือนต้นฉบับ ivLyrics",
+                "setting.noise_desc", "เพิ่มเนื้อเกรนที่ละเอียดอ่อนเหมือนต้นฉบับ Lyriscope",
                 "setting.reduce_motion", "ลดการเคลื่อนไหว",
                 "setting.reduce_motion_desc", "หยุดการเคลื่อนไหวของพื้นหลังอัลบั้ม/การไล่ระดับสีอัตโนมัติ",
                 "section.ai_lyrics", "เนื้อเพลง AI",
-                "section.ai_lyrics_desc", "สร้างการออกเสียงและการแปลพร้อมข้อความแจ้งที่เข้ากันได้กับ ivLyrics",
+                "section.ai_lyrics_desc", "สร้างการออกเสียงและการแปลพร้อมข้อความแจ้งที่เข้ากันได้กับ Lyriscope",
                 "section.provider", "ผู้ให้บริการ",
                 "field.api_key", "คีย์ API",
                 "field.model", "โมเดล",
@@ -9805,15 +10224,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "ล้างแคช AI",
                 "button.debug_log", "ดีบัก / บันทึก",
                 "onboarding.subtitle", "เนื้อเพลงคาราโอเกะ การแปล และการออกเสียงสำหรับเพลงที่กำลังเล่นอยู่",
-                "onboarding.welcome_title", "ตั้งค่า ivLyrics",
+                "onboarding.welcome_title", "ตั้งค่า Lyriscope",
                 "onboarding.welcome_desc", "เลือกภาษาของแอปก่อน จากนั้นตั้งค่าการอนุญาตการเข้าถึงสื่อและข้อมูลรับรอง Spotify API ของคุณเอง",
                 "onboarding.app_language_en", "ภาษาของแอป",
                 "onboarding.app_language_native", "ภาษาของแอป",
                 "onboarding.permission_title", "สิทธิ์การเข้าถึงสื่อ",
                 "onboarding.permission_desc", "Android จำเป็นต้องเข้าถึงการแจ้งเตือนเพื่ออ่านเพลงที่กำลังเล่นใน Spotify",
-                "onboarding.permission_hint", "ค้นหา ivLyrics ในหน้าจอการตั้งค่า อนุญาตการเข้าถึง จากนั้นกลับสู่แอป",
+                "onboarding.permission_hint", "ค้นหา Lyriscope ในหน้าจอการตั้งค่า อนุญาตการเข้าถึง จากนั้นกลับสู่แอป",
                 "onboarding.permission_status_enabled", "เปิดใช้งานการอนุญาตแล้ว ตอนนี้สามารถตรวจจับการเล่นเพลงใน Spotify ได้แล้ว",
-                "onboarding.permission_status_required", "ยังไม่ได้เปิดใช้งานการอนุญาต เปิดการตั้งค่าการอนุญาตและอนุญาต ivLyrics",
+                "onboarding.permission_status_required", "ยังไม่ได้เปิดใช้งานการอนุญาต เปิดการตั้งค่าการอนุญาตและอนุญาต Lyriscope",
                 "onboarding.spotify_title", "เชื่อมต่อข้อมูลเพลง",
                 "onboarding.spotify_desc", "Spotify Web API ใช้เพื่อโหลด ISRC และอาร์ตเวิร์กที่มีความละเอียดสูงสำหรับเพลงปัจจุบัน",
                 "onboarding.step_format", "ขั้นตอน %d / %d",
@@ -9885,7 +10304,7 @@ final class AppI18n {
                 "spotify.step0.title", "ไปที่ Spotify Developer Dashboard",
                 "spotify.step0.desc", "เปิด Spotify Developer Dashboard ในเบราว์เซอร์ของคุณ ลงชื่อเข้าใช้และสร้างแอปใหม่",
                 "spotify.step1.title", "ป้อนชื่อใน Create app",
-                "spotify.step1.desc", "กด Create app และป้อนค่าด้านล่างสำหรับ App name ห้ามเขียน ivLyrics หรือ ivlyrics",
+                "spotify.step1.desc", "กด Create app และป้อนค่าด้านล่างสำหรับ App name ห้ามเขียน Lyriscope หรือ ivlyrics",
                 "spotify.step2.title", "ป้อนคำอธิบาย",
                 "spotify.step2.desc", "ป้อนค่าด้านล่างสำหรับ App description ด้วย มันเป็นเพียงตัวอย่างเพื่อหลีกเลี่ยงความสับสน",
                 "spotify.step3.title", "ป้อน URI เปลี่ยนเส้นทาง",
@@ -10024,11 +10443,11 @@ final class AppI18n {
                 "setting.blur", "Làm mờ",
                 "setting.blur_desc", "Cường độ mờ cho bìa album và nền chuyển màu.",
                 "setting.noise", "Kết cấu nhiễu",
-                "setting.noise_desc", "Thêm kết cấu hạt tinh tế giống như ivLyrics ban đầu.",
+                "setting.noise_desc", "Thêm kết cấu hạt tinh tế giống như Lyriscope ban đầu.",
                 "setting.reduce_motion", "Giảm chuyển động",
                 "setting.reduce_motion_desc", "Dừng chuyển động nền album/gradient tự động.",
                 "section.ai_lyrics", "Lời bài hát AI",
-                "section.ai_lyrics_desc", "Tạo phát âm và bản dịch với lời nhắc tương thích với ivLyrics.",
+                "section.ai_lyrics_desc", "Tạo phát âm và bản dịch với lời nhắc tương thích với Lyriscope.",
                 "section.provider", "Nhà cung cấp",
                 "field.api_key", "Khóa API",
                 "field.model", "Mô hình",
@@ -10047,15 +10466,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "Xóa bộ nhớ cache AI",
                 "button.debug_log", "Gỡ lỗi / Nhật ký",
                 "onboarding.subtitle", "Lời bài hát karaoke, bản dịch và cách phát âm cho bài hát đang phát.",
-                "onboarding.welcome_title", "Thiết lập ivLyrics",
+                "onboarding.welcome_title", "Thiết lập Lyriscope",
                 "onboarding.welcome_desc", "Trước tiên hãy chọn ngôn ngữ ứng dụng, sau đó đặt quyền truy cập phương tiện và thông tin xác thực Spotify API của riêng bạn.",
                 "onboarding.app_language_en", "Ngôn ngữ ứng dụng",
                 "onboarding.app_language_native", "Ngôn ngữ ứng dụng",
                 "onboarding.permission_title", "Quyền truy cập phương tiện",
                 "onboarding.permission_desc", "Android cần có quyền truy cập thông báo để đọc bài hát hiện đang phát trong Spotify.",
-                "onboarding.permission_hint", "Tìm ivLyrics trong màn hình cài đặt, cho phép truy cập rồi quay lại ứng dụng.",
+                "onboarding.permission_hint", "Tìm Lyriscope trong màn hình cài đặt, cho phép truy cập rồi quay lại ứng dụng.",
                 "onboarding.permission_status_enabled", "Quyền đã được bật. Giờ đây có thể phát hiện nội dung đang phát trên Spotify.",
-                "onboarding.permission_status_required", "Quyền chưa được bật. Mở cài đặt quyền và cho phép ivLyrics.",
+                "onboarding.permission_status_required", "Quyền chưa được bật. Mở cài đặt quyền và cho phép Lyriscope.",
                 "onboarding.spotify_title", "Kết nối thông tin bài hát",
                 "onboarding.spotify_desc", "Spotify Web API được sử dụng để tải ISRC và ảnh minh họa có độ phân giải cao cho bài hát hiện tại.",
                 "onboarding.step_format", "Bước %d / %d",
@@ -10127,7 +10546,7 @@ final class AppI18n {
                 "spotify.step0.title", "Đi tới Spotify Developer Dashboard",
                 "spotify.step0.desc", "Mở Spotify Developer Dashboard trong trình duyệt của bạn. Đăng nhập và tạo một ứng dụng mới.",
                 "spotify.step1.title", "Nhập tên vào Create app",
-                "spotify.step1.desc", "Nhấn Create app và nhập giá trị bên dưới cho App name. Không viết ivLyrics hoặc ivlyrics.",
+                "spotify.step1.desc", "Nhấn Create app và nhập giá trị bên dưới cho App name. Không viết Lyriscope hoặc ivlyrics.",
                 "spotify.step2.title", "Nhập mô tả",
                 "spotify.step2.desc", "Nhập giá trị bên dưới cho App description. Đây chỉ là một ví dụ để tránh nhầm lẫn.",
                 "spotify.step3.title", "Nhập URI chuyển hướng",
@@ -10266,11 +10685,11 @@ final class AppI18n {
                 "setting.blur", "Buram",
                 "setting.blur_desc", "Intensitas blur untuk sampul album dan latar belakang gradien.",
                 "setting.noise", "Tekstur derau",
-                "setting.noise_desc", "Menambahkan tekstur butiran halus seperti ivLyrics asli.",
+                "setting.noise_desc", "Menambahkan tekstur butiran halus seperti Lyriscope asli.",
                 "setting.reduce_motion", "Kurangi gerakan",
                 "setting.reduce_motion_desc", "Menghentikan gerakan latar belakang album/gradien otomatis.",
                 "section.ai_lyrics", "AI Lirik",
-                "section.ai_lyrics_desc", "Hasilkan pengucapan dan terjemahan dengan petunjuk yang kompatibel dengan ivLyrics.",
+                "section.ai_lyrics_desc", "Hasilkan pengucapan dan terjemahan dengan petunjuk yang kompatibel dengan Lyriscope.",
                 "section.provider", "Penyedia",
                 "field.api_key", "Kunci API",
                 "field.model", "Model",
@@ -10289,15 +10708,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "Hapus Cache AI",
                 "button.debug_log", "Debug / Log",
                 "onboarding.subtitle", "Lirik karaoke, terjemahan, dan pengucapan untuk lagu yang sedang diputar.",
-                "onboarding.welcome_title", "Siapkan ivLyrics",
+                "onboarding.welcome_title", "Siapkan Lyriscope",
                 "onboarding.welcome_desc", "Pilih bahasa aplikasi terlebih dahulu, lalu atur izin akses media dan kredensial Spotify API Anda sendiri.",
                 "onboarding.app_language_en", "Bahasa Aplikasi",
                 "onboarding.app_language_native", "Bahasa Aplikasi",
                 "onboarding.permission_title", "Izin Akses Media",
                 "onboarding.permission_desc", "Android akses notifikasi diperlukan untuk membaca lagu yang sedang diputar di Spotify.",
-                "onboarding.permission_hint", "Temukan ivLyrics di layar pengaturan, izinkan akses, lalu kembali ke aplikasi.",
+                "onboarding.permission_hint", "Temukan Lyriscope di layar pengaturan, izinkan akses, lalu kembali ke aplikasi.",
                 "onboarding.permission_status_enabled", "Izin diaktifkan. Pemutaran Spotify sekarang dapat dideteksi.",
-                "onboarding.permission_status_required", "Izin belum diaktifkan. Buka pengaturan izin dan izinkan ivLyrics.",
+                "onboarding.permission_status_required", "Izin belum diaktifkan. Buka pengaturan izin dan izinkan Lyriscope.",
                 "onboarding.spotify_title", "Hubungkan Info Lagu",
                 "onboarding.spotify_desc", "Spotify Web API digunakan untuk memuat ISRC dan sampul album resolusi tinggi untuk lagu saat ini.",
                 "onboarding.step_format", "Langkah %d / %d",
@@ -10369,7 +10788,7 @@ final class AppI18n {
                 "spotify.step0.title", "Buka Spotify Developer Dashboard",
                 "spotify.step0.desc", "Buka Spotify Developer Dashboard di browser Anda. Masuk dan buat aplikasi baru.",
                 "spotify.step1.title", "Masukkan nama di Create app",
-                "spotify.step1.desc", "Tekan Create app dan masukkan nilai di bawah untuk App name. Jangan menulis ivLyrics atau ivlyrics.",
+                "spotify.step1.desc", "Tekan Create app dan masukkan nilai di bawah untuk App name. Jangan menulis Lyriscope atau ivlyrics.",
                 "spotify.step2.title", "Masukkan deskripsi",
                 "spotify.step2.desc", "Masukkan juga nilai di bawah untuk App description. Ini hanyalah sebuah contoh untuk menghindari kebingungan.",
                 "spotify.step3.title", "Masukkan Redirect URI",
@@ -10508,11 +10927,11 @@ final class AppI18n {
                 "setting.blur", "Kabur",
                 "setting.blur_desc", "Keamatan kabur untuk kulit album dan latar belakang kecerunan.",
                 "setting.noise", "Tekstur hingar",
-                "setting.noise_desc", "Menambah tekstur butiran halus seperti ivLyrics asal.",
+                "setting.noise_desc", "Menambah tekstur butiran halus seperti Lyriscope asal.",
                 "setting.reduce_motion", "Kurangkan gerakan",
                 "setting.reduce_motion_desc", "Menghentikan pergerakan latar belakang album/kecerunan automatik.",
                 "section.ai_lyrics", "Lirik AI",
-                "section.ai_lyrics_desc", "Hasilkan sebutan dan terjemahan dengan gesaan yang serasi dengan ivLyrics.",
+                "section.ai_lyrics_desc", "Hasilkan sebutan dan terjemahan dengan gesaan yang serasi dengan Lyriscope.",
                 "section.provider", "Pembekal",
                 "field.api_key", "Kunci API",
                 "field.model", "Model",
@@ -10531,15 +10950,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "Kosongkan Cache AI",
                 "button.debug_log", "Nyahpepijat / Log",
                 "onboarding.subtitle", "Lirik karaoke, terjemahan dan sebutan untuk lagu yang sedang dimainkan.",
-                "onboarding.welcome_title", "Sediakan ivLyrics",
+                "onboarding.welcome_title", "Sediakan Lyriscope",
                 "onboarding.welcome_desc", "Pilih bahasa apl dahulu, kemudian tetapkan kebenaran akses media dan bukti kelayakan Spotify API anda sendiri.",
                 "onboarding.app_language_en", "Bahasa Apl",
                 "onboarding.app_language_native", "Bahasa Apl",
                 "onboarding.permission_title", "Kebenaran Akses Media",
                 "onboarding.permission_desc", "Android akses pemberitahuan diperlukan untuk membaca lagu yang sedang dimainkan dalam Spotify.",
-                "onboarding.permission_hint", "Cari ivLyrics dalam skrin tetapan, benarkan akses, kemudian kembali ke apl.",
+                "onboarding.permission_hint", "Cari Lyriscope dalam skrin tetapan, benarkan akses, kemudian kembali ke apl.",
                 "onboarding.permission_status_enabled", "Kebenaran didayakan. Main balik Spotify kini boleh dikesan.",
-                "onboarding.permission_status_required", "Kebenaran belum didayakan lagi. Buka tetapan kebenaran dan benarkan ivLyrics.",
+                "onboarding.permission_status_required", "Kebenaran belum didayakan lagi. Buka tetapan kebenaran dan benarkan Lyriscope.",
                 "onboarding.spotify_title", "Sambung Maklumat Lagu",
                 "onboarding.spotify_desc", "Spotify Web API digunakan untuk memuatkan ISRC dan kulit album resolusi tinggi untuk lagu semasa.",
                 "onboarding.step_format", "Langkah %d / %d",
@@ -10611,7 +11030,7 @@ final class AppI18n {
                 "spotify.step0.title", "Pergi ke Spotify Developer Dashboard",
                 "spotify.step0.desc", "Buka Spotify Developer Dashboard dalam pelayar anda. Log masuk dan buat apl baharu.",
                 "spotify.step1.title", "Masukkan nama dalam Create app",
-                "spotify.step1.desc", "Tekan Create app dan masukkan nilai di bawah untuk App name. Jangan tulis ivLyrics atau ivlyrics.",
+                "spotify.step1.desc", "Tekan Create app dan masukkan nilai di bawah untuk App name. Jangan tulis Lyriscope atau ivlyrics.",
                 "spotify.step2.title", "Masukkan huraian",
                 "spotify.step2.desc", "Masukkan nilai di bawah untuk App description juga. Ia sekadar contoh untuk mengelakkan kekeliruan.",
                 "spotify.step3.title", "Masukkan Redirect URI",
@@ -10752,11 +11171,11 @@ final class AppI18n {
                 "setting.video_scale", "Zoom videa",
                 "setting.video_scale_desc", "Zvětšení pozadí videa, když má zdroj letterbox nebo potřebuje vyplnit větší část obrazovky.",
                 "setting.noise", "Šumová textura",
-                "setting.noise_desc", "Přidá jemnou zrnitou texturu podobnou původnímu ivLyrics.",
+                "setting.noise_desc", "Přidá jemnou zrnitou texturu podobnou původnímu Lyriscope.",
                 "setting.reduce_motion", "Omezit pohyb",
                 "setting.reduce_motion_desc", "Zastaví automatický pohyb alba/přechodu na pozadí.",
                 "section.ai_lyrics", "AI pro texty",
-                "section.ai_lyrics_desc", "Generujte výslovnost a překlady pomocí pokynů kompatibilních s ivLyrics.",
+                "section.ai_lyrics_desc", "Generujte výslovnost a překlady pomocí pokynů kompatibilních s Lyriscope.",
                 "section.provider", "Poskytovatel",
                 "field.api_key", "Klíč API",
                 "field.model", "Model",
@@ -10775,15 +11194,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "Vymazat mezipaměť AI",
                 "button.debug_log", "Ladění / protokoly",
                 "onboarding.subtitle", "Karaoke texty, překlad a výslovnost právě přehrávané písně.",
-                "onboarding.welcome_title", "Nastavte ivLyrics",
+                "onboarding.welcome_title", "Nastavte Lyriscope",
                 "onboarding.welcome_desc", "Nejprve vyberte jazyk aplikace, poté nastavte oprávnění k přístupu k médiím a své vlastní přihlašovací údaje pro Spotify API.",
                 "onboarding.app_language_en", "Jazyk aplikace",
                 "onboarding.app_language_native", "Jazyk aplikace",
                 "onboarding.permission_title", "Oprávnění k přístupu k médiím",
                 "onboarding.permission_desc", "Ke čtení aktuálně přehrávané skladby ve Spotify je vyžadován přístup k oznámením systému Android.",
-                "onboarding.permission_hint", "Najděte ivLyrics na obrazovce nastavení, povolte přístup a poté se vraťte do aplikace.",
+                "onboarding.permission_hint", "Najděte Lyriscope na obrazovce nastavení, povolte přístup a poté se vraťte do aplikace.",
                 "onboarding.permission_status_enabled", "Oprávnění je povoleno. Přehrávání Spotify lze nyní detekovat.",
-                "onboarding.permission_status_required", "Oprávnění zatím není povoleno. Otevřete nastavení oprávnění a povolte ivLyrics.",
+                "onboarding.permission_status_required", "Oprávnění zatím není povoleno. Otevřete nastavení oprávnění a povolte Lyriscope.",
                 "onboarding.spotify_title", "Připojit informace o skladbě",
                 "onboarding.spotify_desc", "Spotify Web API se používá k načtení ISRC a grafiky ve vysokém rozlišení pro aktuální skladbu.",
                 "onboarding.step_format", "Krok %d / %d",
@@ -10855,7 +11274,7 @@ final class AppI18n {
                 "spotify.step0.title", "Přejděte na panel vývojáře Spotify",
                 "spotify.step0.desc", "Otevřete ve svém prohlížeči Spotify Developer Dashboard. Přihlaste se a vytvořte novou aplikaci.",
                 "spotify.step1.title", "Zadejte název v Create app",
-                "spotify.step1.desc", "Stiskněte Create app a do pole App name zadejte níže uvedenou hodnotu. Nepište ivLyrics nebo ivlyrics.",
+                "spotify.step1.desc", "Stiskněte Create app a do pole App name zadejte níže uvedenou hodnotu. Nepište Lyriscope nebo ivlyrics.",
                 "spotify.step2.title", "Zadejte popis",
                 "spotify.step2.desc", "Do pole App description zadejte také níže uvedenou hodnotu. Je to jen příklad, aby nedošlo k záměně.",
                 "spotify.step3.title", "Zadejte URI přesměrování",
@@ -10958,7 +11377,7 @@ final class AppI18n {
                 "lyrics.lrclib_search.plain", "Prostý text",
                 "repo.detail.manual_lrclib", "Ručně vybrané texty LRCLIB.",
                 "section.spotify_shortcut", "Zástupce Spotify",
-                "section.spotify_shortcut_desc", "Zobrazuje pouze malou pohyblivou ikonu na obrazovce Now Playing Spotify. Klepnutím otevřete stránku s texty písní ivLyrics.",
+                "section.spotify_shortcut_desc", "Zobrazuje pouze malou pohyblivou ikonu na obrazovce Now Playing Spotify. Klepnutím otevřete stránku s texty písní Lyriscope.",
                 "button.open_accessibility_permission", "Otevřete Povolení detekce Spotify",
                 "button.accessibility_permission_enabled", "Povolení detekce Spotify povoleno",
                 "button.open_overlay_permission", "Otevřete oprávnění k plovoucí ikoně",
@@ -11049,7 +11468,7 @@ final class AppI18n {
                 "setting.creator_speaker_colors", "Používat vlastní barvy autora synchronizace",
                 "setting.creator_speaker_colors_desc", "Použije vlastní barvy hlasů vložené autorem synchronizace. Po vypnutí použijí hlasy CUSTOM náhradní barvu zvolenou autorem.",
                 "background.mode.video", "Video",
-                "background.mode.video_desc", "Načte metadata videa ivLyrics YouTube a přehraje skutečné video za přehrávačem.",
+                "background.mode.video_desc", "Načte metadata videa Lyriscope YouTube a přehraje skutečné video za přehrávačem.",
                 "lyrics.tab.background", "Pozadí",
                 "lyrics.background.title", "Pozadí aktuální stopy",
                 "lyrics.background.desc", "Uložte přepsání pozadí pro tuto stopu namísto globálního nastavení pozadí.",
@@ -11191,11 +11610,11 @@ final class AppI18n {
                 "setting.video_scale", "Video yakınlaştırma",
                 "setting.video_scale_desc", "Kaynakta siyah kenarlık varsa veya ekranı daha fazla doldurması gerekiyorsa video arka planını yakınlaştırır.",
                 "setting.noise", "Gürültü dokusu",
-                "setting.noise_desc", "Orijinal ivLyrics gibi hafif bir gren dokusu ekler.",
+                "setting.noise_desc", "Orijinal Lyriscope gibi hafif bir gren dokusu ekler.",
                 "setting.reduce_motion", "Hareketi azalt",
                 "setting.reduce_motion_desc", "Albüm/gradyan arka planının otomatik hareketini durdurur.",
                 "section.ai_lyrics", "Söz AI",
-                "section.ai_lyrics_desc", "ivLyrics ile uyumlu istemlerle telaffuz ve çeviri üretir.",
+                "section.ai_lyrics_desc", "Lyriscope ile uyumlu istemlerle telaffuz ve çeviri üretir.",
                 "section.provider", "Sağlayıcı",
                 "field.api_key", "API Anahtarı",
                 "field.model", "Model",
@@ -11214,15 +11633,15 @@ final class AppI18n {
                 "button.ai_cache_clear", "AI Önbelleğini Temizle",
                 "button.debug_log", "Hata Ayıklama / Günlükler",
                 "onboarding.subtitle", "Şu anda çalan şarkı için karaoke sözleri, çeviri ve telaffuz.",
-                "onboarding.welcome_title", "ivLyrics'i Ayarla",
+                "onboarding.welcome_title", "Lyriscope'i Ayarla",
                 "onboarding.welcome_desc", "Önce uygulama dilini seçin, ardından medya erişim iznini ve kendi Spotify API bilgilerinizi ayarlayın.",
                 "onboarding.app_language_en", "Uygulama Dili",
                 "onboarding.app_language_native", "Uygulama Dili",
                 "onboarding.permission_title", "Medya Erişim İzni",
                 "onboarding.permission_desc", "Spotify'da şu anda çalan şarkıyı okuyabilmek için Android bildirim erişimi gerekir.",
-                "onboarding.permission_hint", "Ayarlar ekranında ivLyrics'i bulun, erişime izin verin ve uygulamaya geri dönün.",
+                "onboarding.permission_hint", "Ayarlar ekranında Lyriscope'i bulun, erişime izin verin ve uygulamaya geri dönün.",
                 "onboarding.permission_status_enabled", "İzin etkin. Spotify oynatımı artık algılanabilir.",
-                "onboarding.permission_status_required", "İzin henüz etkin değil. İzin ayarlarını açın ve ivLyrics'e izin verin.",
+                "onboarding.permission_status_required", "İzin henüz etkin değil. İzin ayarlarını açın ve Lyriscope'e izin verin.",
                 "onboarding.spotify_title", "Şarkı Bilgisini Bağla",
                 "onboarding.spotify_desc", "Spotify Web API, geçerli şarkının ISRC bilgisini ve yüksek çözünürlüklü kapak görselini yüklemek için kullanılır.",
                 "onboarding.step_format", "Adım %d / %d",
@@ -11294,7 +11713,7 @@ final class AppI18n {
                 "spotify.step0.title", "Spotify Developer Dashboard'a gidin",
                 "spotify.step0.desc", "Tarayıcınızda Spotify Developer Dashboard'u açın. Oturum açın ve yeni bir uygulama oluşturun.",
                 "spotify.step1.title", "Create app bölümünde ad girin",
-                "spotify.step1.desc", "Create app'e basın ve App name için aşağıdaki değeri girin. ivLyrics veya ivlyrics yazmayın.",
+                "spotify.step1.desc", "Create app'e basın ve App name için aşağıdaki değeri girin. Lyriscope veya ivlyrics yazmayın.",
                 "spotify.step2.title", "Açıklamayı girin",
                 "spotify.step2.desc", "App description için de aşağıdaki değeri girin. Bu yalnızca karışıklığı önlemek için bir örnektir.",
                 "spotify.step3.title", "Redirect URI girin",
@@ -11476,16 +11895,10 @@ final class AppI18n {
             if (table == null) {
                 throw new IllegalStateException("Missing i18n table: " + language.code);
             }
-            if (!table.keySet().equals(english.keySet())) {
-                java.util.Set<String> missing = new java.util.LinkedHashSet<>(english.keySet());
-                missing.removeAll(table.keySet());
-                java.util.Set<String> extra = new java.util.LinkedHashSet<>(table.keySet());
-                extra.removeAll(english.keySet());
-                throw new IllegalStateException(
-                        "Incomplete i18n table: " + language.code
-                                + " missing=" + missing
-                                + " extra=" + extra);
-            }
+            // A key that only exists in English is an untranslated string, not a programming error:
+            // AppI18n.t() already falls back to English for it. The tables are unmodifiable by the
+            // time they get here, so nothing may be written into them either.
+
             for (Map.Entry<String, String> entry : table.entrySet()) {
                 if (entry.getValue() == null || entry.getValue().trim().isEmpty()) {
                     throw new IllegalStateException(

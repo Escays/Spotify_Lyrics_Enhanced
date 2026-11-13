@@ -2279,6 +2279,30 @@ final class AiLyricsRepository {
         throw new IOException(AppI18n.t(settings.uiLang, "error.translation_providers_failed"));
     }
 
+    /**
+     * Free-text translation pinned to one provider, ignoring the configured order. Used when the reader
+     * picks an engine for the meaning sheet; a provider without a key fails instead of silently falling
+     * back, so the choice is honest about what it can do.
+     */
+    List<String> translateFreeTextWithProvider(List<String> texts, String targetLang,
+            AiLyricsSettings.Snapshot settings, String providerId) throws Exception {
+        if (texts == null || texts.isEmpty() || settings == null
+                || providerId == null || providerId.isEmpty()) {
+            return Collections.emptyList();
+        }
+        AiLyricsSettings.Snapshot providerSettings = settings.forProvider(providerId);
+        if (providerSettings == null || !providerSettings.hasApiKey() || !providerSettings.hasModel()) {
+            throw new IOException("translation provider not ready: " + providerId);
+        }
+        String prompt = buildFreeTextPrompt(texts, targetLang);
+        String raw = callProviderRaw(prompt, providerSettings);
+        List<String> parsed = parseTaggedFreeText(raw, texts.size());
+        if (parsed.size() != texts.size()) {
+            throw new IOException("translation provider returned a partial answer: " + providerId);
+        }
+        return parsed;
+    }
+
     private static String buildFreeTextPrompt(List<String> texts, String targetLang) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("Translate every line below into ").append(targetLang).append(".\n")

@@ -21,6 +21,9 @@ final class LyricsPageSettings {
     private static final String KEY_ARTWORK_SOLID = "artwork_solid_background";
     private static final String KEY_MEANINGS_ENABLED = "genius_meanings_enabled";
     private static final String KEY_PLAY_BUTTON_RIGHT = "play_button_right";
+    private static final String KEY_MEANING_ENGINE = "meaning_translation_engine";
+    /** Follows the translation chain configured in the AI/provider settings. */
+    static final String MEANING_ENGINE_AUTO = "auto";
 
     private final SharedPreferences prefs;
     private volatile Snapshot cached;
@@ -42,7 +45,14 @@ final class LyricsPageSettings {
         boolean artworkSolid = prefs != null && prefs.getBoolean(KEY_ARTWORK_SOLID, false);
         boolean meanings = prefs == null || prefs.getBoolean(KEY_MEANINGS_ENABLED, true);
         boolean playButtonRight = prefs != null && prefs.getBoolean(KEY_PLAY_BUTTON_RIGHT, false);
-        Snapshot snapshot = new Snapshot(clampPadding(padding), artworkSolid, meanings, playButtonRight);
+        String meaningEngine = prefs == null
+                ? MEANING_ENGINE_AUTO
+                : prefs.getString(KEY_MEANING_ENGINE, MEANING_ENGINE_AUTO);
+        if (meaningEngine == null || meaningEngine.trim().isEmpty()) {
+            meaningEngine = MEANING_ENGINE_AUTO;
+        }
+        Snapshot snapshot = new Snapshot(clampPadding(padding), artworkSolid, meanings, playButtonRight,
+                meaningEngine.trim());
         cached = snapshot;
         return snapshot;
     }
@@ -88,6 +98,20 @@ final class LyricsPageSettings {
         }
     }
 
+    /** The engine the meaning sheet translates with; {@link #MEANING_ENGINE_AUTO} keeps the chain. */
+    String meaningTranslationEngine() {
+        return snapshot().meaningTranslationEngine;
+    }
+
+    void setMeaningTranslationEngine(String engineId) {
+        cached = null;
+        if (prefs != null) {
+            String value = engineId == null || engineId.trim().isEmpty()
+                    ? MEANING_ENGINE_AUTO : engineId.trim();
+            prefs.edit().putString(KEY_MEANING_ENGINE, value).apply();
+        }
+    }
+
     void setMeaningsEnabled(boolean enabled) {
         cached = null;
         if (prefs != null) {
@@ -100,13 +124,15 @@ final class LyricsPageSettings {
         final boolean artworkSolidBackground;
         final boolean meaningsEnabled;
         final boolean playButtonRight;
+        final String meaningTranslationEngine;
 
         Snapshot(int sidePaddingDp, boolean artworkSolidBackground, boolean meaningsEnabled,
-                boolean playButtonRight) {
+                boolean playButtonRight, String meaningTranslationEngine) {
             this.sidePaddingDp = sidePaddingDp;
             this.artworkSolidBackground = artworkSolidBackground;
             this.meaningsEnabled = meaningsEnabled;
             this.playButtonRight = playButtonRight;
+            this.meaningTranslationEngine = meaningTranslationEngine;
         }
     }
 }

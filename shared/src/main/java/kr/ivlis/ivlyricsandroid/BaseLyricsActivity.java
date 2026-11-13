@@ -4342,6 +4342,13 @@ public class BaseLyricsActivity extends Activity implements
     private View meaningFocusCard;
     /** Notes the reader switched back to Genius' own words; everything else follows the header chip. */
     private final java.util.Set<String> meaningNotesShowOriginal = new java.util.HashSet<>();
+    /** The description is an item of its own, so a tap on the prose flips only the prose. */
+    private static final String MEANING_DESCRIPTION_KEY = "\u0000description";
+    /** Translations asked for by tapping one item, so a single card does not wait for the whole page. */
+    private final java.util.Map<String, String> meaningItemTranslations = new java.util.LinkedHashMap<>();
+    private final java.util.Set<String> meaningItemsTranslating = new java.util.HashSet<>();
+    /** The engine list takes over the body instead of a dialog window the popup would steal focus from. */
+    private boolean meaningEnginePickerOpen;
     private int meaningSheetColor;
     private String meaningSheetColorKey = "";
     private TextView meaningHeaderChip;
@@ -4360,6 +4367,7 @@ public class BaseLyricsActivity extends Activity implements
         lastMeaningFocusLine = focusLineIndex;
         SongAnnotation focused = focusLineIndex >= 0 ? findAnnotationForLine(focusLineIndex) : null;
         meaningTab = focused != null ? MEANING_TAB_NOTES : MEANING_TAB_ABOUT;
+        meaningEnginePickerOpen = false;
         ensureMeaningSheet();
         renderMeaningPanel(focusLineIndex);
         if (!meaningPopup.isShowing()) {
@@ -4446,6 +4454,11 @@ public class BaseLyricsActivity extends Activity implements
         capsule.setStroke(dp(1), Color.argb(150, 255, 255, 255));
         meaningHeaderChip.setBackground(capsule);
         makeRemoteFocusable(meaningHeaderChip);
+        // Long press picks the engine for this page; the plain tap still flips original/translation.
+        meaningHeaderChip.setOnLongClickListener(view -> {
+            showMeaningEnginePicker();
+            return true;
+        });
         headerRow.addView(meaningHeaderChip, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         addMeaningTab(ui("lyrics_meaning.description"), MEANING_TAB_ABOUT, 0);
@@ -4551,6 +4564,7 @@ public class BaseLyricsActivity extends Activity implements
             return;
         }
         meaningTab = next;
+        meaningEnginePickerOpen = false;
         renderMeaningPanel(lastMeaningFocusLine);
     }
 
@@ -4796,6 +4810,12 @@ public class BaseLyricsActivity extends Activity implements
         updateMeaningTabs();
         meaningSheetCard.setBackground(meaningSheetBackground());
 
+        if (meaningEnginePickerOpen) {
+            renderMeaningEnginePicker();
+            resizeMeaningSheet();
+            return;
+        }
+
         if (meaningIsEmpty() && songMeaningLoading) {
             meaningContainer.addView(panelText(ui("lyrics_meaning.loading"), 14f,
                     Color.argb(184, 255, 255, 255)));
@@ -4848,13 +4868,24 @@ public class BaseLyricsActivity extends Activity implements
                     Color.argb(184, 255, 255, 255)), topMargin(matchWrap(), dp(12)));
             return;
         }
-        String description = songMeaningShowTranslation && songMeaningTranslation != null
-                && !songMeaningTranslation.description.isEmpty()
-                ? songMeaningTranslation.description
-                : songMeaning.description;
-        TextView body = label(description, 16f, Color.argb(240, 255, 255, 255), AppFonts.regular(this));
+        String translated = translationFor(MEANING_DESCRIPTION_KEY,
+                songMeaningTranslation == null ? "" : songMeaningTranslation.description);
+        boolean showTranslated = songMeaningShowTranslation
+                && !meaningNotesShowOriginal.contains(MEANING_DESCRIPTION_KEY)
+                && !translated.isEmpty();
+        TextView body = label(showTranslated ? translated : songMeaning.description, 16f,
+                Color.argb(240, 255, 255, 255), AppFonts.regular(this));
         body.setLineSpacing(dp(7), 1f);
+        // The prose is a card like the notes: tapping it translates just this text, then flips it.
+        body.setOnClickListener(view -> onMeaningDescriptionTapped());
         meaningContainer.addView(body, topMargin(matchWrap(), dp(16)));
+        if (meaningItemsTranslating.contains(MEANING_DESCRIPTION_KEY)) {
+            meaningContainer.addView(panelText(ui("lyrics_meaning.translating_item"), 12f,
+                    Color.argb(150, 255, 255, 255)), topMargin(matchWrap(), dp(8)));
+        } else if (translated.isEmpty()) {
+            meaningContainer.addView(panelText(ui("lyrics_meaning.tap_translate"), 12f,
+                    Color.argb(120, 255, 255, 255)), topMargin(matchWrap(), dp(8)));
+        }
     }
 
     private void renderMeaningNotes(int focusLineIndex) {
@@ -4890,14 +4921,19 @@ public class BaseLyricsActivity extends Activity implements
         quote.setLineSpacing(dp(4), 1f);
         card.addView(quote);
 
-        String translated = songMeaningShowTranslation && songMeaningTranslation != null
+        String resolved = translationFor(annotation.cacheKey(),
+                songMeaningTranslation == null ? "" : songMeaningTranslation.bodyFor(annotation));
+        boolean showTranslated = songMeaningShowTranslation
                 && !meaningNotesShowOriginal.contains(annotation.cacheKey())
-                ? songMeaningTranslation.bodyFor(annotation)
-                : "";
-        TextView body = label(translated.isEmpty() ? annotation.body : translated,
+                && !resolved.isEmpty();
+        TextView body = label(showTranslated ? resolved : annotation.body,
                 unplaced ? 14f : 15f, Color.argb(228, 255, 255, 255), AppFonts.regular(this));
         body.setLineSpacing(dp(6), 1f);
         card.addView(body, topMargin(matchWrap(), dp(10)));
+        if (meaningItemsTranslating.contains(annotation.cacheKey())) {
+            card.addView(panelText(ui("lyrics_meaning.translating_item"), 12f,
+                    Color.argb(150, 255, 255, 255)), topMargin(matchWrap(), dp(6)));
+        }
 
         if (!annotation.url.isEmpty()) {
             TextView link = label(ui("lyrics_meaning.open_genius"), 13f,
@@ -4905,18 +4941,8 @@ public class BaseLyricsActivity extends Activity implements
             link.setOnClickListener(view -> openMeaningUrl(annotation.url));
             card.addView(link, topMargin(matchWrap(), dp(8)));
         }
-        card.setOnClickListener(view -> {
-            if (songMeaningTranslation == null) {
-                // Nothing translated yet: the first tap asks for it, later taps flip one card.
-                fetchMeaningTranslation();
-                return;
-            }
-            String key = annotation.cacheKey();
-            if (!meaningNotesShowOriginal.remove(key)) {
-                meaningNotesShowOriginal.add(key);
-            }
-            renderMeaningPanel(lastMeaningFocusLine);
-        });
+        card.setOnClickListener(view -> onMeaningItemTapped(annotation.cacheKey(), annotation.body,
+                songMeaningTranslation == null ? "" : songMeaningTranslation.bodyFor(annotation)));
         meaningContainer.addView(card, topMargin(matchWrap(), dp(10)));
         if (focused && meaningFocusCard == null) {
             meaningFocusCard = card;
@@ -4993,6 +5019,9 @@ public class BaseLyricsActivity extends Activity implements
                     songMeaningError = error == null ? "" : error;
                     songMeaningTranslation = null;
                     songMeaningShowTranslation = false;
+                    meaningItemTranslations.clear();
+                    meaningItemsTranslating.clear();
+                    meaningNotesShowOriginal.clear();
                     applySongMeaningAnnotations();
                     if (!songMeaningError.isEmpty()) {
                         setMeaningButtonState(MeaningButtonState.ERROR);
@@ -5085,6 +5114,144 @@ public class BaseLyricsActivity extends Activity implements
         fetchMeaningTranslation();
     }
 
+    /** Translation for one item: the on-demand answer first, the whole-page answer second. */
+    private String translationFor(String key, String bulk) {
+        String live = meaningItemTranslations.get(key);
+        if (live != null && !live.isEmpty()) {
+            return live;
+        }
+        return bulk == null ? "" : bulk;
+    }
+
+    private void onMeaningDescriptionTapped() {
+        if (!songMeaning.hasDescription()) {
+            return;
+        }
+        onMeaningItemTapped(MEANING_DESCRIPTION_KEY, songMeaning.description,
+                songMeaningTranslation == null ? "" : songMeaningTranslation.description);
+    }
+
+    /**
+     * One item at a time: a card with no translation yet asks for that card only, so the reader sees
+     * the note they tapped instead of waiting for every other annotation on the page. A card that
+     * already has one flips between the two texts.
+     */
+    private void onMeaningItemTapped(String key, String originalBody, String bulkTranslated) {
+        if (meaningItemsTranslating.contains(key)) {
+            return;
+        }
+        if (translationFor(key, bulkTranslated).isEmpty()) {
+            songMeaningShowTranslation = true;
+            requestMeaningItemTranslation(key, originalBody);
+            return;
+        }
+        if (!meaningNotesShowOriginal.remove(key)) {
+            meaningNotesShowOriginal.add(key);
+        }
+        renderMeaningPanel(lastMeaningFocusLine);
+    }
+
+    private void requestMeaningItemTranslation(String key, String body) {
+        if (body == null || body.trim().isEmpty()) {
+            return;
+        }
+        final TrackSnapshot track = currentTrack;
+        final AiLyricsSettings.Snapshot settings = aiLyricsSettings == null
+                ? null : aiLyricsSettings.snapshot();
+        meaningItemsTranslating.add(key);
+        renderMeaningPanel(lastMeaningFocusLine);
+        new Thread(() -> {
+            String value = null;
+            try {
+                List<String> values = translateMeaningTexts(
+                        java.util.Collections.singletonList(body), "zh-CN", settings);
+                if (values != null && !values.isEmpty()) {
+                    value = values.get(0);
+                }
+            } catch (Exception ignored) {
+                // Reported below as a failure on this item only.
+            }
+            final String result = value;
+            runOnUiThread(() -> {
+                meaningItemsTranslating.remove(key);
+                if (track == null || currentTrack == null
+                        || !track.stableKey().equals(currentTrack.stableKey())) {
+                    return;
+                }
+                if (result != null && !result.trim().isEmpty()) {
+                    meaningItemTranslations.put(key, result.trim());
+                    meaningTranslationFailed = false;
+                } else {
+                    meaningTranslationFailed = true;
+                }
+                renderMeaningPanel(lastMeaningFocusLine);
+            });
+        }, "ivlyrics-meaning-item").start();
+    }
+
+    private String meaningEngineTag() {
+        return lyricsPageSettings == null
+                ? LyricsPageSettings.MEANING_ENGINE_AUTO
+                : lyricsPageSettings.meaningTranslationEngine();
+    }
+
+    /**
+     * Long press on the translate chip opens the engine list inside the sheet. It is drawn in the body
+     * rather than as a dialog window: this sheet lives in a full-screen PopupWindow, which keeps the
+     * touch focus, so a separate dialog would show up but not react.
+     */
+    private void showMeaningEnginePicker() {
+        if (lyricsPageSettings == null) {
+            return;
+        }
+        meaningEnginePickerOpen = true;
+        renderMeaningPanel(lastMeaningFocusLine);
+    }
+
+    private void renderMeaningEnginePicker() {
+        TextView heading = label(ui("lyrics_meaning.engine_title"), 15f,
+                Color.argb(220, 255, 255, 255), AppFonts.bold(this));
+        meaningContainer.addView(heading);
+
+        String current = meaningEngineTag();
+        addMeaningEngineRow(ui("lyrics_meaning.engine_auto"), LyricsPageSettings.MEANING_ENGINE_AUTO, current);
+        addMeaningEngineRow(KeylessTranslationProviders.BING_LABEL + " \u00b7 " + ui("lyrics_meaning.engine_keyless"),
+                KeylessTranslationProviders.BING_ID, current);
+        addMeaningEngineRow(KeylessTranslationProviders.GOOGLE_LABEL + " \u00b7 " + ui("lyrics_meaning.engine_keyless"),
+                KeylessTranslationProviders.GOOGLE_ID, current);
+        AiLyricsSettings.Snapshot settings = aiLyricsSettings == null ? null : aiLyricsSettings.snapshot();
+        if (settings != null) {
+            for (AiLyricsSettings.Snapshot provider : settings.readyAiProviderSnapshots()) {
+                addMeaningEngineRow(provider.provider.label, provider.provider.id, current);
+            }
+        }
+    }
+
+    private void addMeaningEngineRow(String text, String engineId, String current) {
+        boolean selected = engineId.equals(current);
+        TextView row = label((selected ? "\u2713  " : "") + text, 15f,
+                selected ? Color.WHITE : Color.argb(215, 255, 255, 255),
+                selected ? AppFonts.bold(this) : AppFonts.regular(this));
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
+        row.setBackground(roundDrawable(
+                selected ? Color.argb(44, 255, 255, 255) : Color.argb(14, 255, 255, 255), dp(12)));
+        row.setOnClickListener(view -> {
+            lyricsPageSettings.setMeaningTranslationEngine(engineId);
+            // Wording belongs to the engine that produced it.
+            songMeaningTranslation = null;
+            meaningItemTranslations.clear();
+            meaningNotesShowOriginal.clear();
+            meaningTranslationFailed = false;
+            meaningEnginePickerOpen = false;
+            // Choosing an engine is an explicit request to translate with it, so the page switches to
+            // the translation right away instead of waiting for another tap.
+            songMeaningShowTranslation = true;
+            renderMeaningPanel(lastMeaningFocusLine);
+            fetchMeaningTranslation();
+        });
+        meaningContainer.addView(row, topMargin(matchWrap(), dp(8)));
+    }
+
     private void fetchMeaningTranslation() {
         final TrackSnapshot track = currentTrack;
         final SongMeaning meaning = songMeaning;
@@ -5096,7 +5263,7 @@ public class BaseLyricsActivity extends Activity implements
         new Thread(() -> {
             SongMeaningService.MeaningTranslation translation = null;
             try {
-                translation = songMeaningService.translate(meaning, "zh-CN",
+                translation = songMeaningService.translate(meaning, "zh-CN", meaningEngineTag(),
                         (texts, targetLanguage) -> translateMeaningTexts(texts, targetLanguage, settings));
             } catch (Exception ignored) {
                 // Reported as a failed chip: the original text stays readable.
@@ -5127,6 +5294,16 @@ public class BaseLyricsActivity extends Activity implements
      */
     private List<String> translateMeaningTexts(List<String> texts, String targetLang,
             AiLyricsSettings.Snapshot settings) throws Exception {
+        String engine = meaningEngineTag();
+        if (!LyricsPageSettings.MEANING_ENGINE_AUTO.equals(engine)) {
+            if (KeylessTranslationProviders.BING_ID.equals(engine)
+                    || KeylessTranslationProviders.GOOGLE_ID.equals(engine)) {
+                return KeylessTranslationProviders.translateWithProvider(engine, texts, targetLang).values;
+            }
+            if (aiLyricsRepository != null && settings != null) {
+                return aiLyricsRepository.translateFreeTextWithProvider(texts, targetLang, settings, engine);
+            }
+        }
         if (aiLyricsRepository != null && settings != null) {
             try {
                 List<String> values = aiLyricsRepository.translateFreeText(texts, targetLang, settings);

@@ -4344,6 +4344,11 @@ final class AppI18n {
                 "lyrics_meaning.translating", "Translating…",
                 "lyrics_meaning.attribution", "Source: Genius",
     "lyrics_meaning.retry", "Retry",
+                "lyrics_meaning.engine_title", "Translation engine",
+                "lyrics_meaning.engine_auto", "Automatic (follow settings)",
+                "lyrics_meaning.engine_keyless", "no key needed",
+                "lyrics_meaning.translating_item", "Translating…",
+                "lyrics_meaning.tap_translate", "Tap to translate",
         };
     }
 
@@ -4387,6 +4392,11 @@ final class AppI18n {
                 "lyrics_meaning.translating", "번역 중…",
                 "lyrics_meaning.attribution", "출처: Genius",
     "lyrics_meaning.retry", "다시 시도",
+                "lyrics_meaning.engine_title", "번역 엔진",
+                "lyrics_meaning.engine_auto", "자동(설정 따름)",
+                "lyrics_meaning.engine_keyless", "키 필요 없음",
+                "lyrics_meaning.translating_item", "번역 중…",
+                "lyrics_meaning.tap_translate", "탭하여 번역",
         };
     }
 
@@ -4430,6 +4440,11 @@ final class AppI18n {
                 "lyrics_meaning.translating", "正在翻译…",
                 "lyrics_meaning.attribution", "来源：Genius",
     "lyrics_meaning.retry", "重试",
+                "lyrics_meaning.engine_title", "翻译引擎",
+                "lyrics_meaning.engine_auto", "自动（跟随设置）",
+                "lyrics_meaning.engine_keyless", "免密钥",
+                "lyrics_meaning.translating_item", "正在翻译…",
+                "lyrics_meaning.tap_translate", "点按翻译",
         };
     }
 
@@ -4473,6 +4488,11 @@ final class AppI18n {
                 "lyrics_meaning.translating", "正在翻譯…",
                 "lyrics_meaning.attribution", "來源：Genius",
     "lyrics_meaning.retry", "重試",
+                "lyrics_meaning.engine_title", "翻譯引擎",
+                "lyrics_meaning.engine_auto", "自動（跟隨設定）",
+                "lyrics_meaning.engine_keyless", "免金鑰",
+                "lyrics_meaning.translating_item", "正在翻譯…",
+                "lyrics_meaning.tap_translate", "點按翻譯",
         };
     }
 
@@ -4516,6 +4536,11 @@ final class AppI18n {
                 "lyrics_meaning.translating", "翻訳中…",
                 "lyrics_meaning.attribution", "出典: Genius",
     "lyrics_meaning.retry", "再試行",
+                "lyrics_meaning.engine_title", "翻訳エンジン",
+                "lyrics_meaning.engine_auto", "自動（設定に従う）",
+                "lyrics_meaning.engine_keyless", "キー不要",
+                "lyrics_meaning.translating_item", "翻訳中…",
+                "lyrics_meaning.tap_translate", "タップで翻訳",
         };
     }
     private static void addSpotifyShortcutStrings(Map<String, Map<String, String>> languages) {

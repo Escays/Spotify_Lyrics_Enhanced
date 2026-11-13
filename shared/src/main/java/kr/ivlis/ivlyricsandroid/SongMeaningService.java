@@ -209,6 +209,12 @@ final class SongMeaningService {
      */
     MeaningTranslation translate(SongMeaning meaning, String targetLang, FreeTextTranslator translator)
             throws Exception {
+        return translate(meaning, targetLang, "", translator);
+    }
+
+    /** As above, but the cache is partitioned by engine so a switch does not reuse the old wording. */
+    MeaningTranslation translate(SongMeaning meaning, String targetLang, String engineId,
+            FreeTextTranslator translator) throws Exception {
         if (meaning == null || meaning.isEmpty() || translator == null) {
             return new MeaningTranslation("", Collections.emptyMap());
         }
@@ -223,7 +229,7 @@ final class SongMeaningService {
         if (texts.isEmpty()) {
             return new MeaningTranslation("", Collections.emptyMap());
         }
-        String key = translationKey(meaning, targetLang);
+        String key = translationKey(meaning, targetLang, engineId);
         MeaningTranslation cached = readTranslation(key);
         if (cached != null) {
             return cached;
@@ -426,10 +432,11 @@ final class SongMeaningService {
         return sha256(payload.toString());
     }
 
-    private static String translationKey(SongMeaning meaning, String targetLang) {
+    private static String translationKey(SongMeaning meaning, String targetLang, String engineId) {
         StringBuilder payload = new StringBuilder()
                 .append(meaning.songId).append('|')
                 .append(targetLang == null ? "" : targetLang.toLowerCase(Locale.ROOT)).append('|')
+                .append(engineId == null ? "" : engineId).append('|')
                 .append(meaning.description).append('|');
         for (SongAnnotation annotation : meaning.allAnnotations()) {
             payload.append(annotation.cacheKey()).append('\n');

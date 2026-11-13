@@ -317,6 +317,10 @@ public class BaseLyricsActivity extends Activity implements
     private LinearLayout lyricsLanguageSettingsContent;
     private View lyricsMatchStatusBlock;
     private TextView lyricsMatchStatusText;
+    private TextView lyricsMatchStatusHeader;
+    private LinearLayout lyricsMatchStatusDetails;
+    private Button lyricsMatchRestoreButton;
+    private boolean lyricsMatchStatusExpanded;
     private LinearLayout lyricsSyncSettingsContent;
     private LinearLayout videoSyncSettingsContent;
     private LinearLayout lyricsBackgroundSettingsContent;
@@ -5520,19 +5524,21 @@ public class BaseLyricsActivity extends Activity implements
         lyricsMatchStatusBlock = buildLyricsMatchStatusBlock();
         lyricsLanguageSettingsContent.addView(lyricsMatchStatusBlock, matchWrap());
 
-        selectedLanguageRuleView = label("", 12f, withAlpha(panelPalette.text, 210), AppFonts.semiBold(this));
+        selectedLanguageRuleView = label("", 11.5f, withAlpha(panelPalette.text, 150), AppFonts.regular(this));
         selectedLanguageRuleView.setLineSpacing(dp(2), 1f);
-        lyricsLanguageSettingsContent.addView(selectedLanguageRuleView, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        ));
 
-        sourceLanguageSelectButton = settingsSelectButton("");
+        // Filled here as well as in the update pass: a rebuilt panel never saw that pass.
+        sourceLanguageSelectButton = settingsSelectButton(sourceLanguageLabel(selectedRuleSourceLang));
         sourceLanguageSelectButton.setOnClickListener(view -> showLyricsSourceLanguagePopup(sourceLanguageSelectButton));
         lyricsLanguageSettingsContent.addView(sourceLanguageSelectButton, topMargin(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(42)
-        ), dp(10)));
+        ), dp(6)));
+        // The rule summary is the selector's caption now, not a block of its own.
+        lyricsLanguageSettingsContent.addView(selectedLanguageRuleView, topMargin(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ), dp(6)));
 
         LinearLayout switchRow = new SettingsControlRow(this);
         switchRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -5595,6 +5601,7 @@ public class BaseLyricsActivity extends Activity implements
         stylePanelControlsForPalette(panel);
         switchLyricsPopupTab(activeLyricsPopupTab);
         applyPanelControlPalette(panel, palette);
+        updateSelectedLanguageRuleStatusFromUi();
         buildingCurrentTrackPanel = false;
         return panel;
     }
@@ -5989,6 +5996,7 @@ public class BaseLyricsActivity extends Activity implements
         LinearLayout sourceRow = new LinearLayout(this);
         sourceRow.setOrientation(LinearLayout.HORIZONTAL);
         manualSearchSourceChips.clear();
+        manualSearchSource = defaultManualSearchSource();
         addManualSearchSourceChip(sourceRow, MANUAL_SOURCE_LRCLIB, "LRCLIB");
         addManualSearchSourceChip(sourceRow, "netease", manualLyricSource("netease").label());
         addManualSearchSourceChip(sourceRow, "qq", manualLyricSource("qq").label());
@@ -12345,6 +12353,15 @@ public class BaseLyricsActivity extends Activity implements
         lyricsRepository.searchManualLrclib(currentTrack, title, artist, this);
     }
 
+    /** LRCLIB keeps its own default when the song already uses it; otherwise a Chinese catalogue. */
+    private String defaultManualSearchSource() {
+        if (lyricsProviderSettings == null || currentTrack == null) {
+            return MANUAL_SOURCE_LRCLIB;
+        }
+        String provider = lyricsProviderSettings.providerForTrack(currentTrack.stableKey());
+        return LyricsProviderSettings.PROVIDER_LRCLIB.equals(provider) ? MANUAL_SOURCE_LRCLIB : "netease";
+    }
+
     private PlatformLyricSource manualLyricSource(String id) {
         if (manualSearchTransport == null) {
             manualSearchTransport = PlatformHttpTransport.http();
@@ -13071,12 +13088,22 @@ public class BaseLyricsActivity extends Activity implements
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(2), 0, dp(2), dp(8));
-        TextView header = label(ui("lyrics_enhance.match_status"), 12f,
+        // The header is the toggle: diagnostics stay folded away unless something failed.
+        lyricsMatchStatusHeader = label(ui("lyrics_enhance.match_status") + "  \u203a", 12f,
                 withAlpha(panelPalette.text, 150), AppFonts.bold(this));
-        box.addView(header);
+        lyricsMatchStatusHeader.setOnClickListener(view -> {
+            lyricsMatchStatusExpanded = !lyricsMatchStatusExpanded;
+            updateLyricsMatchStatusBlock();
+        });
+        box.addView(lyricsMatchStatusHeader);
+        LinearLayout details = new LinearLayout(this);
+        details.setOrientation(LinearLayout.VERTICAL);
+        details.setVisibility(View.GONE);
+        lyricsMatchStatusDetails = details;
+        box.addView(details, matchWrap());
         lyricsMatchStatusText = label("", 12f, withAlpha(panelPalette.text, 215), AppFonts.regular(this));
         lyricsMatchStatusText.setLineSpacing(dp(2), 1f);
-        box.addView(lyricsMatchStatusText, topMargin(matchWrap(), dp(4)));
+        details.addView(lyricsMatchStatusText, topMargin(matchWrap(), dp(4)));
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         Button retry = SettingsAppearance.button(this, ui("lyrics_meaning.retry"), 12f);
@@ -13100,7 +13127,8 @@ public class BaseLyricsActivity extends Activity implements
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         restoreParams.leftMargin = dp(8);
         row.addView(restore, restoreParams);
-        box.addView(row, topMargin(matchWrap(), dp(6)));
+        lyricsMatchRestoreButton = restore;
+        details.addView(row, topMargin(matchWrap(), dp(6)));
         return box;
     }
 
@@ -13108,6 +13136,7 @@ public class BaseLyricsActivity extends Activity implements
         if (lyricsMatchStatusText == null) {
             return;
         }
+        boolean failed = false;
         PlatformTranslationService.Snapshot snapshot = currentPlatformSnapshot;
         if (snapshot == null || snapshot.statuses.isEmpty()) {
             lyricsMatchStatusText.setText("-");
@@ -13115,6 +13144,7 @@ public class BaseLyricsActivity extends Activity implements
         }
         StringBuilder text = new StringBuilder();
         for (PlatformTranslationService.SourceStatus status : snapshot.statuses) {
+            failed |= !PlatformTranslationService.SourceStatus.STATE_OK.equals(status.state);
             if (text.length() > 0) {
                 text.append('\n');
             }
@@ -13132,6 +13162,26 @@ public class BaseLyricsActivity extends Activity implements
             }
         }
         lyricsMatchStatusText.setText(text.toString());
+        applyLyricsMatchStatusVisibility(failed);
+    }
+
+    /** Folds the diagnostics away unless something failed or the reader opened them. */
+    private void applyLyricsMatchStatusVisibility(boolean failed) {
+        boolean expanded = lyricsMatchStatusExpanded || failed;
+        if (lyricsMatchStatusDetails != null) {
+            lyricsMatchStatusDetails.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        }
+        if (lyricsMatchStatusHeader != null) {
+            String arrow = expanded ? "  \u2304" : "  \u203a";
+            lyricsMatchStatusHeader.setText(ui("lyrics_enhance.match_status") + arrow);
+            lyricsMatchStatusHeader.setTextColor(withAlpha(panelPalette.text, failed ? 220 : 150));
+        }
+        if (lyricsMatchRestoreButton != null) {
+            // Nothing to restore unless this song was pinned to a manual source.
+            boolean pinned = platformTranslationSettings != null && currentLyricsKey != null
+                    && !platformTranslationSettings.manualSource(currentLyricsKey).isEmpty();
+            lyricsMatchRestoreButton.setVisibility(pinned ? View.VISIBLE : View.GONE);
+        }
     }
 
     private static final String TRANS_TAB_TRACK = "track";

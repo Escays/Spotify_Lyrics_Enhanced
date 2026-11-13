@@ -825,7 +825,7 @@ final class AppI18n {
                 "button.save_start", "儲存並開始",
                 "status.spotify_required_subtitle", "請先儲存 Client ID 和 Client Secret",
                 "button.save_regenerate", "儲存並重新產生",
-                "lyrics.rule.save_target", "儲存目標",
+                "lyrics.rule.save_target", "輸出",
                 "lyrics.button.translation_on", "翻譯已開啟",
                 "lyrics.button.pronunciation_on", "發音已開啟",
         });
@@ -4053,8 +4053,8 @@ final class AppI18n {
                 };
             case "zh-CN":
                 return new String[]{
-                        "lyrics.lrclib_search.title", "手动搜索（备选）",
-                        "lyrics.lrclib_search.desc", "当加载的歌词不匹配当前歌曲时，可从 QQ 音乐、网易云音乐、酷狗音乐或 LRCLIB 手动搜索并应用。",
+                        "lyrics.lrclib_search.title", "手动找歌词",
+                        "lyrics.lrclib_search.desc", "以下都是曲库、不是提供商：按关键词找一条歌词，找不到时指定给当前歌曲。",
                         "lyrics.lrclib_search.title_hint", "歌曲标题",
                         "lyrics.lrclib_search.artist_hint", "艺人",
                         "lyrics.lrclib_search.field_title", "标题",
@@ -4075,7 +4075,7 @@ final class AppI18n {
                 };
             case "zh-TW":
                 return new String[]{
-                        "lyrics.lrclib_search.title", "手動搜尋（備選）",
+                        "lyrics.lrclib_search.title", "手動找歌詞",
                         "lyrics.lrclib_search.desc", "載入的歌詞不符合目前歌曲時，可在 LRCLIB 中手動搜尋並套用。",
                         "lyrics.lrclib_search.title_hint", "歌曲標題",
                         "lyrics.lrclib_search.artist_hint", "藝人",
@@ -6811,7 +6811,7 @@ final class AppI18n {
                 "lyrics.sync.help", "+ 值会更早显示歌词，- 值会更晚显示。",
                 "lyrics.menu_tip", "长按标题或艺人可打开翻译和发音设置。",
                 "lyrics.rule.track_language", "歌曲语言",
-                "lyrics.rule.save_target", "保存目标",
+                "lyrics.rule.save_target", "输出",
                 "lyrics.rule.translation_language", "翻译语言",
                 "label.on", "开启",
                 "label.off", "关闭",

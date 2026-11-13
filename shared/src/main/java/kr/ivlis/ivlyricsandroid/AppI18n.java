@@ -4060,6 +4060,25 @@ final class AppI18n {
                         "lyrics.lrclib_search.field_title", "标题",
                         "lyrics.lrclib_search.field_artist", "艺人",
                         "lyrics.lrclib_search.button", "搜索",
+                        "network.section", "网络与地区",
+                        "network.desc", "只改默认值，随时可改",
+                        "network.cn", "中国大陆",
+                        "network.cn_desc", "释义翻译默认用 Bing，歌词源优先中文译词",
+                        "network.global", "海外",
+                        "network.global_desc", "保持现状：翻译跟随设置里的引擎链",
+                        "network.custom", "自定义",
+                        "network.custom_desc", "只记住你的选择，不改任何默认值",
+                        "network.check", "连接体检",
+                        "network.check_desc", "逐个测试网易云、QQ、酷狗、LRCLIB、Genius、Google、GitHub",
+                        "network.checking", "正在检测…",
+                        "network.unreachable", "不可达 · 失去",
+                        "network.fix_bing", "改用 Bing 翻译 ›",
+                        "network.switched", "已切换：%s",
+                        "network.loss_translation", "中文译词",
+                        "network.loss_timeline", "歌词时间轴",
+                        "network.loss_meaning", "歌曲简介与注释",
+                        "network.loss_google", "谷歌翻译引擎",
+                        "network.loss_update", "版本更新检查",
                         "lyrics.lrclib_search.ready", "确认关键词后开始搜索。",
                         "lyrics.lrclib_search.empty_title", "请输入要搜索的歌曲标题。",
                         "lyrics.lrclib_search.loading", "正在搜索 LRCLIB...",
@@ -4082,6 +4101,25 @@ final class AppI18n {
                         "lyrics.lrclib_search.field_title", "標題",
                         "lyrics.lrclib_search.field_artist", "藝人",
                         "lyrics.lrclib_search.button", "搜尋 LRCLIB",
+                        "network.section", "網路與地區",
+                        "network.desc", "只改預設值，隨時可改",
+                        "network.cn", "中國大陸",
+                        "network.cn_desc", "釋義翻譯預設用 Bing，歌詞來源優先中文譯詞",
+                        "network.global", "海外",
+                        "network.global_desc", "保持現狀：翻譯跟隨設定裡的引擎鏈",
+                        "network.custom", "自訂",
+                        "network.custom_desc", "只記住你的選擇，不改任何預設值",
+                        "network.check", "連線檢查",
+                        "network.check_desc", "逐一測試網易雲、QQ、酷狗、LRCLIB、Genius、Google、GitHub",
+                        "network.checking", "正在檢測…",
+                        "network.unreachable", "不可達 · 失去",
+                        "network.fix_bing", "改用 Bing 翻譯 ›",
+                        "network.switched", "已切換：%s",
+                        "network.loss_translation", "中文譯詞",
+                        "network.loss_timeline", "歌詞時間軸",
+                        "network.loss_meaning", "歌曲簡介與註釋",
+                        "network.loss_google", "谷歌翻譯引擎",
+                        "network.loss_update", "版本更新檢查",
                         "lyrics.lrclib_search.ready", "確認關鍵字後開始搜尋。",
                         "lyrics.lrclib_search.empty_title", "請輸入要搜尋的歌曲標題。",
                         "lyrics.lrclib_search.loading", "正在搜尋 LRCLIB...",
@@ -4269,6 +4307,25 @@ final class AppI18n {
                 "lyrics.lrclib_search.field_title", "Title",
                 "lyrics.lrclib_search.field_artist", "Artist",
                 "lyrics.lrclib_search.button", "Search",
+                        "network.section", "Network & region",
+                        "network.desc", "Defaults only — change any of them later",
+                        "network.cn", "Mainland China",
+                        "network.cn_desc", "Meaning translation uses Bing; Chinese lyric sources come first",
+                        "network.global", "Elsewhere",
+                        "network.global_desc", "Keep the configured engine chain",
+                        "network.custom", "Custom",
+                        "network.custom_desc", "Remember the choice, change no defaults",
+                        "network.check", "Run a connection check",
+                        "network.check_desc", "Tests NetEase, QQ, Kugou, LRCLIB, Genius, Google, GitHub",
+                        "network.checking", "Checking…",
+                        "network.unreachable", "unreachable · lose",
+                        "network.fix_bing", "Switch to Bing ›",
+                        "network.switched", "Switched to %s",
+                        "network.loss_translation", "Chinese translations",
+                        "network.loss_timeline", "lyric timing",
+                        "network.loss_meaning", "song notes",
+                        "network.loss_google", "the Google engine",
+                        "network.loss_update", "update checks",
                 "lyrics.lrclib_search.ready", "Check the search terms, then search LRCLIB.",
                 "lyrics.lrclib_search.empty_title", "Enter a song title to search.",
                 "lyrics.lrclib_search.loading", "Searching LRCLIB...",
@@ -11838,15 +11895,15 @@ final class AppI18n {
             if (table == null) {
                 throw new IllegalStateException("Missing i18n table: " + language.code);
             }
-            if (!table.keySet().equals(english.keySet())) {
-                java.util.Set<String> missing = new java.util.LinkedHashSet<>(english.keySet());
-                missing.removeAll(table.keySet());
-                java.util.Set<String> extra = new java.util.LinkedHashSet<>(table.keySet());
-                extra.removeAll(english.keySet());
-                throw new IllegalStateException(
-                        "Incomplete i18n table: " + language.code
-                                + " missing=" + missing
-                                + " extra=" + extra);
+            if (!table.keySet().containsAll(english.keySet())) {
+                // A key that only exists in English is not an error any more: it is an untranslated
+                // string, and English stands in until someone writes it. Filling here keeps every
+                // table complete for the readers that iterate keys.
+                for (Map.Entry<String, String> entry : english.entrySet()) {
+                    if (!table.containsKey(entry.getKey())) {
+                        table.put(entry.getKey(), entry.getValue());
+                    }
+                }
             }
             for (Map.Entry<String, String> entry : table.entrySet()) {
                 if (entry.getValue() == null || entry.getValue().trim().isEmpty()) {

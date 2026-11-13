@@ -8316,18 +8316,17 @@ public class BaseLyricsActivity extends Activity implements
      * lock: the reader can change any of them afterwards, which is why nothing here sniffs the SIM.
      */
     private void buildNetworkRegionSection(LinearLayout page) {
-        LinearLayout section = settingsSection(page, "网络与地区", "决定默认翻译引擎与提示，随时可改", -1);
+        LinearLayout section = settingsSection(page, ui("network.section"), ui("network.desc"), -1);
         LinearLayout group = settingsGroup(section);
-        addNetworkRegionRow(group, NetworkRegion.CN, "中国大陆",
-                "释义翻译默认用 Bing，歌词源优先中文译词");
-        addNetworkRegionRow(group, NetworkRegion.GLOBAL, "海外", "保持现状：翻译跟随设置里的引擎链");
-        addNetworkRegionRow(group, NetworkRegion.CUSTOM, "自定义", "只记住你的选择，不改任何默认值");
+        addNetworkRegionRow(group, NetworkRegion.CN, ui("network.cn"), ui("network.cn_desc"));
+        addNetworkRegionRow(group, NetworkRegion.GLOBAL, ui("network.global"), ui("network.global_desc"));
+        addNetworkRegionRow(group, NetworkRegion.CUSTOM, ui("network.custom"), ui("network.custom_desc"));
 
         networkHealthRows = new LinearLayout(this);
         networkHealthRows.setOrientation(LinearLayout.VERTICAL);
         networkHealthRows.setVisibility(View.GONE);
         group.addView(networkHealthRows, topMargin(matchWrap(), dp(4)));
-        settingsAction(group, "连接体检", "逐个测试网易云、QQ、酷狗、LRCLIB、Genius、Google、GitHub",
+        settingsAction(group, ui("network.check"), ui("network.check_desc"),
                 SettingsKit.ACTION_NORMAL, view -> runNetworkHealthCheck());
     }
 
@@ -8353,7 +8352,8 @@ public class BaseLyricsActivity extends Activity implements
         }
         networkHealthRows.setVisibility(View.VISIBLE);
         networkHealthRows.removeAllViews();
-        networkHealthRows.addView(settingsKit.text("正在检测…", 13f, settingsKit.p.text3, settingsKit.regular), matchWrap());
+        networkHealthRows.addView(settingsKit.text(ui("network.checking"), 13f,
+                    settingsKit.p.text3, settingsKit.regular), matchWrap());
         new Thread(() -> {
             java.util.List<NetworkRegion.Result> results = NetworkRegion.probeAll();
             runOnUiThread(() -> renderNetworkHealth(results));
@@ -8369,7 +8369,7 @@ public class BaseLyricsActivity extends Activity implements
             String mark = result.reachable ? "\u2713" : "\u2717";
             String detail = result.reachable
                     ? result.latencyMs + " ms"
-                    : "不可达 · 失去 " + result.endpoint.lossWhenDown;
+                    : ui("network.unreachable") + " " + ui(result.endpoint.lossWhenDown);
             int markColor = result.reachable ? settingsKit.p.accent : settingsKit.p.danger;
             android.text.SpannableString line = new android.text.SpannableString(
                     mark + "  " + result.endpoint.label + "   " + detail);
@@ -8380,12 +8380,13 @@ public class BaseLyricsActivity extends Activity implements
             networkHealthRows.addView(row, topMargin(matchWrap(), dp(3)));
             if (!result.reachable && "google".equals(result.endpoint.id)) {
                 // The one failure with a one-tap answer: the other keyless engine still works.
-                TextView fix = settingsKit.text("   改用 Bing 翻译 ›", 13.5f,
+                TextView fix = settingsKit.text("   " + ui("network.fix_bing"), 13.5f,
                         settingsKit.p.accent, settingsKit.regular);
                 fix.setOnClickListener(view -> {
                     lyricsPageSettings.setMeaningTranslationEngine(KeylessTranslationProviders.BING_ID);
                     songMeaningTranslation = null;
-                    android.widget.Toast.makeText(this, "已改用 Bing 翻译",
+                    android.widget.Toast.makeText(this,
+                            String.format(ui("network.switched"), "Bing"),
                             android.widget.Toast.LENGTH_SHORT).show();
                 });
                 networkHealthRows.addView(fix, matchWrap());

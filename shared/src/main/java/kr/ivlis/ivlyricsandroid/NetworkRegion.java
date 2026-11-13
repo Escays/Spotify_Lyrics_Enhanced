@@ -92,15 +92,15 @@ final class NetworkRegion {
 
     static List<Endpoint> endpoints() {
         List<Endpoint> list = new ArrayList<>();
-        list.add(new Endpoint("netease", "网易云音乐", "https://music.163.com", "中文译词"));
-        list.add(new Endpoint("qq", "QQ 音乐", "https://y.qq.com", "中文译词"));
-        list.add(new Endpoint("kugou", "酷狗音乐", "https://www.kugou.com", "中文译词"));
-        list.add(new Endpoint("lrclib", "LRCLIB", "https://lrclib.net", "歌词时间轴"));
-        list.add(new Endpoint("lrc_red", "lrc.red", "https://lrc.red", "歌词时间轴"));
-        list.add(new Endpoint("unison", "Unison", "https://unison.boidu.dev", "歌词时间轴"));
-        list.add(new Endpoint("genius", "Genius", "https://genius.com", "歌曲简介与注释"));
-        list.add(new Endpoint("google", "Google 翻译", "https://translate.googleapis.com", "谷歌翻译引擎"));
-        list.add(new Endpoint("github", "GitHub", "https://github.com", "版本更新检查"));
+        list.add(new Endpoint("netease", "网易云音乐", "https://music.163.com", "network.loss_translation"));
+        list.add(new Endpoint("qq", "QQ 音乐", "https://y.qq.com", "network.loss_translation"));
+        list.add(new Endpoint("kugou", "酷狗音乐", "https://www.kugou.com", "network.loss_translation"));
+        list.add(new Endpoint("lrclib", "LRCLIB", "https://lrclib.net", "network.loss_timeline"));
+        list.add(new Endpoint("lrc_red", "lrc.red", "https://lrc.red", "network.loss_timeline"));
+        list.add(new Endpoint("unison", "Unison", "https://unison.boidu.dev", "network.loss_timeline"));
+        list.add(new Endpoint("genius", "Genius", "https://genius.com", "network.loss_meaning"));
+        list.add(new Endpoint("google", "Google 翻译", "https://translate.googleapis.com", "network.loss_google"));
+        list.add(new Endpoint("github", "GitHub", "https://github.com", "network.loss_update"));
         return list;
     }
 

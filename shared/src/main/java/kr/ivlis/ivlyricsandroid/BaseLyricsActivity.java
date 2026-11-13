@@ -4340,8 +4340,10 @@ public class BaseLyricsActivity extends Activity implements
     private LinearLayout meaningHeader;
     private ScrollView meaningScrollView;
     private View meaningFocusCard;
-    /** Notes the reader switched back to Genius' own words; everything else follows the header chip. */
+    /** Items the reader pinned to Genius' own words; everything else follows the header chip. */
     private final java.util.Set<String> meaningNotesShowOriginal = new java.util.HashSet<>();
+    /** Items pinned to the translation, so one tap never has to move the whole page. */
+    private final java.util.Set<String> meaningNotesShowTranslation = new java.util.HashSet<>();
     /** The description is an item of its own, so a tap on the prose flips only the prose. */
     private static final String MEANING_DESCRIPTION_KEY = "\u0000description";
     /** Translations asked for by tapping one item, so a single card does not wait for the whole page. */
@@ -4355,6 +4357,9 @@ public class BaseLyricsActivity extends Activity implements
     private boolean meaningTranslating;
     private android.animation.ValueAnimator meaningBodyAnimator;
     private boolean meaningTranslationFailed;
+    private String meaningTranslationDetail = "";
+    /** Set when the chosen keyless engine was rate-limited and another one answered instead. */
+    private String meaningEngineFallbackLabel = "";
 
     /**
      * Opens the song sheet. The bulb asks about the song (-1); a long press on a dotted line lands on
@@ -4816,6 +4821,14 @@ public class BaseLyricsActivity extends Activity implements
             return;
         }
 
+        if (meaningTranslationFailed) {
+            addMeaningTranslationBanner();
+        } else if (meaningEngineFallbackLabel != null && !meaningEngineFallbackLabel.isEmpty()) {
+            meaningContainer.addView(panelText(
+                    String.format(ui("lyrics_meaning.engine_fallback"), meaningEngineFallbackLabel), 11f,
+                    Color.argb(140, 255, 255, 255)), topMargin(matchWrap(), dp(2)));
+        }
+
         if (meaningIsEmpty() && songMeaningLoading) {
             meaningContainer.addView(panelText(ui("lyrics_meaning.loading"), 14f,
                     Color.argb(184, 255, 255, 255)));
@@ -4870,9 +4883,7 @@ public class BaseLyricsActivity extends Activity implements
         }
         String translated = translationFor(MEANING_DESCRIPTION_KEY,
                 songMeaningTranslation == null ? "" : songMeaningTranslation.description);
-        boolean showTranslated = songMeaningShowTranslation
-                && !meaningNotesShowOriginal.contains(MEANING_DESCRIPTION_KEY)
-                && !translated.isEmpty();
+        boolean showTranslated = meaningItemShowsTranslated(MEANING_DESCRIPTION_KEY, translated);
         TextView body = label(showTranslated ? translated : songMeaning.description, 16f,
                 Color.argb(240, 255, 255, 255), AppFonts.regular(this));
         body.setLineSpacing(dp(7), 1f);
@@ -4923,9 +4934,7 @@ public class BaseLyricsActivity extends Activity implements
 
         String resolved = translationFor(annotation.cacheKey(),
                 songMeaningTranslation == null ? "" : songMeaningTranslation.bodyFor(annotation));
-        boolean showTranslated = songMeaningShowTranslation
-                && !meaningNotesShowOriginal.contains(annotation.cacheKey())
-                && !resolved.isEmpty();
+        boolean showTranslated = meaningItemShowsTranslated(annotation.cacheKey(), resolved);
         TextView body = label(showTranslated ? resolved : annotation.body,
                 unplaced ? 14f : 15f, Color.argb(228, 255, 255, 255), AppFonts.regular(this));
         body.setLineSpacing(dp(6), 1f);
@@ -5022,6 +5031,7 @@ public class BaseLyricsActivity extends Activity implements
                     meaningItemTranslations.clear();
                     meaningItemsTranslating.clear();
                     meaningNotesShowOriginal.clear();
+                    meaningNotesShowTranslation.clear();
                     applySongMeaningAnnotations();
                     if (!songMeaningError.isEmpty()) {
                         setMeaningButtonState(MeaningButtonState.ERROR);
@@ -5106,12 +5116,29 @@ public class BaseLyricsActivity extends Activity implements
         }
         if (songMeaningTranslation != null) {
             songMeaningShowTranslation = !songMeaningShowTranslation;
+            // The chip speaks for the whole page, so the per-item pins step aside.
+            meaningNotesShowOriginal.clear();
+            meaningNotesShowTranslation.clear();
             renderMeaningPanel(lastMeaningFocusLine);
             return;
         }
         songMeaningShowTranslation = true;
         renderMeaningPanel(lastMeaningFocusLine);
         fetchMeaningTranslation();
+    }
+
+    /** Whether one item shows the translation, honouring its own pin before the header chip. */
+    private boolean meaningItemShowsTranslated(String key, String resolved) {
+        if (resolved == null || resolved.isEmpty()) {
+            return false;
+        }
+        if (meaningNotesShowOriginal.contains(key)) {
+            return false;
+        }
+        if (meaningNotesShowTranslation.contains(key)) {
+            return true;
+        }
+        return songMeaningShowTranslation;
     }
 
     /** Translation for one item: the on-demand answer first, the whole-page answer second. */
@@ -5140,13 +5167,38 @@ public class BaseLyricsActivity extends Activity implements
         if (meaningItemsTranslating.contains(key)) {
             return;
         }
-        if (translationFor(key, bulkTranslated).isEmpty()) {
-            songMeaningShowTranslation = true;
+        // Freeze every other item at what it is showing right now, so a tap on one card can never
+        // change the rest — not even when the header chip flips the page a moment later.
+        boolean pageShowsTranslation = songMeaningShowTranslation;
+        if (songMeaning != null) {
+            for (SongAnnotation other : songMeaning.allAnnotations()) {
+                String otherKey = other.cacheKey();
+                if (otherKey.equals(key)
+                        || meaningNotesShowOriginal.contains(otherKey)
+                        || meaningNotesShowTranslation.contains(otherKey)) {
+                    continue;
+                }
+                if (pageShowsTranslation) {
+                    meaningNotesShowTranslation.add(otherKey);
+                } else {
+                    meaningNotesShowOriginal.add(otherKey);
+                }
+            }
+        }
+        String translated = translationFor(key, bulkTranslated);
+        if (translated.isEmpty()) {
+            // Pinned before the request so the card shows the answer as soon as it lands.
+            meaningNotesShowOriginal.remove(key);
+            meaningNotesShowTranslation.add(key);
             requestMeaningItemTranslation(key, originalBody);
             return;
         }
-        if (!meaningNotesShowOriginal.remove(key)) {
+        if (meaningItemShowsTranslated(key, translated)) {
+            meaningNotesShowTranslation.remove(key);
             meaningNotesShowOriginal.add(key);
+        } else {
+            meaningNotesShowOriginal.remove(key);
+            meaningNotesShowTranslation.add(key);
         }
         renderMeaningPanel(lastMeaningFocusLine);
     }
@@ -5162,16 +5214,20 @@ public class BaseLyricsActivity extends Activity implements
         renderMeaningPanel(lastMeaningFocusLine);
         new Thread(() -> {
             String value = null;
+            String failure = "";
             try {
                 List<String> values = translateMeaningTexts(
                         java.util.Collections.singletonList(body), "zh-CN", settings);
                 if (values != null && !values.isEmpty()) {
                     value = values.get(0);
                 }
-            } catch (Exception ignored) {
-                // Reported below as a failure on this item only.
+            } catch (Exception error) {
+                failure = describeTranslationFailure(error);
+                android.util.Log.w("ivLyricsDebug", "meaning item translation failed (" + meaningEngineTag()
+                        + "): " + failure);
             }
             final String result = value;
+            final String failureDetail = failure;
             runOnUiThread(() -> {
                 meaningItemsTranslating.remove(key);
                 if (track == null || currentTrack == null
@@ -5181,12 +5237,66 @@ public class BaseLyricsActivity extends Activity implements
                 if (result != null && !result.trim().isEmpty()) {
                     meaningItemTranslations.put(key, result.trim());
                     meaningTranslationFailed = false;
+                    meaningTranslationDetail = "";
                 } else {
                     meaningTranslationFailed = true;
+                    meaningTranslationDetail = failureDetail;
                 }
                 renderMeaningPanel(lastMeaningFocusLine);
             });
         }, "ivlyrics-meaning-item").start();
+    }
+
+    /** Says the translation failed and offers the engine list, instead of silently showing the original. */
+    private void addMeaningTranslationBanner() {
+        TextView banner = label(ui("lyrics_meaning.engine_failed") + " \u00b7 " + meaningEngineLabel(),
+                13f, Color.argb(235, 255, 168, 168), AppFonts.bold(this));
+        banner.setPadding(dp(12), dp(9), dp(12), dp(9));
+        banner.setBackground(roundDrawable(Color.argb(26, 255, 96, 96), dp(10)));
+        banner.setOnClickListener(view -> showMeaningEnginePicker());
+        meaningContainer.addView(banner, topMargin(matchWrap(), dp(2)));
+        if (!meaningTranslationDetail.isEmpty()) {
+            meaningContainer.addView(panelText(meaningTranslationDetail, 11f,
+                    Color.argb(120, 255, 255, 255)), topMargin(matchWrap(), dp(4)));
+        }
+    }
+
+    private String meaningEngineLabel() {
+        String engine = meaningEngineTag();
+        if (KeylessTranslationProviders.BING_ID.equals(engine)) {
+            return KeylessTranslationProviders.BING_LABEL;
+        }
+        if (KeylessTranslationProviders.GOOGLE_ID.equals(engine)) {
+            return KeylessTranslationProviders.GOOGLE_LABEL;
+        }
+        if (LyricsPageSettings.MEANING_ENGINE_AUTO.equals(engine)) {
+            return ui("lyrics_meaning.engine_auto");
+        }
+        AiLyricsSettings.Snapshot settings = aiLyricsSettings == null ? null : aiLyricsSettings.snapshot();
+        if (settings != null) {
+            for (AiLyricsSettings.Snapshot provider : settings.readyAiProviderSnapshots()) {
+                if (provider.provider.id.equals(engine)) {
+                    return provider.provider.label;
+                }
+            }
+        }
+        return engine;
+    }
+
+    /** A short, readable reason: the engine, not the stack trace. */
+    private static String describeTranslationFailure(Exception error) {
+        String message = error == null ? "" : error.getMessage();
+        if (message == null) {
+            message = "";
+        }
+        message = message.trim().replace('\n', ' ');
+        if (message.length() > 120) {
+            message = message.substring(0, 120);
+        }
+        if (message.isEmpty() && error != null) {
+            message = error.getClass().getSimpleName();
+        }
+        return message;
     }
 
     private String meaningEngineTag() {
@@ -5241,8 +5351,10 @@ public class BaseLyricsActivity extends Activity implements
             songMeaningTranslation = null;
             meaningItemTranslations.clear();
             meaningNotesShowOriginal.clear();
+            meaningNotesShowTranslation.clear();
             meaningTranslationFailed = false;
             meaningEnginePickerOpen = false;
+            meaningEngineFallbackLabel = "";
             // Choosing an engine is an explicit request to translate with it, so the page switches to
             // the translation right away instead of waiting for another tap.
             songMeaningShowTranslation = true;
@@ -5262,13 +5374,18 @@ public class BaseLyricsActivity extends Activity implements
         renderMeaningPanel(lastMeaningFocusLine);
         new Thread(() -> {
             SongMeaningService.MeaningTranslation translation = null;
+            String failure = "";
             try {
                 translation = songMeaningService.translate(meaning, "zh-CN", meaningEngineTag(),
                         (texts, targetLanguage) -> translateMeaningTexts(texts, targetLanguage, settings));
-            } catch (Exception ignored) {
-                // Reported as a failed chip: the original text stays readable.
+            } catch (Exception error) {
+                // The reader is told which engine failed and gets the list to pick another one.
+                failure = describeTranslationFailure(error);
+                android.util.Log.w("ivLyricsDebug", "meaning translation failed (" + meaningEngineTag()
+                        + "): " + failure);
             }
             final SongMeaningService.MeaningTranslation result = translation;
+            final String failureDetail = failure;
             runOnUiThread(() -> {
                 meaningTranslating = false;
                 if (track == null || currentTrack == null
@@ -5277,8 +5394,11 @@ public class BaseLyricsActivity extends Activity implements
                 }
                 if (result == null) {
                     meaningTranslationFailed = true;
+                    meaningTranslationDetail = failureDetail;
                     songMeaningShowTranslation = false;
                 } else {
+                    meaningTranslationFailed = false;
+                    meaningTranslationDetail = "";
                     songMeaningTranslation = result;
                     songMeaningShowTranslation = true;
                 }
@@ -5298,7 +5418,11 @@ public class BaseLyricsActivity extends Activity implements
         if (!LyricsPageSettings.MEANING_ENGINE_AUTO.equals(engine)) {
             if (KeylessTranslationProviders.BING_ID.equals(engine)
                     || KeylessTranslationProviders.GOOGLE_ID.equals(engine)) {
-                return KeylessTranslationProviders.translateWithProvider(engine, texts, targetLang).values;
+                KeylessTranslationProviders.Result result =
+                        KeylessTranslationProviders.translateWithProvider(engine, texts, targetLang);
+                // The keyless endpoints rate-limit; when the other one answered, say so under the chip.
+                meaningEngineFallbackLabel = engine.equals(result.providerId) ? "" : result.providerLabel;
+                return result.values;
             }
             if (aiLyricsRepository != null && settings != null) {
                 return aiLyricsRepository.translateFreeTextWithProvider(texts, targetLang, settings, engine);

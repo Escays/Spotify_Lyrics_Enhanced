@@ -3764,7 +3764,7 @@ public class BaseLyricsActivity extends Activity implements
                 false
         );
 
-        lyricsLanguageSettingsPanel = buildLyricsLanguageSettingsPanel();
+        lyricsLanguageSettingsPanel = buildLyricsLanguageSettingsPanel(themePalette());
         lyricsLanguageSettingsPanel.setVisibility(View.GONE);
         LinearLayout.LayoutParams languagePanelParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -4162,6 +4162,10 @@ public class BaseLyricsActivity extends Activity implements
     private TextView meaningHeaderChip;
     /** Palette the current-track panel is built with; refreshed whenever it is rebuilt. */
     private SettingsPalette panelPalette = SettingsPalette.DARK;
+    /** True while the panel is being built, so its fields can tell that they sit on a coloured card. */
+    private boolean buildingCurrentTrackPanel;
+    /** Whether the panel is currently styled for the artwork card rather than the settings page. */
+    private boolean panelOverArtwork;
     private boolean meaningTranslating;
     private android.animation.ValueAnimator meaningBodyAnimator;
     private boolean meaningTranslationFailed;
@@ -4480,35 +4484,35 @@ public class BaseLyricsActivity extends Activity implements
      * The sheet takes the song's own colour. It is taken from the cover even when the page itself
      * uses a gradient, so the panel never falls back to near-black.
      */
+    /** The cover's hue, darkened: the sheet has to read as a layer over the lyrics. */
+    private int artworkSheetColor() {
+        String key = currentTrack == null ? "" : currentTrack.stableKey();
+        int base = 0;
+        android.graphics.Bitmap artwork = currentArtworkBitmap;
+        if (artwork != null && !artwork.isRecycled()) {
+            base = ArtworkColorPicker.pick(artwork, key);
+        }
+        if (base == 0) {
+            Integer cached = stableBackgroundColors.get(key);
+            if (cached != null && cached != 0) {
+                base = cached;
+            }
+        }
+        if (base == 0) {
+            base = 0xff2b3350;
+        }
+        return Color.argb(255, Math.round(Color.red(base) * 0.62f),
+                Math.round(Color.green(base) * 0.62f), Math.round(Color.blue(base) * 0.62f));
+    }
+
     private android.graphics.drawable.Drawable meaningSheetBackground() {
         String key = currentTrack == null ? "" : currentTrack.stableKey();
         if (!key.equals(meaningSheetColorKey) || meaningSheetColor == 0) {
-            int base = 0;
-            boolean fromCover = false;
-            android.graphics.Bitmap artwork = currentArtworkBitmap;
-            if (artwork != null && !artwork.isRecycled()) {
-                base = ArtworkColorPicker.pick(artwork, key);
-                fromCover = base != 0;
-            }
-            if (base == 0) {
-                Integer cached = stableBackgroundColors.get(key);
-                if (cached != null && cached != 0) {
-                    base = cached;
-                }
-            }
-            if (base == 0) {
-                base = 0xff2b3350;
-            }
-            // The sheet has to read as a layer over the lyrics: the same hue, clearly darker.
-            int red = Math.round(Color.red(base) * 0.62f);
-            int green = Math.round(Color.green(base) * 0.62f);
-            int blue = Math.round(Color.blue(base) * 0.62f);
-            meaningSheetColor = Color.argb(255, red, green, blue);
+            boolean fromCover = currentArtworkBitmap != null && !currentArtworkBitmap.isRecycled()
+                    && ArtworkColorPicker.pick(currentArtworkBitmap, key) != 0;
+            meaningSheetColor = artworkSheetColor();
             // A placeholder is not remembered: the real cover colour replaces it when art arrives.
             meaningSheetColorKey = fromCover ? key : "";
-            if (!fromCover) {
-                return sheetDrawable(meaningSheetColor);
-            }
         }
         return sheetDrawable(meaningSheetColor);
     }
@@ -5468,9 +5472,10 @@ public class BaseLyricsActivity extends Activity implements
         return page;
     }
 
-    private LinearLayout buildLyricsLanguageSettingsPanel() {
-        // Rebuilt on a theme change, so the colours are read here rather than patched afterwards.
-        panelPalette = themePalette();
+    private LinearLayout buildLyricsLanguageSettingsPanel(SettingsPalette palette) {
+        // Rebuilt when the sheet changes surface, so the colours are read here, not patched later.
+        panelPalette = palette;
+        buildingCurrentTrackPanel = true;
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(14), dp(12), dp(14), dp(12));
@@ -5589,6 +5594,7 @@ public class BaseLyricsActivity extends Activity implements
         panel.addView(lyricsManualSearchContent, topMargin(matchWrap(), dp(10)));
         stylePanelControlsForPalette(panel);
         switchLyricsPopupTab(activeLyricsPopupTab);
+        buildingCurrentTrackPanel = false;
         return panel;
     }
 
@@ -5617,6 +5623,10 @@ public class BaseLyricsActivity extends Activity implements
     }
 
     private GradientDrawable lyricsLanguageSettingsPanelBackground(boolean solid) {
+        if (panelOverArtwork && solid) {
+            // The sheet already draws the coloured card; a second fill would cover it.
+            return roundDrawable(Color.TRANSPARENT, dp(14));
+        }
         SettingsPalette palette = themePalette();
         int color = solid ? palette.surface : withAlpha(palette.text, 38);
         return roundDrawable(color, dp(14));
@@ -6479,7 +6489,7 @@ public class BaseLyricsActivity extends Activity implements
         ViewGroup.LayoutParams params = lyricsLanguageSettingsPanel.getLayoutParams();
         boolean visible = lyricsLanguageSettingsPanel.getVisibility() == View.VISIBLE;
         detachFromParent(lyricsLanguageSettingsPanel);
-        lyricsLanguageSettingsPanel = buildLyricsLanguageSettingsPanel();
+        lyricsLanguageSettingsPanel = buildLyricsLanguageSettingsPanel(themePalette());
         lyricsLanguageSettingsPanel.setVisibility(visible ? View.VISIBLE : View.GONE);
         styleCurrentTrackPanel(true);
         if (parent == null) {
@@ -6490,6 +6500,15 @@ public class BaseLyricsActivity extends Activity implements
         } else {
             parent.addView(lyricsLanguageSettingsPanel, params);
         }
+    }
+
+    /** Swaps the panel between the settings page's theme and the coloured card over the lyrics. */
+    private void ensureCurrentTrackPanelSurface(boolean overArtwork) {
+        if (lyricsLanguageSettingsPanel == null || panelOverArtwork == overArtwork) {
+            return;
+        }
+        panelOverArtwork = overArtwork;
+        rebuildCurrentTrackPanel();
     }
 
     private void rebuildSettingsPanelInPlace() {
@@ -6895,6 +6914,7 @@ public class BaseLyricsActivity extends Activity implements
     // ------------------------------------------------------------------ sections and rows
 
     private void buildCurrentTrackSettingsMenu(LinearLayout content) {
+        ensureCurrentTrackPanelSurface(false);
         LinearLayout page = settingsMenuPage(content, SETTINGS_TAB_CURRENT_TRACK);
         currentTrackSettingsSummary = settingsKit.rowDescription("");
         currentTrackSettingsSummary.setPaddingRelative(dp(4), 0, dp(4), dp(12));
@@ -9620,7 +9640,7 @@ public class BaseLyricsActivity extends Activity implements
         field.setOrientation(LinearLayout.VERTICAL);
         field.setPadding(dp(14), dp(12), dp(14), dp(12));
         // These cards also appear on the themed settings pages, so they follow the stored theme.
-        SettingsPalette settingsColors = themePalette();
+        SettingsPalette settingsColors = buildingCurrentTrackPanel ? panelPalette : themePalette();
         field.setBackground(roundDrawable(settingsColors.surface, dp(18)));
 
         TextView label = label(title, 15f, settingsColors.text, AppFonts.semiBold(this));
@@ -9643,7 +9663,7 @@ public class BaseLyricsActivity extends Activity implements
         field.setOrientation(LinearLayout.VERTICAL);
         field.setPadding(dp(14), dp(12), dp(14), dp(12));
         // These cards also appear on the themed settings pages, so they follow the stored theme.
-        SettingsPalette settingsColors = themePalette();
+        SettingsPalette settingsColors = buildingCurrentTrackPanel ? panelPalette : themePalette();
         field.setBackground(roundDrawable(settingsColors.surface, dp(18)));
 
         TextView label = label(title, 15f, settingsColors.text, AppFonts.semiBold(this));
@@ -10393,7 +10413,7 @@ public class BaseLyricsActivity extends Activity implements
     private EditText settingEditText(String hint, boolean multiLine, boolean secret) {
         EditText input = new EditText(this);
         input.setHint(hint);
-        SettingsPalette settingsColors = themePalette();
+        SettingsPalette settingsColors = buildingCurrentTrackPanel ? panelPalette : themePalette();
         input.setHintTextColor(settingsColors.text3);
         input.setTextColor(settingsColors.text);
         input.setTextSize(13f);
@@ -11990,24 +12010,33 @@ public class BaseLyricsActivity extends Activity implements
         }
     }
 
+    /** Plain text tabs with hairline dividers, matching 歌曲简介 | 逐句歌词 on the bulb sheet. */
     private void addLyricsPopupTabButton(String tabId, String text) {
         if (lyricsPopupTabButtonsContainer == null) {
             return;
         }
-        TextView button = SettingsAppearance.button(this, text, 14f);
-        button.setMaxWidth(dp(200));
-        button.setTextColor(panelPalette.text);
-        makeRemoteFocusable(button);
-        button.setTag(tabId);
-        button.setGravity(Gravity.CENTER);
-        button.setPadding(dp(16), dp(12), dp(16), dp(12));
-        button.setMinWidth(dp(72));
-        button.setOnClickListener(view -> switchLyricsPopupTab(tabId));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         if (lyricsPopupTabButtonsContainer.getChildCount() > 0) {
-            params.leftMargin = dp(8);
+            View divider = new View(this);
+            divider.setBackgroundColor(withAlpha(0xFFFFFFFF, 70));
+            LinearLayout.LayoutParams dividerParams =
+                    new LinearLayout.LayoutParams(dp(1), dp(16));
+            dividerParams.leftMargin = dp(6);
+            dividerParams.rightMargin = dp(2);
+            lyricsPopupTabButtonsContainer.addView(divider, dividerParams);
         }
-        lyricsPopupTabButtonsContainer.addView(button, params);
+        TextView tab = label(text, 17f, 0xFFFFFFFF, AppFonts.bold(this));
+        tab.setMaxWidth(dp(220));
+        makeRemoteFocusable(tab);
+        tab.setTag(tabId);
+        tab.setGravity(Gravity.CENTER);
+        tab.setPadding(dp(12), dp(6), dp(12), dp(6));
+        tab.setOnClickListener(view -> switchLyricsPopupTab(tabId));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        if (lyricsPopupTabButtonsContainer.getChildCount() > 0) {
+            params.leftMargin = dp(2);
+        }
+        lyricsPopupTabButtonsContainer.addView(tab, params);
     }
 
     /** The visible tab body, so a switch can slide it in instead of swapping without a transition. */
@@ -12039,42 +12068,43 @@ public class BaseLyricsActivity extends Activity implements
                 .start();
     }
 
-    private void switchLyricsPopupTab(String tabId) {
-        activeLyricsPopupTab = normalizeLyricsPopupTab(tabId);
+    /** Shows the body of the active tab and hides the rest; also used while measuring every tab. */
+    private void applyLyricsPopupTabVisibility() {
+        boolean lyricsTab = LYRICS_POPUP_TAB_LANGUAGE.equals(activeLyricsPopupTab);
         if (lyricsLanguageSettingsContent != null) {
-            lyricsLanguageSettingsContent.setVisibility(
-                    LYRICS_POPUP_TAB_LANGUAGE.equals(activeLyricsPopupTab) ? View.VISIBLE : View.GONE
-            );
+            lyricsLanguageSettingsContent.setVisibility(lyricsTab ? View.VISIBLE : View.GONE);
         }
         if (lyricsSyncSettingsContent != null) {
             lyricsSyncSettingsContent.setVisibility(
-                    LYRICS_POPUP_TAB_SYNC.equals(activeLyricsPopupTab) ? View.VISIBLE : View.GONE
-            );
+                    LYRICS_POPUP_TAB_SYNC.equals(activeLyricsPopupTab) ? View.VISIBLE : View.GONE);
         }
         if (videoSyncSettingsContent != null) {
             videoSyncSettingsContent.setVisibility(
-                    LYRICS_POPUP_TAB_VIDEO.equals(activeLyricsPopupTab) ? View.VISIBLE : View.GONE
-            );
+                    LYRICS_POPUP_TAB_VIDEO.equals(activeLyricsPopupTab) ? View.VISIBLE : View.GONE);
         }
         if (lyricsBackgroundSettingsContent != null) {
             lyricsBackgroundSettingsContent.setVisibility(
-                    LYRICS_POPUP_TAB_BACKGROUND.equals(activeLyricsPopupTab) ? View.VISIBLE : View.GONE
-            );
-            if (LYRICS_POPUP_TAB_BACKGROUND.equals(activeLyricsPopupTab)) {
-                updateLyricsBackgroundSettingsUi(true);
-            }
+                    LYRICS_POPUP_TAB_BACKGROUND.equals(activeLyricsPopupTab) ? View.VISIBLE : View.GONE);
         }
-        animateLyricsPopupTab(lyricsPopupTabContent());
-        boolean lyricsTab = LYRICS_POPUP_TAB_LANGUAGE.equals(activeLyricsPopupTab);
         if (lyricsManualSearchContent != null) {
             // Merged: the provider search lives on the lyrics tab instead of its own tab.
             lyricsManualSearchContent.setVisibility(
                     lyricsTab || LYRICS_POPUP_TAB_LRCLIB.equals(activeLyricsPopupTab)
-                            ? View.VISIBLE : View.GONE
-            );
-            if (lyricsTab || LYRICS_POPUP_TAB_LRCLIB.equals(activeLyricsPopupTab)) {
-                populateManualLrclibSearchDefaults(false);
-            }
+                            ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void switchLyricsPopupTab(String tabId) {
+        activeLyricsPopupTab = normalizeLyricsPopupTab(tabId);
+        applyLyricsPopupTabVisibility();
+        if (LYRICS_POPUP_TAB_BACKGROUND.equals(activeLyricsPopupTab)) {
+            updateLyricsBackgroundSettingsUi(true);
+        }
+        animateLyricsPopupTab(lyricsPopupTabContent());
+        boolean lyricsTab = LYRICS_POPUP_TAB_LANGUAGE.equals(activeLyricsPopupTab);
+        if (lyricsManualSearchContent != null
+                && (lyricsTab || LYRICS_POPUP_TAB_LRCLIB.equals(activeLyricsPopupTab))) {
+            populateManualLrclibSearchDefaults(false);
         }
         updateLyricsPopupTabButtons();
         scrollSelectedTabIntoView(lyricsPopupTabButtonsContainer);
@@ -12111,8 +12141,14 @@ public class BaseLyricsActivity extends Activity implements
                 continue;
             }
             TextView button = (TextView) child;
+            if (child.getTag() == null) {
+                continue;
+            }
             boolean selected = selectedTag != null && selectedTag.equals(child.getTag());
-            setSelectableButtonState(button, selected, 12f);
+            // The card is a darkened cover colour, so the ink stays white; only weight and a soft
+            // pill change, exactly like the two tabs on the bulb sheet.
+            button.setTextColor(selected ? 0xFFFFFFFF : withAlpha(0xFFFFFFFF, 120));
+            button.setBackground(selected ? roundDrawable(withAlpha(0xFFFFFFFF, 38), dp(14)) : null);
         }
     }
 
@@ -13296,10 +13332,12 @@ public class BaseLyricsActivity extends Activity implements
         updateLyricsLanguageSettingsUi();
         updateLyricsMatchStatusBlock();
         switchLyricsPopupTab(activeLyricsPopupTab);
+        ensureCurrentTrackPanelSurface(true);
         rememberLyricsLanguageSettingsParent();
         detachFromParent(lyricsLanguageSettingsPanel);
 
-        SettingsPalette palette = themePalette();
+        // The card is a darkened cover colour in both themes, so its ink is always the sheet's own.
+        SettingsPalette palette = SettingsPalette.ARTWORK;
         FrameLayout sheetRoot = new FrameLayout(this);
         sheetRoot.setBackgroundColor(Color.TRANSPARENT);
         sheetRoot.setClickable(true);
@@ -13381,11 +13419,10 @@ public class BaseLyricsActivity extends Activity implements
         requestDefaultRemoteFocus(true);
     }
 
-    /** Top-rounded card, the same shape the meaning sheet uses. */
+    /** Top-rounded card in the cover's own darker shade — the same surface the bulb sheet shows. */
     private GradientDrawable metaSheetBackground() {
-        SettingsPalette palette = themePalette();
         GradientDrawable shape = new GradientDrawable();
-        shape.setColor(palette.surface);
+        shape.setColor(artworkSheetColor());
         float radius = dp(24);
         shape.setCornerRadii(new float[]{radius, radius, radius, radius, 0f, 0f, 0f, 0f});
         return shape;
@@ -13436,8 +13473,23 @@ public class BaseLyricsActivity extends Activity implements
         int width = Math.max(1, getResources().getDisplayMetrics().widthPixels - dp(32));
         int exact = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY);
         int unspecified = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        lyricsLanguageSettingsPanel.measure(exact, unspecified);
-        int content = lyricsLanguageSettingsPanel.getMeasuredHeight();
+        // Every tab is measured, not only the open one: 同步 carries a fraction of the rows that
+        // 歌词与翻译 does, and sizing to it dropped the whole sheet whenever it was selected.
+        String saved = activeLyricsPopupTab;
+        int content = 0;
+        String[] tabs = {LYRICS_POPUP_TAB_LANGUAGE, LYRICS_POPUP_TAB_SYNC,
+                LYRICS_POPUP_TAB_VIDEO, LYRICS_POPUP_TAB_BACKGROUND};
+        for (String tab : tabs) {
+            if (LYRICS_POPUP_TAB_VIDEO.equals(tab) && videoBackgroundUnavailable()) {
+                continue;
+            }
+            activeLyricsPopupTab = tab;
+            applyLyricsPopupTabVisibility();
+            lyricsLanguageSettingsPanel.measure(exact, unspecified);
+            content = Math.max(content, lyricsLanguageSettingsPanel.getMeasuredHeight());
+        }
+        activeLyricsPopupTab = saved;
+        applyLyricsPopupTabVisibility();
         int max = (int) (getResources().getDisplayMetrics().heightPixels * 0.85f) - dp(92);
         int height = Math.max(dp(240), Math.min(content, Math.max(dp(240), max)));
         ViewGroup.LayoutParams params = lyricsMetaMenuScrollView.getLayoutParams();

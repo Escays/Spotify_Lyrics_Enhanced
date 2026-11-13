@@ -64,6 +64,18 @@ final class SettingsPalette {
             0xFF1D4ED8, 0x122563EB, 0xFFD4D4D9, 0x1A000000,
             0xFF3F3F46, 0xFFC27612, 0xFF15845A);
 
+    // Over a darkened cover colour: no neutral cards, only translucent white layers, as the bulb
+    // sheet draws them.
+    static final SettingsPalette ARTWORK = new SettingsPalette(true,
+            0x00000000, 0x12FFFFFF, 0x1FFFFFFF, 0x2BFFFFFF, 0x33FFFFFF, 0x0FFFFFFF,
+            0x1AFFFFFF, 0x24FFFFFF, 0x33FFFFFF,
+            0xFFFFFFFF, 0xE6FFFFFF, 0xA6FFFFFF, 0x70FFFFFF,
+            0xFF9CC2FF, 0xFF0B1020, 0x269CC2FF, 0x8C9CC2FF, 0xFFFFFFFF,
+            0xFFFFFFFF, 0xFF000000,
+            0xFF7BE0A3, 0x1F7BE0A3, 0xFFFFC65C, 0x1FFFC65C, 0xFFFF7B72, 0x1FFF7B72,
+            0xFF9CC2FF, 0x1A9CC2FF, 0x4DFFFFFF, 0x24FFFFFF,
+            0xFFD4D4D8, 0xFFE9A23B, 0xFF3FBF8A);
+
     private SettingsPalette(
             boolean dark,
             int bg, int surface, int surface2, int surface3, int surface4, int raise,

@@ -192,7 +192,6 @@ public class BaseLyricsActivity extends Activity implements
     private final ExecutorService researchMediaExecutor = Executors.newFixedThreadPool(2);
     private final PollinationsAuthClient pollinationsAuthClient = new PollinationsAuthClient();
     private AudioManager audioManager;
-    private AudioDeviceCallback audioDeviceCallback;
     private LyricsRepository lyricsRepository;
     private AiLyricsRepository aiLyricsRepository;
     private FuriganaRepository furiganaRepository;
@@ -202,7 +201,6 @@ public class BaseLyricsActivity extends Activity implements
     private AiLyricsSettings aiLyricsSettings;
     private LyricsProviderSettings lyricsProviderSettings;
     private CreatorPrivacyRepository creatorPrivacyRepository;
-    private CloudSettingsRepository cloudSettingsRepository;
 
     private LyricsView lyricsView;
     private LyricsView landscapeLyricsView;
@@ -295,12 +293,8 @@ public class BaseLyricsActivity extends Activity implements
     private TextView pollinationsAuthOpenButton;
     private TextView pollinationsAuthTestButton;
     private TextView selectedLanguageRuleView;
-    private TextView globalSyncOffsetValueView;
-    private TextView globalSyncOffsetDescriptionView;
     private TextView lyricsSyncOffsetValueView;
     private TextView lyricsSyncOffsetDescriptionView;
-    private TextView bluetoothSyncOffsetValueView;
-    private TextView bluetoothSyncOffsetDescriptionView;
     private TextView videoSyncOffsetValueView;
     private TextView videoSyncOffsetDescriptionView;
     private TextView videoTimingShareButton;
@@ -499,11 +493,6 @@ public class BaseLyricsActivity extends Activity implements
     private TextView creatorPrivacyStatusView;
     private TextView creatorPrivacyAccountButton;
     private TextView creatorPrivacyRefreshButton;
-    private TextView cloudSettingsStatusView;
-    private TextView cloudSettingsRefreshButton;
-    private TextView cloudSettingsUploadButton;
-    private TextView cloudSettingsApplyButton;
-    private TextView cloudSettingsDeleteButton;
     private TextView onboardingStepLabel;
     private TextView onboardingBackButton;
     private TextView onboardingNextButton;
@@ -633,12 +622,8 @@ public class BaseLyricsActivity extends Activity implements
     private long lastSeekCommandPositionMs = -1L;
     private String detectedLyricsSourceLang = "en";
     private String selectedRuleSourceLang = "auto";
-    private String currentBluetoothAudioDeviceKey = "";
-    private String currentBluetoothAudioDeviceName = "";
     private String activeLyricsPopupTab = LYRICS_POPUP_TAB_LANGUAGE;
-    private int currentGlobalSyncOffsetMs;
     private int currentTrackSyncOffsetMs;
-    private int currentBluetoothLyricsOffsetMs;
     private int currentVideoSyncOffsetMs;
     private long currentSpotifyDjLyricsOffsetMs;
     private boolean lyricsLanguageSettingsVisible;
@@ -667,10 +652,6 @@ public class BaseLyricsActivity extends Activity implements
     private boolean creatorPrivacyLoginInProgress;
     private boolean creatorPrivacyLoaded;
     private boolean creatorProfilePrivate;
-    private boolean cloudSettingsRequestInFlight;
-    private boolean cloudSettingsLoaded;
-    private CloudSettingsRepository.CloudRecord cloudSettingsRecord = CloudSettingsRepository.CloudRecord.empty();
-    private String cloudSettingsStatusOverride = "";
     private boolean automaticUpdateCheckStarted;
     private boolean spotifySetupRequired;
     private boolean manualLrclibSearchInFlight;
@@ -803,15 +784,8 @@ public class BaseLyricsActivity extends Activity implements
         // enabled, without an accessibility-enabled or touch-exploration state transition.
         getContentResolver().registerContentObserver(Settings.Secure.getUriFor(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES),
                 false, onboardingMotionObserver);
-        currentGlobalSyncOffsetMs = aiLyricsSettings.globalSyncOffsetMs();
         lyricsProviderSettings = new LyricsProviderSettings(this);
         creatorPrivacyRepository = new CreatorPrivacyRepository(this);
-        cloudSettingsRepository = new CloudSettingsRepository(
-                this,
-                creatorPrivacyRepository,
-                aiLyricsSettings,
-                lyricsProviderSettings
-        );
         creatorSupportRepository = new CreatorSupportRepository(this);
         aiLyricsRepository = new AiLyricsRepository(this);
         furiganaRepository = new FuriganaRepository(this);
@@ -820,7 +794,6 @@ public class BaseLyricsActivity extends Activity implements
         youtubeBackgroundRepository = new YouTubeBackgroundRepository(this);
         if (!IvLyricsBridge.isEmbedded(this)) updateChecker = new UpdateChecker(this);
         audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
-        registerAudioDeviceCallback();
         Window window = getWindow();
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
                 | WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
@@ -835,7 +808,6 @@ public class BaseLyricsActivity extends Activity implements
         applyTypographySettings(settingsSnapshot);
         applySpeakerColorSettings(settingsSnapshot);
         applyLyricsTextAlignmentSetting(settingsSnapshot);
-        refreshBluetoothAudioDeviceOffsetState(false);
         updateSpotifySetupGate(false);
         handleLaunchIntent(getIntent());
         requestDefaultRemoteFocus(false);
@@ -903,7 +875,6 @@ public class BaseLyricsActivity extends Activity implements
         NowPlayingService.register(this);
         updatePermissionState();
         NowPlayingService.requestRefresh(this);
-        refreshBluetoothAudioDeviceOffsetState(false);
         onNowPlayingChanged(NowPlayingService.getLatestSnapshot());
         applyDebugLyricsLoadingState(getIntent());
         updateSpotifySetupGate(false);
@@ -926,165 +897,6 @@ public class BaseLyricsActivity extends Activity implements
         if (hasFocus) {
             applySystemBarsForOrientation();
             applyLandscapeControlsAutoHideSetting();
-        }
-    }
-
-    private void registerAudioDeviceCallback() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || audioManager == null || audioDeviceCallback != null) {
-            return;
-        }
-        audioDeviceCallback = new AudioDeviceCallback() {
-            @Override
-            public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
-                refreshBluetoothAudioDeviceOffsetState(true);
-            }
-
-            @Override
-            public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
-                refreshBluetoothAudioDeviceOffsetState(true);
-            }
-        };
-        audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler);
-    }
-
-    private void unregisterAudioDeviceCallback() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || audioManager == null || audioDeviceCallback == null) {
-            return;
-        }
-        audioManager.unregisterAudioDeviceCallback(audioDeviceCallback);
-        audioDeviceCallback = null;
-    }
-
-    private void refreshBluetoothAudioDeviceOffsetState(boolean deviceChanged) {
-        BluetoothAudioDevice device = currentBluetoothAudioDevice();
-        String nextKey = device == null ? "" : device.key;
-        String nextName = device == null ? "" : device.name;
-        boolean changed = !nextKey.equals(currentBluetoothAudioDeviceKey);
-        currentBluetoothAudioDeviceKey = nextKey;
-        currentBluetoothAudioDeviceName = nextName;
-        currentBluetoothLyricsOffsetMs = nextKey.isEmpty() || aiLyricsSettings == null
-                ? 0
-                : aiLyricsSettings.bluetoothSyncOffsetMs(nextKey);
-        updateLyricsSyncSettingsUi();
-        if (changed || deviceChanged) {
-            if (changed && deviceChanged) {
-                appendLog(nextKey.isEmpty()
-                        ? "bluetooth audio offset: no bluetooth output detected"
-                        : "bluetooth audio offset: device=\"" + nextName + "\" / offset=" + formatSignedMs(currentBluetoothLyricsOffsetMs));
-            }
-            updateLyricsOffsetSensitiveViews();
-        }
-    }
-
-    private BluetoothAudioDevice currentBluetoothAudioDevice() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || audioManager == null) {
-            return null;
-        }
-        AudioDeviceInfo[] devices;
-        try {
-            devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
-        } catch (Exception ignored) {
-            return null;
-        }
-        BluetoothAudioDevice fallback = null;
-        for (AudioDeviceInfo device : devices) {
-            if (device == null || !device.isSink() || !isBluetoothAudioDevice(device)) {
-                continue;
-            }
-            BluetoothAudioDevice candidate = bluetoothAudioDevice(device);
-            if (fallback == null) {
-                fallback = candidate;
-            }
-            if (device.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP
-                    || isBleSpeakerDevice(device)
-                    || isBleHeadsetDevice(device)) {
-                return candidate;
-            }
-        }
-        return fallback;
-    }
-
-    private BluetoothAudioDevice bluetoothAudioDevice(AudioDeviceInfo device) {
-        String name = "";
-        CharSequence productName = device.getProductName();
-        if (productName != null) {
-            name = productName.toString().trim();
-        }
-        // Saved offsets are keyed by the English type label; only the name shown is localized.
-        String keyLabel = name.isEmpty() ? bluetoothAudioDeviceTypeLabel(device.getType()) : name;
-        String shownName = name.isEmpty() ? bluetoothAudioDeviceTypeName(device.getType()) : name;
-        String keyName = keyLabel.isEmpty() ? "id:" + device.getId() : keyLabel.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
-        return new BluetoothAudioDevice(
-                "type:" + device.getType() + "|name:" + keyName,
-                shownName.isEmpty() ? ui("bluetooth_sync.unknown_device") : shownName
-        );
-    }
-
-    private boolean isBluetoothAudioDevice(AudioDeviceInfo device) {
-        int type = device.getType();
-        return type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP
-                || type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
-                || isBleHeadsetDevice(device)
-                || isBleSpeakerDevice(device)
-                || isHearingAidDevice(device);
-    }
-
-    private boolean isBleHeadsetDevice(AudioDeviceInfo device) {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                && device.getType() == AudioDeviceInfo.TYPE_BLE_HEADSET;
-    }
-
-    private boolean isBleSpeakerDevice(AudioDeviceInfo device) {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                && device.getType() == AudioDeviceInfo.TYPE_BLE_SPEAKER;
-    }
-
-    private boolean isHearingAidDevice(AudioDeviceInfo device) {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
-                && device.getType() == AudioDeviceInfo.TYPE_HEARING_AID;
-    }
-
-    private String bluetoothAudioDeviceTypeLabel(int type) {
-        if (type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP) {
-            return "Bluetooth A2DP";
-        }
-        if (type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO) {
-            return "Bluetooth SCO";
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && type == AudioDeviceInfo.TYPE_BLE_HEADSET) {
-            return "BLE headset";
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && type == AudioDeviceInfo.TYPE_BLE_SPEAKER) {
-            return "BLE speaker";
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && type == AudioDeviceInfo.TYPE_HEARING_AID) {
-            return "Hearing aid";
-        }
-        return ui("bluetooth_sync.unknown_device");
-    }
-
-    /** The type of a device without a product name, as shown in the UI language. */
-    private String bluetoothAudioDeviceTypeName(int type) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && type == AudioDeviceInfo.TYPE_BLE_HEADSET) {
-            return ui("bluetooth_sync.device_ble_headset");
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && type == AudioDeviceInfo.TYPE_BLE_SPEAKER) {
-            return ui("bluetooth_sync.device_ble_speaker");
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && type == AudioDeviceInfo.TYPE_HEARING_AID) {
-            return ui("bluetooth_sync.device_hearing_aid");
-        }
-        // "Bluetooth A2DP" and "Bluetooth SCO" are profile names and read the same in every language.
-        return bluetoothAudioDeviceTypeLabel(type);
-    }
-
-    private static final class BluetoothAudioDevice {
-        final String key;
-        final String name;
-
-        BluetoothAudioDevice(String key, String name) {
-            this.key = key == null ? "" : key.trim();
-            this.name = name == null ? "" : name.trim();
         }
     }
 
@@ -1304,7 +1116,6 @@ public class BaseLyricsActivity extends Activity implements
         if (creatorSupportRepository != null) {
             creatorSupportRepository.shutdown();
         }
-        unregisterAudioDeviceCallback();
         destroyInAppBrowserWebView();
         destroyYouTubeBackgroundView();
         if (vinylPlayerModeView != null) {
@@ -1601,7 +1412,13 @@ public class BaseLyricsActivity extends Activity implements
         boolean embeddedMetadataEnriched = IvLyricsBridge.isEmbedded(this) && currentTrack != null && snapshot != null
                 && currentTrack.stableKey().equals(snapshot.stableKey()) && !snapshot.isrc.isEmpty()
                 && !snapshot.isrc.equals(currentTrack.isrc);
+        // The sheet holds Genius prose per song: the moment the song changes, the old prose is a lie.
+        boolean meaningTrackChanged = currentTrack == null || snapshot == null
+                || !currentTrack.stableKey().equals(snapshot.stableKey());
         currentTrack = snapshot;
+        if (meaningTrackChanged) {
+            resetSongMeaningForTrackChange();
+        }
         updateCurrentTrackSettingsMenu();
         onLyricsHostTrackChanged(snapshot == null || snapshot.trackId.isEmpty()
                 ? "" : "spotify:track:" + snapshot.trackId);
@@ -4802,6 +4619,31 @@ public class BaseLyricsActivity extends Activity implements
         return null;
     }
 
+    /** Drops the previous song's description, annotations and translation before the next load. */
+    private void resetSongMeaningForTrackChange() {
+        songMeaning = SongMeaning.EMPTY;
+        songMeaningLoaded = false;
+        songMeaningLoading = false;
+        songMeaningError = "";
+        songMeaningRequestKey = "";
+        songMeaningTranslation = null;
+        songMeaningShowTranslation = false;
+        meaningItemTranslations.clear();
+        meaningItemsTranslating.clear();
+        meaningNotesShowOriginal.clear();
+        meaningNotesShowTranslation.clear();
+        meaningTranslationFailed = false;
+        meaningTranslationDetail = "";
+        meaningEngineFallbackLabel = "";
+        meaningEnginePickerOpen = false;
+        lastMeaningFocusLine = -1;
+        setMeaningButtonState(MeaningButtonState.IDLE);
+        if (meaningPopup != null && meaningPopup.isShowing()) {
+            renderMeaningPanel(-1);
+            requestSongMeaning(false);
+        }
+    }
+
     private boolean meaningIsEmpty() {
         return songMeaning == null || songMeaning.isEmpty();
     }
@@ -5780,31 +5622,6 @@ public class BaseLyricsActivity extends Activity implements
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
 
-        TextView globalTitle = label(ui("lyrics.global_sync.title"), 14f, Color.WHITE, AppFonts.bold(this));
-        content.addView(globalTitle, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        ));
-
-        globalSyncOffsetDescriptionView = label(ui("lyrics.global_sync.help"), 11f, Color.argb(168, 255, 255, 255), AppFonts.regular(this));
-        globalSyncOffsetDescriptionView.setLineSpacing(dp(2), 1f);
-        content.addView(globalSyncOffsetDescriptionView, topMargin(matchWrap(), dp(5)));
-
-        globalSyncOffsetValueView = label("", 25f, Color.WHITE, AppFonts.bold(this));
-        globalSyncOffsetValueView.setGravity(Gravity.CENTER);
-        globalSyncOffsetValueView.setBackground(roundDrawable(Color.argb(34, 255, 255, 255), dp(14)));
-        content.addView(globalSyncOffsetValueView, topMargin(matchWrap(), dp(12)));
-
-        content.addView(buildOffsetButtonRow(-100, -50, -10, this::adjustGlobalSyncOffset), topMargin(matchWrap(), dp(10)));
-        content.addView(buildOffsetButtonRow(10, 50, 100, this::adjustGlobalSyncOffset), topMargin(matchWrap(), dp(8)));
-
-        TextView globalResetButton = languageButton(ui("lyrics.global_sync.reset"), false);
-        globalResetButton.setOnClickListener(view -> setGlobalSyncOffset(0, true));
-        content.addView(globalResetButton, topMargin(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(42)
-        ), dp(8)));
-
         TextView title = label(ui("lyrics.sync.title"), 14f, Color.WHITE, AppFonts.bold(this));
         content.addView(title, topMargin(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -5830,27 +5647,6 @@ public class BaseLyricsActivity extends Activity implements
                 dp(42)
         ), dp(8)));
 
-        TextView bluetoothTitle = label(ui("lyrics.bluetooth_sync.title"), 14f, Color.WHITE, AppFonts.bold(this));
-        content.addView(bluetoothTitle, topMargin(matchWrap(), dp(18)));
-
-        bluetoothSyncOffsetDescriptionView = label("", 11f, Color.argb(168, 255, 255, 255), AppFonts.regular(this));
-        bluetoothSyncOffsetDescriptionView.setLineSpacing(dp(2), 1f);
-        content.addView(bluetoothSyncOffsetDescriptionView, topMargin(matchWrap(), dp(5)));
-
-        bluetoothSyncOffsetValueView = label("", 25f, Color.WHITE, AppFonts.bold(this));
-        bluetoothSyncOffsetValueView.setGravity(Gravity.CENTER);
-        bluetoothSyncOffsetValueView.setBackground(roundDrawable(Color.argb(34, 255, 255, 255), dp(14)));
-        content.addView(bluetoothSyncOffsetValueView, topMargin(matchWrap(), dp(12)));
-
-        content.addView(buildOffsetButtonRow(-100, -50, -10, this::adjustCurrentBluetoothSyncOffset), topMargin(matchWrap(), dp(10)));
-        content.addView(buildOffsetButtonRow(10, 50, 100, this::adjustCurrentBluetoothSyncOffset), topMargin(matchWrap(), dp(8)));
-
-        TextView bluetoothResetButton = languageButton(ui("lyrics.bluetooth_sync.reset"), false);
-        bluetoothResetButton.setOnClickListener(view -> setCurrentBluetoothSyncOffset(0, true));
-        content.addView(bluetoothResetButton, topMargin(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(42)
-        ), dp(8)));
         return content;
     }
 
@@ -8388,10 +8184,6 @@ public class BaseLyricsActivity extends Activity implements
         LinearLayout section = settingsSection(page, ui("creator_privacy.section"), ui("creator_privacy.section_desc"), -1);
         buildCreatorPrivacyControl(section);
 
-        section = settingsSection(page, ui("cloud_sync.section"),
-                ui("cloud_sync.monthly_required") + "\n" + ui("cloud_sync.section_desc"), -1);
-        buildCloudSettingsControl(section);
-
         if (!embedded) {
             section = settingsSection(page, ui("section.app_update"), ui("section.app_update_desc"), -1);
             LinearLayout group = settingsGroup(section);
@@ -9739,241 +9531,6 @@ public class BaseLyricsActivity extends Activity implements
         return view;
     }
 
-    private void buildCloudSettingsControl(LinearLayout section) {
-        LinearLayout group = settingsGroup(section);
-        cloudSettingsStatusView = settingsKit.text("", 14f, settingsKit.p.text2, settingsKit.regular);
-        cloudSettingsStatusView.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        group.addView(settingsKit.statusLine(cloudSettingsStatusView), matchWrap());
-        cloudSettingsRefreshButton = settingsAction(group, ui("cloud_sync.refresh"), null, SettingsKit.ACTION_NORMAL,
-                view -> refreshCloudSettings());
-        cloudSettingsUploadButton = settingsAction(group, ui("cloud_sync.upload"), null, SettingsKit.ACTION_NORMAL,
-                view -> uploadCloudSettings());
-        cloudSettingsApplyButton = settingsAction(group, ui("cloud_sync.apply"), null, SettingsKit.ACTION_NORMAL,
-                view -> confirmApplyCloudSettings());
-        // Deleting the cloud copy sits apart from the everyday actions.
-        LinearLayout danger = settingsGroup(section);
-        cloudSettingsDeleteButton = settingsAction(danger, ui("cloud_sync.delete"), null, SettingsKit.ACTION_DANGER,
-                view -> confirmDeleteCloudSettings());
-        updateCloudSettingsControls();
-    }
-
-    private void updateCloudSettingsControls() {
-        if (cloudSettingsRepository == null || creatorPrivacyRepository == null) return;
-        boolean authenticated = creatorPrivacyRepository.hasAuthenticatedSession();
-        if (cloudSettingsStatusView != null) {
-            String status;
-            if (cloudSettingsRequestInFlight) {
-                status = ui("cloud_sync.status_working");
-            } else if (!authenticated) {
-                status = ui("cloud_sync.login_required");
-            } else if (!cloudSettingsStatusOverride.isEmpty()) {
-                status = ui(cloudSettingsStatusOverride);
-            } else if (!cloudSettingsLoaded) {
-                status = ui("cloud_sync.status_not_loaded");
-            } else if (!cloudSettingsRecord.exists) {
-                status = ui("cloud_sync.status_empty");
-            } else {
-                Locale locale = Locale.forLanguageTag(currentUiLanguageTag());
-                String updated = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, locale)
-                        .format(new Date(cloudSettingsRecord.updatedAt * 1000L));
-                status = uiFormat("cloud_sync.status_found_format", cloudSettingsRecord.revision, updated);
-            }
-            cloudSettingsStatusView.setText(status);
-        }
-        boolean enabled = authenticated && !cloudSettingsRequestInFlight;
-        if (cloudSettingsRefreshButton != null) cloudSettingsRefreshButton.setEnabled(enabled);
-        if (cloudSettingsUploadButton != null) cloudSettingsUploadButton.setEnabled(enabled);
-        if (cloudSettingsApplyButton != null) {
-            boolean canApply = enabled && cloudSettingsLoaded && cloudSettingsRecord.exists;
-            cloudSettingsApplyButton.setEnabled(canApply);
-            cloudSettingsApplyButton.setAlpha(canApply ? 1f : 0.45f);
-        }
-        if (cloudSettingsDeleteButton != null) cloudSettingsDeleteButton.setEnabled(enabled);
-        float alpha = enabled ? 1f : 0.45f;
-        if (cloudSettingsRefreshButton != null) cloudSettingsRefreshButton.setAlpha(alpha);
-        if (cloudSettingsUploadButton != null) cloudSettingsUploadButton.setAlpha(alpha);
-        if (cloudSettingsDeleteButton != null) cloudSettingsDeleteButton.setAlpha(alpha);
-    }
-
-    private void refreshCloudSettings() {
-        runCloudSettingsOperation("refresh", () -> cloudSettingsRepository.load(currentUiLanguageTag()));
-    }
-
-    private void uploadCloudSettings() {
-        if (!prepareCloudSettingsOperation()) return;
-        cloudSettingsStatusOverride = "";
-        cloudSettingsRequestInFlight = true;
-        updateCloudSettingsControls();
-        String languageTag = currentUiLanguageTag();
-        creatorPrivacyExecutor.execute(() -> {
-            try {
-                requireMonthlyCloudSupport();
-                CloudSettingsRepository.CloudRecord current = cloudSettingsRepository.load(languageTag);
-                CloudSettingsRepository.CloudRecord saved = cloudSettingsRepository.save(current.revision, languageTag);
-                handler.post(() -> {
-                    cloudSettingsRequestInFlight = false;
-                    cloudSettingsLoaded = true;
-                    cloudSettingsRecord = saved;
-                    cloudSettingsStatusOverride = "";
-                    updateCloudSettingsControls();
-                    showSavedToast(ui("cloud_sync.uploaded"));
-                });
-            } catch (Exception error) {
-                handler.post(() -> finishCloudSettingsFailure(error));
-            }
-        });
-    }
-
-    private void confirmApplyCloudSettings() {
-        if (!cloudSettingsLoaded || !cloudSettingsRecord.exists) return;
-        new AlertDialog.Builder(this)
-                .setTitle(ui("cloud_sync.apply"))
-                .setMessage(ui("cloud_sync.confirm_apply"))
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(android.R.string.ok, (dialog, which) -> applyCloudSettings())
-                .show();
-    }
-
-    private void applyCloudSettings() {
-        if (!prepareCloudSettingsOperation()) return;
-        cloudSettingsStatusOverride = "";
-        cloudSettingsRequestInFlight = true;
-        updateCloudSettingsControls();
-        String languageTag = currentUiLanguageTag();
-        creatorPrivacyExecutor.execute(() -> {
-            try {
-                requireMonthlyCloudSupport();
-                CloudSettingsRepository.CloudRecord record = cloudSettingsRepository.load(languageTag);
-                cloudSettingsRepository.apply(record);
-                handler.post(() -> {
-                    cloudSettingsRequestInFlight = false;
-                    cloudSettingsLoaded = true;
-                    cloudSettingsRecord = record;
-                    cloudSettingsStatusOverride = "";
-                    showSavedToast(ui("cloud_sync.applied"));
-                    recreate();
-                });
-            } catch (Exception error) {
-                handler.post(() -> finishCloudSettingsFailure(error));
-            }
-        });
-    }
-
-    private void confirmDeleteCloudSettings() {
-        if (!prepareCloudSettingsOperation()) return;
-        new AlertDialog.Builder(this)
-                .setTitle(ui("cloud_sync.delete"))
-                .setMessage(ui("cloud_sync.confirm_delete"))
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(android.R.string.ok, (dialog, which) -> deleteCloudSettings())
-                .show();
-    }
-
-    private void deleteCloudSettings() {
-        if (!prepareCloudSettingsOperation()) return;
-        cloudSettingsStatusOverride = "";
-        cloudSettingsRequestInFlight = true;
-        updateCloudSettingsControls();
-        String languageTag = currentUiLanguageTag();
-        creatorPrivacyExecutor.execute(() -> {
-            try {
-                cloudSettingsRepository.delete(languageTag);
-                handler.post(() -> {
-                    cloudSettingsRequestInFlight = false;
-                    cloudSettingsLoaded = true;
-                    cloudSettingsRecord = CloudSettingsRepository.CloudRecord.empty();
-                    cloudSettingsStatusOverride = "";
-                    updateCloudSettingsControls();
-                    showSavedToast(ui("cloud_sync.deleted"));
-                });
-            } catch (Exception error) {
-                handler.post(() -> finishCloudSettingsFailure(error));
-            }
-        });
-    }
-
-    private interface CloudRecordOperation {
-        CloudSettingsRepository.CloudRecord run() throws Exception;
-    }
-
-    private void runCloudSettingsOperation(String label, CloudRecordOperation operation) {
-        if (!prepareCloudSettingsOperation()) return;
-        cloudSettingsStatusOverride = "";
-        cloudSettingsRequestInFlight = true;
-        updateCloudSettingsControls();
-        creatorPrivacyExecutor.execute(() -> {
-            try {
-                requireMonthlyCloudSupport();
-                CloudSettingsRepository.CloudRecord record = operation.run();
-                handler.post(() -> {
-                    cloudSettingsRequestInFlight = false;
-                    cloudSettingsLoaded = true;
-                    cloudSettingsRecord = record;
-                    cloudSettingsStatusOverride = "";
-                    updateCloudSettingsControls();
-                });
-            } catch (Exception error) {
-                appendLog("cloud settings " + label + " failed: " + error.getMessage());
-                handler.post(() -> finishCloudSettingsFailure(error));
-            }
-        });
-    }
-
-    private boolean prepareCloudSettingsOperation() {
-        if (cloudSettingsRepository == null || creatorPrivacyRepository == null || cloudSettingsRequestInFlight) {
-            return false;
-        }
-        if (!creatorPrivacyRepository.hasAuthenticatedSession()) {
-            showSavedToast(ui("cloud_sync.login_required"));
-            beginCreatorPrivacyLogin();
-            return false;
-        }
-        return true;
-    }
-
-    private void requireMonthlyCloudSupport() throws Exception {
-        if (creatorSupportRepository == null || creatorPrivacyRepository == null) {
-            throw new IOException("Supporter role lookup is unavailable");
-        }
-        String userHash = creatorPrivacyRepository.authenticatedUserHash();
-        String tier = creatorSupportRepository.refreshTierForUser(userHash);
-        if (!"monthly".equals(tier)) {
-            throw new CloudSettingsRepository.CloudSaveException(
-                    "Cloud sync is available to Monthly Supporters only",
-                    "monthly_supporter_required",
-                    403
-            );
-        }
-    }
-
-    private void finishCloudSettingsFailure(Exception error) {
-        cloudSettingsRequestInFlight = false;
-        String key = "cloud_sync.failed";
-        if (error instanceof CreatorPrivacyRepository.AuthenticationException) {
-            key = "cloud_sync.login_required";
-        } else if (error instanceof CloudSettingsRepository.CloudSaveException) {
-            String code = ((CloudSettingsRepository.CloudSaveException) error).code;
-            if ("monthly_supporter_required".equals(code)) {
-                key = "cloud_sync.monthly_required";
-            } else if ("revision_conflict".equals(code)) {
-                key = "cloud_sync.conflict";
-            } else if ("discord_login_required".equals(code)) {
-                key = "cloud_sync.login_required";
-            }
-        }
-        cloudSettingsStatusOverride = key;
-        updateCloudSettingsControls();
-        appendLog("cloud settings failed: " + error.getMessage());
-        showSavedToast(ui(key));
-        if ("cloud_sync.monthly_required".equals(key) && !isFinishing()) {
-            new AlertDialog.Builder(this)
-                    .setTitle(ui("cloud_sync.section"))
-                    .setMessage(ui("cloud_sync.monthly_required"))
-                    .setPositiveButton(android.R.string.ok, null)
-                    .show();
-        }
-    }
-
     private void buildCreatorPrivacyControl(LinearLayout section) {
         LinearLayout group = settingsGroup(section);
         LinearLayout noteRow = settingsKit.vertical();
@@ -10063,7 +9620,6 @@ public class BaseLyricsActivity extends Activity implements
             creatorPrivacyRefreshButton.setEnabled(enabled);
             creatorPrivacyRefreshButton.setAlpha(enabled ? 1f : 0.45f);
         }
-        updateCloudSettingsControls();
     }
 
     private void setCreatorPrivacySwitchChecked(boolean checked) {
@@ -12448,7 +12004,7 @@ public class BaseLyricsActivity extends Activity implements
                 position,
                 currentTrack.playing,
                 firstLyricTimeMs(currentBaseLyricsResult),
-                currentGlobalSyncOffsetMs + currentTrackSyncOffsetMs + currentBluetoothLyricsOffsetMs + currentVideoSyncOffsetMs
+                currentTrackSyncOffsetMs + currentVideoSyncOffsetMs
         );
     }
 
@@ -12743,12 +12299,6 @@ public class BaseLyricsActivity extends Activity implements
     }
 
     private void updateLyricsSyncSettingsUi() {
-        if (globalSyncOffsetValueView != null) {
-            globalSyncOffsetValueView.setText(formatSignedMs(currentGlobalSyncOffsetMs));
-        }
-        if (globalSyncOffsetDescriptionView != null) {
-            globalSyncOffsetDescriptionView.setText(ui("lyrics.global_sync.help"));
-        }
         if (lyricsSyncOffsetValueView != null) {
             lyricsSyncOffsetValueView.setText(formatSignedMs(currentTrackSyncOffsetMs));
         }
@@ -12758,18 +12308,6 @@ public class BaseLyricsActivity extends Activity implements
                     : uiFormat("lyrics.sync.track_scope", currentTrack.title);
             lyricsSyncOffsetDescriptionView.setText(trackText
                     + "\n" + ui("lyrics.sync.help"));
-        }
-        if (bluetoothSyncOffsetValueView != null) {
-            bluetoothSyncOffsetValueView.setText(currentBluetoothAudioDeviceKey.isEmpty()
-                    ? "--"
-                    : formatSignedMs(currentBluetoothLyricsOffsetMs));
-        }
-        if (bluetoothSyncOffsetDescriptionView != null) {
-            String deviceText = currentBluetoothAudioDeviceKey.isEmpty()
-                    ? ui("lyrics.bluetooth_sync.no_device")
-                    : uiFormat("lyrics.bluetooth_sync.device_scope", currentBluetoothAudioDeviceName);
-            bluetoothSyncOffsetDescriptionView.setText(deviceText
-                    + "\n" + ui("lyrics.bluetooth_sync.help"));
         }
     }
 
@@ -13079,29 +12617,8 @@ public class BaseLyricsActivity extends Activity implements
         setCurrentTrackSyncOffset(currentTrackSyncOffsetMs + deltaMs, true);
     }
 
-    private void adjustGlobalSyncOffset(int deltaMs) {
-        setGlobalSyncOffset(currentGlobalSyncOffsetMs + deltaMs, true);
-    }
-
-    private void adjustCurrentBluetoothSyncOffset(int deltaMs) {
-        setCurrentBluetoothSyncOffset(currentBluetoothLyricsOffsetMs + deltaMs, true);
-    }
-
     private void adjustCurrentVideoSyncOffset(int deltaMs) {
         setCurrentVideoSyncOffset(currentVideoSyncOffsetMs + deltaMs, true);
-    }
-
-    private void setGlobalSyncOffset(int offsetMs, boolean notify) {
-        int nextOffset = clampSyncOffset(offsetMs);
-        currentGlobalSyncOffsetMs = nextOffset;
-        if (aiLyricsSettings != null) {
-            aiLyricsSettings.setGlobalSyncOffsetMs(nextOffset);
-        }
-        updateLyricsSyncSettingsUi();
-        updateLyricsOffsetSensitiveViews();
-        if (notify) {
-            showSavedToast(uiFormat("toast.global_sync_offset_format", formatSignedMs(nextOffset)));
-        }
     }
 
     private void setCurrentTrackSyncOffset(int offsetMs, boolean notify) {
@@ -13117,26 +12634,6 @@ public class BaseLyricsActivity extends Activity implements
         updateLyricsOffsetSensitiveViews();
         if (notify) {
             showSavedToast(uiFormat("toast.sync_offset_format", formatSignedMs(nextOffset)));
-        }
-    }
-
-    private void setCurrentBluetoothSyncOffset(int offsetMs, boolean notify) {
-        if (currentBluetoothAudioDeviceKey == null || currentBluetoothAudioDeviceKey.trim().isEmpty()) {
-            updateLyricsSyncSettingsUi();
-            if (notify) {
-                showSavedToast(ui("lyrics.bluetooth_sync.no_device"));
-            }
-            return;
-        }
-        int nextOffset = clampSyncOffset(offsetMs);
-        currentBluetoothLyricsOffsetMs = nextOffset;
-        if (aiLyricsSettings != null) {
-            aiLyricsSettings.setBluetoothSyncOffsetMs(currentBluetoothAudioDeviceKey, nextOffset);
-        }
-        updateLyricsSyncSettingsUi();
-        updateLyricsOffsetSensitiveViews();
-        if (notify) {
-            showSavedToast(uiFormat("toast.bluetooth_sync_offset_format", currentBluetoothAudioDeviceName, formatSignedMs(nextOffset)));
         }
     }
 
@@ -13173,9 +12670,7 @@ public class BaseLyricsActivity extends Activity implements
         long adjusted =
                 playerPositionMs
                 + currentSpotifyDjLyricsOffsetMs
-                + currentGlobalSyncOffsetMs
-                + currentTrackSyncOffsetMs
-                + currentBluetoothLyricsOffsetMs;
+                + currentTrackSyncOffsetMs;
         long lyricsDurationMs = lyricsTrackDuration(durationMs);
         return lyricsDurationMs > 0L
                 ? Math.max(0L, Math.min(lyricsDurationMs, adjusted))
@@ -13187,9 +12682,7 @@ public class BaseLyricsActivity extends Activity implements
         double adjusted =
                 playerPositionMs
                 + currentSpotifyDjLyricsOffsetMs
-                + currentGlobalSyncOffsetMs
-                + currentTrackSyncOffsetMs
-                + currentBluetoothLyricsOffsetMs;
+                + currentTrackSyncOffsetMs;
         long lyricsDurationMs = lyricsTrackDuration(durationMs);
         return lyricsDurationMs > 0L
                 ? Math.max(0d, Math.min(lyricsDurationMs, adjusted))
@@ -13200,9 +12693,7 @@ public class BaseLyricsActivity extends Activity implements
         long target =
                 lyricsTimeMs
                 - currentSpotifyDjLyricsOffsetMs
-                - currentGlobalSyncOffsetMs
-                - currentTrackSyncOffsetMs
-                - currentBluetoothLyricsOffsetMs;
+                - currentTrackSyncOffsetMs;
         return durationMs > 0L
                 ? Math.max(0L, Math.min(durationMs, target))
                 : Math.max(0L, target);

@@ -5594,8 +5594,31 @@ public class BaseLyricsActivity extends Activity implements
         panel.addView(lyricsManualSearchContent, topMargin(matchWrap(), dp(10)));
         stylePanelControlsForPalette(panel);
         switchLyricsPopupTab(activeLyricsPopupTab);
+        applyPanelControlPalette(panel, palette);
         buildingCurrentTrackPanel = false;
         return panel;
+    }
+
+    /**
+     * Every button in the panel gets the palette's fill. Built-in buttons bring Control black with
+     * them, which reads as a hole punched in the artwork card.
+     */
+    private void applyPanelControlPalette(View root, SettingsPalette palette) {
+        if (root instanceof TextView && !(root instanceof android.widget.CompoundButton)) {
+            TextView text = (TextView) root;
+            // Tab labels style themselves; everything else is a button that came with Control black.
+            boolean tabLabel = text.getParent() == lyricsPopupTabButtonsContainer;
+            if (text.isClickable() && !tabLabel) {
+                text.setBackground(SettingsAppearance.actionBackground(this, palette.surface2, 14, false));
+                text.setTextColor(palette.text);
+            }
+        }
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                applyPanelControlPalette(group.getChildAt(index), palette);
+            }
+        }
     }
 
     /** The panel's own control styling: the legacy dark kit would repaint it black on the light theme. */
@@ -6462,9 +6485,12 @@ public class BaseLyricsActivity extends Activity implements
         getSharedPreferences(SETTINGS_UI_PREFS, MODE_PRIVATE).edit()
                 .putString(KEY_SETTINGS_THEME, dark ? SettingsPalette.THEME_LIGHT : SettingsPalette.THEME_DARK)
                 .apply();
-        // The current-track panel is its own view tree with its own colours; rebuild it too.
-        rebuildCurrentTrackPanel();
         rebuildSettingsPanelInPlace();
+        // After the sheet, not before: themePalette() reads settingsKit, which this rebuild replaces.
+        // Skipped while the sheet is open — the panel then lives there, on the artwork palette.
+        if (!isMetaSheetShowing()) {
+            rebuildCurrentTrackPanel();
+        }
         if (settingsThemeButton != null) {
             settingsThemeButton.post(() -> {
                 if (settingsThemeButton != null) {
@@ -6503,6 +6529,10 @@ public class BaseLyricsActivity extends Activity implements
     }
 
     /** Swaps the panel between the settings page's theme and the coloured card over the lyrics. */
+    private boolean isMetaSheetShowing() {
+        return lyricsMetaMenuPopup != null && lyricsMetaMenuPopup.isShowing();
+    }
+
     private void ensureCurrentTrackPanelSurface(boolean overArtwork) {
         if (lyricsLanguageSettingsPanel == null || panelOverArtwork == overArtwork) {
             return;
@@ -6914,7 +6944,10 @@ public class BaseLyricsActivity extends Activity implements
     // ------------------------------------------------------------------ sections and rows
 
     private void buildCurrentTrackSettingsMenu(LinearLayout content) {
-        ensureCurrentTrackPanelSurface(false);
+        // While the sheet is up the panel belongs to it; rebuilding here would empty the sheet.
+        if (!isMetaSheetShowing()) {
+            ensureCurrentTrackPanelSurface(false);
+        }
         LinearLayout page = settingsMenuPage(content, SETTINGS_TAB_CURRENT_TRACK);
         currentTrackSettingsSummary = settingsKit.rowDescription("");
         currentTrackSettingsSummary.setPaddingRelative(dp(4), 0, dp(4), dp(12));
@@ -13332,7 +13365,13 @@ public class BaseLyricsActivity extends Activity implements
         updateLyricsLanguageSettingsUi();
         updateLyricsMatchStatusBlock();
         switchLyricsPopupTab(activeLyricsPopupTab);
-        ensureCurrentTrackPanelSurface(true);
+        if (panelPalette != SettingsPalette.ARTWORK) {
+            // The sheet paints itself with the cover colour, so the panel inside must be built for it
+            // rather than reused from the settings page.
+            detachFromParent(lyricsLanguageSettingsPanel);
+            lyricsLanguageSettingsPanel = buildLyricsLanguageSettingsPanel(SettingsPalette.ARTWORK);
+            panelOverArtwork = true;
+        }
         rememberLyricsLanguageSettingsParent();
         detachFromParent(lyricsLanguageSettingsPanel);
 
@@ -13357,7 +13396,7 @@ public class BaseLyricsActivity extends Activity implements
         installMetaSheetDrag(handle);
 
         TextView heading = label(ui("tab.current_track"), 15f, palette.text, AppFonts.bold(this));
-        heading.setPadding(dp(2), dp(12), dp(2), 0);
+        heading.setPadding(dp(2), dp(8), dp(2), 0);
         card.addView(heading, matchWrap());
 
         lyricsMetaMenuScrollView = new ScrollView(this);
@@ -13371,7 +13410,7 @@ public class BaseLyricsActivity extends Activity implements
         card.addView(lyricsMetaMenuScrollView, topMargin(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(320)
-        ), dp(10)));
+        ), dp(2)));
 
         sheetRoot.addView(card, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -13408,13 +13447,16 @@ public class BaseLyricsActivity extends Activity implements
         updateLyricsLanguageButtonState();
         lyricsMetaMenuPopup.showAtLocation(rootView, Gravity.BOTTOM, 0, 0);
         resizeMetaSheetBody();
-        card.setTranslationY(dp(28));
+        // The panel is reused, so it arrives with the previous visit's scroll offset.
+        lyricsMetaMenuScrollView.post(() -> lyricsMetaMenuScrollView.scrollTo(0, 0));
+        card.setTranslationY(dp(12));
         card.setAlpha(0f);
         card.animate()
                 .translationY(0f)
                 .alpha(1f)
-                .setDuration(220L)
+                .setDuration(200L)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .withEndAction(() -> card.setTranslationY(0f))
                 .start();
         requestDefaultRemoteFocus(true);
     }
@@ -13490,7 +13532,7 @@ public class BaseLyricsActivity extends Activity implements
         }
         activeLyricsPopupTab = saved;
         applyLyricsPopupTabVisibility();
-        int max = (int) (getResources().getDisplayMetrics().heightPixels * 0.85f) - dp(92);
+        int max = (int) (getResources().getDisplayMetrics().heightPixels * 0.84f) - dp(96);
         int height = Math.max(dp(240), Math.min(content, Math.max(dp(240), max)));
         ViewGroup.LayoutParams params = lyricsMetaMenuScrollView.getLayoutParams();
         if (params.height != height) {

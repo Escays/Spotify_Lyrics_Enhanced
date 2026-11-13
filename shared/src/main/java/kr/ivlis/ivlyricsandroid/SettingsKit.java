@@ -162,10 +162,10 @@ final class SettingsKit {
     }
 
     TextView brandTitle() {
-        TextView view = largeTitle("ivLyrics");
-        SpannableString brand = new SpannableString("ivLyrics");
-        brand.setSpan(new FontSpan(AppFonts.brand(context, 800)), 0, 2, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        brand.setSpan(new FontSpan(AppFonts.brand(context, 250)), 2, brand.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        TextView view = largeTitle("Lyriscope");
+        SpannableString brand = new SpannableString("Lyriscope");
+        brand.setSpan(new FontSpan(AppFonts.brand(context, 800)), 0, 5, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        brand.setSpan(new FontSpan(AppFonts.brand(context, 250)), 5, brand.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         view.setText(brand);
         view.setTextDirection(View.TEXT_DIRECTION_LTR);
         return view;
@@ -173,13 +173,13 @@ final class SettingsKit {
 
     LinearLayout sectionHeader(String title, String subtitle) {
         LinearLayout header = vertical();
-        header.setPaddingRelative(dp(4), 0, dp(4), dp(9));
-        TextView titleView = text(title, 17f, p.text, semi);
+        header.setPaddingRelative(dp(6), 0, dp(6), dp(10));
+        TextView titleView = text(title, 13.5f, p.text3, semi);
         titleView.setLineSpacing(dp(2), 1f);
         heading(titleView);
         header.addView(titleView, matchWrap());
         if (subtitle != null && !subtitle.trim().isEmpty()) {
-            TextView sub = text(subtitle, 13f, p.text3, regular);
+            TextView sub = text(subtitle, 12f, p.text4, regular);
             sub.setLineSpacing(dp(3), 1f);
             header.addView(sub, topMargin(matchWrap(), dp(5)));
         }
@@ -254,7 +254,7 @@ final class SettingsKit {
     LinearLayout group() {
         LinearLayout group = vertical();
         group.setTag(GROUP_TAG);
-        group.setBackground(rect(p.surface, 12f, p.line, 1f));
+        group.setBackground(rect(p.surface, 20f, 0, 0f));
         group.setClipToOutline(true);
         GradientDrawable divider = new GradientDrawable();
         divider.setColor(p.line);
@@ -344,11 +344,11 @@ final class SettingsKit {
         view.setTextSize(15.5f);
         view.setTypeface(semi);
         view.setLineSpacing(dp(3), 1f);
-        view.setPaddingRelative(dp(16), dp(13), dp(16), dp(13));
-        view.setMinHeight(dp(56));
+        view.setPaddingRelative(dp(16), dp(14), dp(16), dp(14));
+        view.setMinHeight(dp(58));
         view.setBackground(pressable(rect(0x00000000, 0f), 0f));
         styleSwitch(view);
-        view.setMinimumHeight(dp(56));
+        view.setMinimumHeight(dp(58));
         return view;
     }
 
@@ -387,8 +387,8 @@ final class SettingsKit {
         button.setMaxLines(Integer.MAX_VALUE);
         button.setEllipsize(null);
         button.setPaddingRelative(dp(16), dp(13), dp(16), dp(13));
-        button.setMinHeight(dp(52));
-        button.setMinimumHeight(dp(52));
+        button.setMinHeight(dp(54));
+        button.setMinimumHeight(dp(54));
         button.setMinWidth(dp(48));
         button.setMinimumWidth(dp(48));
         button.setCompoundDrawablePadding(dp(12));

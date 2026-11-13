@@ -262,7 +262,7 @@ final class AiLyricsSettings implements SharedPreferences.OnSharedPreferenceChan
     static final List<BackgroundMode> BACKGROUND_MODES = Collections.unmodifiableList(Arrays.asList(
             new BackgroundMode(BACKGROUND_MODE_GRADIENT, "앨범 커버", "현재 앨범 커버를 크게 블러 처리해 배경으로 사용합니다."),
             new BackgroundMode(BACKGROUND_MODE_BLUR_GRADIENT, "블러 그라데이션", "앨범 색상을 추출해 움직이는 블러 그라데이션을 만듭니다."),
-            new BackgroundMode(BACKGROUND_MODE_VIDEO, "영상", "ivLyrics YouTube 영상 정보를 불러와 실제 영상을 배경으로 재생합니다."),
+            new BackgroundMode(BACKGROUND_MODE_VIDEO, "영상", "Lyriscope YouTube 영상 정보를 불러와 실제 영상을 배경으로 재생합니다."),
             new BackgroundMode(BACKGROUND_MODE_SOLID, "단색", "사용자 지정 단색 배경을 사용합니다.")
     ));
     static final List<TypographySlot> TYPOGRAPHY_SLOTS = Collections.unmodifiableList(Arrays.asList(

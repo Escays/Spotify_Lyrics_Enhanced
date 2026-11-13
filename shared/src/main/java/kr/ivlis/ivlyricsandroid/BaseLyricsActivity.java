@@ -188,7 +188,6 @@ public class BaseLyricsActivity extends Activity implements
     private final ExecutorService seekExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService updateExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService aiModelExecutor = Executors.newSingleThreadExecutor();
-    private final ExecutorService creatorPrivacyExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService researchMediaExecutor = Executors.newFixedThreadPool(2);
     private final PollinationsAuthClient pollinationsAuthClient = new PollinationsAuthClient();
     private AudioManager audioManager;
@@ -200,7 +199,6 @@ public class BaseLyricsActivity extends Activity implements
     private UpdateChecker updateChecker;
     private AiLyricsSettings aiLyricsSettings;
     private LyricsProviderSettings lyricsProviderSettings;
-    private CreatorPrivacyRepository creatorPrivacyRepository;
 
     private LyricsView lyricsView;
     private LyricsView landscapeLyricsView;
@@ -297,8 +295,6 @@ public class BaseLyricsActivity extends Activity implements
     private TextView lyricsSyncOffsetDescriptionView;
     private TextView videoSyncOffsetValueView;
     private TextView videoSyncOffsetDescriptionView;
-    private TextView videoTimingShareButton;
-    private boolean videoTimingShareInFlight;
     private TextView lyricsLanguageButton;
     private TextView permissionButton;
     private PopupWindow lyricsMetaTipPopup;
@@ -409,9 +405,6 @@ public class BaseLyricsActivity extends Activity implements
     private Switch landscapeShowOriginalSwitch;
     private Switch landscapeShowArtworkSwitch;
     private Switch showLyricsNotFoundSwitch;
-    private TextView creatorPrivacyNoteText;
-    private View creatorPrivacyNoteRow;
-    private View creatorPrivacyStatusRow;
     private ScrollView logScrollView;
     private Switch languageTranslationSwitch;
     private Switch languagePronunciationSwitch;
@@ -490,9 +483,6 @@ public class BaseLyricsActivity extends Activity implements
     private TextView culturalAnnotationRegenerateButton;
     private TextView lyricsRegenerateButton;
     private TextView updateStatusView;
-    private TextView creatorPrivacyStatusView;
-    private TextView creatorPrivacyAccountButton;
-    private TextView creatorPrivacyRefreshButton;
     private TextView onboardingStepLabel;
     private TextView onboardingBackButton;
     private TextView onboardingNextButton;
@@ -600,7 +590,6 @@ public class BaseLyricsActivity extends Activity implements
     private boolean inAppBrowserSlideTouch;
     private boolean inAppBrowserSlideCarried;
     // The running close ended a Discord login, which cannot resume, so no touch takes it over.
-    private boolean inAppBrowserCloseEndedLogin;
     private float mainMetaTouchStartX;
     private float mainMetaTouchStartY;
     private int lyricsPageCornerRadiusDp = -1;
@@ -648,9 +637,6 @@ public class BaseLyricsActivity extends Activity implements
     private volatile boolean pollinationsAuthInFlight;
     private boolean updateCheckInFlight;
     private boolean updateDownloadInFlight;
-    private boolean creatorPrivacyRequestInFlight;
-    private boolean creatorPrivacyLoginInProgress;
-    private boolean creatorPrivacyLoaded;
     private boolean creatorProfilePrivate;
     private boolean automaticUpdateCheckStarted;
     private boolean spotifySetupRequired;
@@ -785,7 +771,6 @@ public class BaseLyricsActivity extends Activity implements
         getContentResolver().registerContentObserver(Settings.Secure.getUriFor(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES),
                 false, onboardingMotionObserver);
         lyricsProviderSettings = new LyricsProviderSettings(this);
-        creatorPrivacyRepository = new CreatorPrivacyRepository(this);
         creatorSupportRepository = new CreatorSupportRepository(this);
         aiLyricsRepository = new AiLyricsRepository(this);
         furiganaRepository = new FuriganaRepository(this);
@@ -1124,7 +1109,6 @@ public class BaseLyricsActivity extends Activity implements
         seekExecutor.shutdownNow();
         updateExecutor.shutdownNow();
         aiModelExecutor.shutdownNow();
-        creatorPrivacyExecutor.shutdownNow();
         researchMediaExecutor.shutdownNow();
         handler.removeCallbacksAndMessages(null);
         super.onDestroy();
@@ -5427,24 +5411,12 @@ public class BaseLyricsActivity extends Activity implements
                     return false;
                 }
                 String url = request.getUrl().toString();
-                if (consumeCreatorPrivacyLoginRedirect(url)) {
-                    return true;
-                }
-                if (creatorPrivacyLoginInProgress && isCreatorPrivacyLoginWebUrl(url)) {
-                    return false;
-                }
                 return shouldOpenBrowserNavigationExternally(url);
             }
 
             @Override
             @SuppressWarnings("deprecation")
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                if (consumeCreatorPrivacyLoginRedirect(url)) {
-                    return true;
-                }
-                if (creatorPrivacyLoginInProgress && isCreatorPrivacyLoginWebUrl(url)) {
-                    return false;
-                }
                 return shouldOpenBrowserNavigationExternally(url);
             }
 
@@ -5682,9 +5654,6 @@ public class BaseLyricsActivity extends Activity implements
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(42)
         ), dp(8)));
-        videoTimingShareButton = languageButton(ui("video.share_timing"), false);
-        videoTimingShareButton.setOnClickListener(view -> shareCurrentVideoTiming());
-        content.addView(videoTimingShareButton, topMargin(matchWrap(), dp(8)));
         return content;
     }
 
@@ -6258,6 +6227,7 @@ public class BaseLyricsActivity extends Activity implements
     // ------------------------------------------------------------------ settings navigation
 
     private SettingsPalette settingsPalette() {
+        // Dark by default, light still available from the nav bar.
         return SettingsPalette.forTheme(getSharedPreferences(SETTINGS_UI_PREFS, MODE_PRIVATE)
                 .getString(KEY_SETTINGS_THEME, SettingsPalette.THEME_DARK));
     }
@@ -6335,7 +6305,6 @@ public class BaseLyricsActivity extends Activity implements
             onSettingsScrolled(settingsScrollView.getScrollY());
         });
         if (changed && SETTINGS_TAB_SYSTEM.equals(next) && usesLivePlayback()) {
-            refreshCreatorPrivacy(false);
         }
     }
 
@@ -6422,7 +6391,6 @@ public class BaseLyricsActivity extends Activity implements
         }
     }
 
-    /** Rebuilds the settings panel (e.g. for a theme change) and returns to the same menu and scroll position. */
     private void rebuildSettingsPanelInPlace() {
         if (settingsPanel == null || !(settingsPanel.getParent() instanceof ViewGroup)) return;
         hideSettingsKeyboard();
@@ -8181,9 +8149,7 @@ public class BaseLyricsActivity extends Activity implements
     private void buildSystemSettingsMenu(LinearLayout content) {
         LinearLayout page = settingsMenuPage(content, SETTINGS_TAB_SYSTEM);
         boolean embedded = IvLyricsBridge.isEmbedded(this);
-        LinearLayout section = settingsSection(page, ui("creator_privacy.section"), ui("creator_privacy.section_desc"), -1);
-        buildCreatorPrivacyControl(section);
-
+        LinearLayout section;
         if (!embedded) {
             section = settingsSection(page, ui("section.app_update"), ui("section.app_update_desc"), -1);
             LinearLayout group = settingsGroup(section);
@@ -9529,275 +9495,6 @@ public class BaseLyricsActivity extends Activity implements
         view.setLineSpacing(dp(2), 1f);
         SettingsAppearance.styleSwitch(view);
         return view;
-    }
-
-    private void buildCreatorPrivacyControl(LinearLayout section) {
-        LinearLayout group = settingsGroup(section);
-        LinearLayout noteRow = settingsKit.vertical();
-        noteRow.setPaddingRelative(dp(16), dp(14), dp(16), dp(14));
-        LinearLayout note = settingsKit.note("", SettingsKit.TONE_INFO);
-        creatorPrivacyNoteText = (TextView) note.getChildAt(1);
-        creatorPrivacyNoteText.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        noteRow.addView(note, matchWrap());
-        creatorPrivacyNoteRow = noteRow;
-        group.addView(noteRow, matchWrap());
-        creatorPrivacyStatusView = settingsKit.text("", 14f, settingsKit.p.text2, settingsKit.regular);
-        creatorPrivacyStatusView.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        creatorPrivacyStatusRow = settingsKit.statusLine(creatorPrivacyStatusView);
-        group.addView(creatorPrivacyStatusRow, matchWrap());
-
-        creatorPrivacyAccountButton = settingsAction(group, ui("creator_privacy.login"), null, SettingsKit.ACTION_NORMAL, view -> {
-            if (creatorPrivacyRepository == null || creatorPrivacyRequestInFlight) {
-                return;
-            }
-            if (creatorPrivacyRepository.hasAuthenticatedSession()) {
-                disconnectCreatorPrivacyAccount();
-                return;
-            }
-            beginCreatorPrivacyLogin();
-        });
-        registerSetting(creatorPrivacyAccountButton, ui("creator_privacy.disconnect"), null, null);
-        creatorPrivacyRefreshButton = settingsAction(group, ui("creator_privacy.refresh"), null, SettingsKit.ACTION_NORMAL,
-                view -> refreshCreatorPrivacy(true));
-
-        creatorProfilePrivacySwitch = settingsToggle(group, ui("creator_privacy.private_title"), ui("creator_privacy.private_desc"));
-        creatorProfilePrivacySwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (suppressSettingsEvents || creatorPrivacyRepository == null) {
-                return;
-            }
-            if (!creatorPrivacyRepository.hasAuthenticatedSession()) {
-                setCreatorPrivacySwitchChecked(false);
-                showSavedToast(ui("creator_privacy.login_required"));
-                beginCreatorPrivacyLogin();
-                return;
-            }
-            updateCreatorPrivacy(isChecked);
-        });
-        updateCreatorPrivacyControls();
-    }
-
-    private void updateCreatorPrivacyControls() {
-        if (creatorPrivacyRepository == null) {
-            return;
-        }
-        boolean authenticated = creatorPrivacyRepository.hasAuthenticatedSession();
-        boolean controlsEnabled = authenticated && creatorPrivacyLoaded && !creatorPrivacyRequestInFlight;
-        if (creatorProfilePrivacySwitch != null) {
-            setCreatorPrivacySwitchChecked(authenticated && creatorPrivacyLoaded && creatorProfilePrivate);
-            creatorProfilePrivacySwitch.setEnabled(controlsEnabled);
-            creatorProfilePrivacySwitch.setAlpha(authenticated ? 1f : 0.58f);
-        }
-        if (creatorPrivacyStatusView != null) {
-            String status;
-            if (creatorPrivacyRequestInFlight) {
-                status = ui("creator_privacy.status_loading");
-            } else if (!authenticated) {
-                status = ui("creator_privacy.status_signed_out");
-            } else if (!creatorPrivacyLoaded) {
-                status = ui("creator_privacy.status_not_loaded");
-            } else {
-                status = creatorProfilePrivate
-                        ? ui("creator_privacy.status_private")
-                        : ui("creator_privacy.status_public");
-            }
-            creatorPrivacyStatusView.setText(status);
-            // Signed out, the status is the lab's sign-in note; signed in, a plain status line.
-            boolean note = !authenticated && !creatorPrivacyRequestInFlight;
-            if (creatorPrivacyNoteText != null) creatorPrivacyNoteText.setText(status);
-            if (creatorPrivacyNoteRow != null) creatorPrivacyNoteRow.setVisibility(note ? View.VISIBLE : View.GONE);
-            if (creatorPrivacyStatusRow != null) creatorPrivacyStatusRow.setVisibility(note ? View.GONE : View.VISIBLE);
-        }
-        if (creatorPrivacyAccountButton != null) {
-            creatorPrivacyAccountButton.setText(authenticated
-                    ? ui("creator_privacy.disconnect")
-                    : ui("creator_privacy.login"));
-            creatorPrivacyAccountButton.setEnabled(!creatorPrivacyRequestInFlight);
-            creatorPrivacyAccountButton.setAlpha(creatorPrivacyRequestInFlight ? 0.55f : 1f);
-        }
-        if (creatorPrivacyRefreshButton != null) {
-            boolean enabled = authenticated && !creatorPrivacyRequestInFlight;
-            creatorPrivacyRefreshButton.setVisibility(authenticated ? View.VISIBLE : View.GONE);
-            creatorPrivacyRefreshButton.setEnabled(enabled);
-            creatorPrivacyRefreshButton.setAlpha(enabled ? 1f : 0.45f);
-        }
-    }
-
-    private void setCreatorPrivacySwitchChecked(boolean checked) {
-        if (creatorProfilePrivacySwitch == null || creatorProfilePrivacySwitch.isChecked() == checked) {
-            return;
-        }
-        boolean previousSuppression = suppressSettingsEvents;
-        suppressSettingsEvents = true;
-        creatorProfilePrivacySwitch.setChecked(checked);
-        suppressSettingsEvents = previousSuppression;
-    }
-
-    private void refreshCreatorPrivacy(boolean announceFailure) {
-        if (creatorPrivacyRepository == null || creatorPrivacyRequestInFlight) {
-            return;
-        }
-        if (!creatorPrivacyRepository.hasAuthenticatedSession()) {
-            creatorPrivacyLoaded = false;
-            creatorProfilePrivate = false;
-            updateCreatorPrivacyControls();
-            return;
-        }
-        creatorPrivacyRequestInFlight = true;
-        updateCreatorPrivacyControls();
-        String languageTag = currentUiLanguageTag();
-        creatorPrivacyExecutor.execute(() -> {
-            try {
-                CreatorPrivacyRepository.Privacy privacy = creatorPrivacyRepository.getPrivacy(languageTag);
-                handler.post(() -> {
-                    boolean visibilityChanged = !creatorPrivacyLoaded
-                            || creatorProfilePrivate != privacy.isPrivate;
-                    creatorPrivacyRequestInFlight = false;
-                    creatorPrivacyLoaded = true;
-                    creatorProfilePrivate = privacy.isPrivate;
-                    updateCreatorPrivacyControls();
-                    if (visibilityChanged) {
-                        clearCreatorIdentityCachesAndReload();
-                    }
-                });
-            } catch (Exception error) {
-                handler.post(() -> {
-                    creatorPrivacyRequestInFlight = false;
-                    creatorPrivacyLoaded = false;
-                    updateCreatorPrivacyControls();
-                    appendLog("creator privacy load failed: " + error.getMessage());
-                    if (announceFailure) {
-                        showSavedToast(error instanceof CreatorPrivacyRepository.AuthenticationException
-                                ? ui("creator_privacy.login_required")
-                                : ui("creator_privacy.load_failed"));
-                    }
-                });
-            }
-        });
-    }
-
-    private void updateCreatorPrivacy(boolean isPrivate) {
-        if (creatorPrivacyRepository == null || creatorPrivacyRequestInFlight) {
-            return;
-        }
-        boolean previousValue = creatorProfilePrivate;
-        creatorPrivacyRequestInFlight = true;
-        creatorProfilePrivate = isPrivate;
-        updateCreatorPrivacyControls();
-        String languageTag = currentUiLanguageTag();
-        creatorPrivacyExecutor.execute(() -> {
-            try {
-                CreatorPrivacyRepository.Privacy privacy = creatorPrivacyRepository.setPrivacy(isPrivate, languageTag);
-                handler.post(() -> {
-                    creatorPrivacyRequestInFlight = false;
-                    creatorPrivacyLoaded = true;
-                    creatorProfilePrivate = privacy.isPrivate;
-                    updateCreatorPrivacyControls();
-                    clearCreatorIdentityCachesAndReload();
-                    showSavedToast(privacy.isPrivate
-                            ? ui("creator_privacy.saved_private")
-                            : ui("creator_privacy.saved_public"));
-                });
-            } catch (Exception error) {
-                handler.post(() -> {
-                    creatorPrivacyRequestInFlight = false;
-                    creatorProfilePrivate = previousValue;
-                    creatorPrivacyLoaded = creatorPrivacyRepository.hasAuthenticatedSession();
-                    updateCreatorPrivacyControls();
-                    appendLog("creator privacy update failed: " + error.getMessage());
-                    showSavedToast(error instanceof CreatorPrivacyRepository.AuthenticationException
-                            ? ui("creator_privacy.login_required")
-                            : ui("creator_privacy.save_failed"));
-                });
-            }
-        });
-    }
-
-    private void beginCreatorPrivacyLogin() {
-        if (creatorPrivacyRepository == null || creatorPrivacyRequestInFlight || creatorPrivacyLoginInProgress) {
-            return;
-        }
-        creatorPrivacyRequestInFlight = true;
-        updateCreatorPrivacyControls();
-        String languageTag = currentUiLanguageTag();
-        creatorPrivacyExecutor.execute(() -> {
-            try {
-                CreatorPrivacyRepository.LoginStart start = creatorPrivacyRepository.startDiscordLogin(languageTag);
-                handler.post(() -> {
-                    creatorPrivacyRequestInFlight = false;
-                    creatorPrivacyLoginInProgress = true;
-                    updateCreatorPrivacyControls();
-                    openInAppBrowser(start.authorizeUrl);
-                });
-            } catch (Exception error) {
-                handler.post(() -> {
-                    creatorPrivacyRequestInFlight = false;
-                    creatorPrivacyLoginInProgress = false;
-                    updateCreatorPrivacyControls();
-                    appendLog("creator privacy login start failed: " + error.getMessage());
-                    showSavedToast(ui("creator_privacy.login_failed"));
-                });
-            }
-        });
-    }
-
-    private void disconnectCreatorPrivacyAccount() {
-        if (creatorPrivacyRepository == null || creatorPrivacyRequestInFlight) {
-            return;
-        }
-        creatorPrivacyRequestInFlight = true;
-        updateCreatorPrivacyControls();
-        String languageTag = currentUiLanguageTag();
-        creatorPrivacyExecutor.execute(() -> {
-            try {
-                creatorPrivacyRepository.logout(languageTag);
-                handler.post(() -> {
-                    creatorPrivacyRequestInFlight = false;
-                    creatorPrivacyLoaded = false;
-                    creatorProfilePrivate = false;
-                    updateCreatorPrivacyControls();
-                    showSavedToast(ui("creator_privacy.disconnected"));
-                });
-            } catch (Exception error) {
-                handler.post(() -> {
-                    creatorPrivacyRequestInFlight = false;
-                    updateCreatorPrivacyControls();
-                    appendLog("creator privacy logout failed: " + error.getMessage());
-                    showSavedToast(ui("creator_privacy.logout_failed"));
-                });
-            }
-        });
-    }
-
-    private void finishCreatorPrivacyLogin(String loginToken) {
-        if (creatorPrivacyRepository == null || creatorPrivacyRequestInFlight) {
-            return;
-        }
-        creatorPrivacyRequestInFlight = true;
-        updateCreatorPrivacyControls();
-        String languageTag = currentUiLanguageTag();
-        creatorPrivacyExecutor.execute(() -> {
-            try {
-                creatorPrivacyRepository.finishDiscordLogin(loginToken, languageTag);
-                handler.post(() -> {
-                    creatorPrivacyLoginInProgress = false;
-                    creatorPrivacyRequestInFlight = false;
-                    creatorPrivacyLoaded = false;
-                    showInAppBrowser(false);
-                    updateCreatorPrivacyControls();
-                    showSavedToast(ui("creator_privacy.login_success"));
-                    refreshCreatorPrivacy(false);
-                });
-            } catch (Exception error) {
-                handler.post(() -> {
-                    creatorPrivacyRequestInFlight = false;
-                    creatorPrivacyLoginInProgress = false;
-                    showInAppBrowser(false);
-                    updateCreatorPrivacyControls();
-                    appendLog("creator privacy login finish failed: " + error.getMessage());
-                    showSavedToast(ui("creator_privacy.login_failed"));
-                });
-            }
-        });
     }
 
     private void clearCreatorIdentityCachesAndReload() {
@@ -12312,11 +12009,6 @@ public class BaseLyricsActivity extends Activity implements
     }
 
     private void updateVideoSyncSettingsUi() {
-        if (videoTimingShareButton != null) {
-            videoTimingShareButton.setEnabled(!videoTimingShareInFlight
-                    && currentTrack != null && currentTrack.hasUsableMetadata());
-            videoTimingShareButton.setAlpha(videoTimingShareButton.isEnabled() ? 1f : 0.5f);
-        }
         if (videoSyncOffsetValueView != null) {
             videoSyncOffsetValueView.setText(formatSignedMs(currentVideoSyncOffsetMs));
         }
@@ -12362,42 +12054,6 @@ public class BaseLyricsActivity extends Activity implements
         youtubeBackgroundRepository.selectVideo(trackKey, manual);
         currentYouTubeBackgroundInfo = manual;
         youtubeBackgroundView.loadVideo(manual);
-    }
-
-    private void shareCurrentVideoTiming() {
-        if (videoTimingShareInFlight || creatorPrivacyRepository == null) return;
-        final VideoTimingSubmission submission = captureCurrentVideoTiming();
-        if (submission == null) {
-            showSavedToast(ui("video.cannot_share_timing"));
-            return;
-        }
-        if (!creatorPrivacyRepository.hasAuthenticatedSession()) {
-            showSavedToast(ui("creator_privacy.login_required"));
-            dismissLyricsMetaMenuPopup();
-            showSettingsPanel(true);
-            switchSettingsTab(SETTINGS_TAB_SYSTEM);
-            return; // Authentication never resumes a share automatically: click Share again afterward.
-        }
-        final String language = currentUiLanguageTag();
-        videoTimingShareInFlight = true;
-        updateVideoSyncSettingsUi();
-        creatorPrivacyExecutor.execute(() -> {
-            String message;
-            try {
-                creatorPrivacyRepository.shareVideoTiming(submission, language);
-                message = "video.timing_shared";
-            } catch (Exception error) {
-                message = error instanceof CreatorPrivacyRepository.AuthenticationException
-                        ? "creator_privacy.login_required" : "video.share_timing_failed";
-            }
-            final String result = message;
-            handler.post(() -> {
-                videoTimingShareInFlight = false;
-                if (isFinishing() || isDestroyed()) return;
-                updateVideoSyncSettingsUi();
-                showSavedToast(ui(result));
-            });
-        });
     }
 
     private void populateManualLrclibSearchDefaults(boolean overwrite) {
@@ -15734,8 +15390,7 @@ public class BaseLyricsActivity extends Activity implements
             populateAiSettingsUi();
             showSettingsRoute(settingsRoute, !startAtHome);
             if (SETTINGS_TAB_SYSTEM.equals(settingsRoute)) {
-                refreshCreatorPrivacy(false);
-            }
+                }
             settingsPanel.setVisibility(View.VISIBLE);
             settingsPanel.setAlpha(0f);
             settingsPanel.bringToFront();
@@ -18627,7 +18282,7 @@ public class BaseLyricsActivity extends Activity implements
         if (safeUrl.isEmpty() || inAppBrowserPage == null || inAppBrowserWebView == null) {
             return;
         }
-        if (!InAppBrowserUrlPolicy.isAllowedInitialUrl(safeUrl, creatorPrivacyLoginInProgress)) {
+        if (!InAppBrowserUrlPolicy.isAllowedInitialUrl(safeUrl, false)) {
             appendLog("blocked untrusted in-app browser URL");
             if (InAppBrowserUrlPolicy.isExternalHttpUrl(safeUrl)) {
                 openExternalBrowserUrl(safeUrl);
@@ -18644,14 +18299,6 @@ public class BaseLyricsActivity extends Activity implements
     }
 
     private void showInAppBrowser(boolean show) {
-        if (!show && creatorPrivacyLoginInProgress) {
-            creatorPrivacyLoginInProgress = false;
-            if (creatorPrivacyRepository != null) {
-                creatorPrivacyRepository.cancelDiscordLogin();
-            }
-            updateCreatorPrivacyControls();
-            inAppBrowserCloseEndedLogin = true;
-        }
         if (inAppBrowserPage == null || show == inAppBrowserVisible) {
             return;
         }
@@ -18661,7 +18308,6 @@ public class BaseLyricsActivity extends Activity implements
         inAppBrowserPage.animate().cancel();
         int slide = beginInAppBrowserSlide();
         if (show) {
-            inAppBrowserCloseEndedLogin = false;
             updateInAppBrowserSheetLayout();
             inAppBrowserPage.setVisibility(View.VISIBLE);
             inAppBrowserPage.bringToFront();
@@ -19187,12 +18833,11 @@ public class BaseLyricsActivity extends Activity implements
 
     /**
      * As {@link #carrySlidingLyricsPage}: once that touch is a drag while the slide still runs,
-     * the sheet stops where the slide has brought it and follows the finger from there. A close
-     * that ended a Discord login is left to finish, since that login could not resume.
+     * the sheet stops where the slide has brought it and follows the finger from there.
      */
     private void carrySlidingInAppBrowser(float rawY, boolean dragging) {
         if (!inAppBrowserSlideCarried) {
-            if (!dragging || !isInAppBrowserSliding() || (!inAppBrowserVisible && inAppBrowserCloseEndedLogin)) {
+            if (!dragging || !isInAppBrowserSliding()) {
                 return;
             }
             inAppBrowserPage.animate().cancel();
@@ -19274,34 +18919,6 @@ public class BaseLyricsActivity extends Activity implements
         }
         openExternalBrowserUrl(safeUrl);
         return true;
-    }
-
-    private boolean consumeCreatorPrivacyLoginRedirect(String url) {
-        if (!creatorPrivacyLoginInProgress) {
-            return false;
-        }
-        try {
-            Uri uri = Uri.parse(url == null ? "" : url.trim());
-            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
-            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
-            if (!"spotify".equals(scheme) || !"ivlyrics".equals(host)) {
-                return false;
-            }
-            String action = uri.getQueryParameter("action");
-            String loginToken = uri.getQueryParameter("loginToken");
-            if (!"discord-auth".equals(action) || loginToken == null || loginToken.trim().isEmpty()) {
-                return false;
-            }
-            finishCreatorPrivacyLogin(loginToken);
-            return true;
-        } catch (Exception error) {
-            appendLog("creator privacy login redirect failed: " + error.getMessage());
-            return false;
-        }
-    }
-
-    private boolean isCreatorPrivacyLoginWebUrl(String url) {
-        return InAppBrowserUrlPolicy.isAllowedCreatorLoginUrl(url);
     }
 
     private boolean isSameLyricsProfileNavigation(String nextUrl, String initialUrl) {
